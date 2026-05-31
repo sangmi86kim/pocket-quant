@@ -1,6 +1,10 @@
+<p align="center">
+  <img src="docs/concept_image.png" alt="PocketQuant — 최강의 트레이더가 되어라" width="100%">
+</p>
+
 # 🎮 PocketQuant
 
-> 전략을 "포켓몬"처럼 키우고, 과거 위기(시장 국면)를 "체육관"으로 돌파시키는 전략 연구 랩
+> **GOTTA MONEY 'EM ALL** — 모든 시장(체육관)을 제패하고 리그 챔피언이 되는 최강 전략 연구실
 
 **PocketQuant v0.2** — 복잡한 금융 로직보다 **게임 컨셉**을 우선한 CLI 프로젝트입니다.
 전략 포켓몬을 만들고, 가짜 데이터 기반 체육관에서 생존 테스트를 하며,
