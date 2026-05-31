@@ -51,6 +51,7 @@
     border-bottom: 2px solid var(--border);
     font-size: 1.5rem;
   }
+  h3 { margin-top: 28px; font-size: 1.15rem; }
   table {
     width: 100%;
     border-collapse: collapse;
@@ -98,6 +99,8 @@
   }
   .survive { color: var(--green); font-weight: 700; }
   .death { color: var(--red); font-weight: 700; }
+  .bar-bad { color: var(--red); }
+  .bar-ok { color: var(--green); }
   footer { margin-top: 60px; text-align: center; color: var(--muted); font-size: .9rem; }
   a { color: var(--accent2); }
 </style>
@@ -106,25 +109,30 @@
 <div class="wrap">
 
   <header>
-    <div class="badge">MVP v0.1</div>
+    <div class="badge">v0.2 · 단일목적 GA</div>
     <h1>🎮 PocketQuant</h1>
-    <p>전략을 "포켓몬"처럼 키우고, 과거 위기를 "체육관"으로 돌파시키는 장난감 퀀트 프로젝트</p>
+    <p>전략을 "포켓몬"처럼 키우고, 시장 국면을 "체육관"으로 돌파시키는 전략 연구 랩</p>
   </header>
 
   <p>복잡한 금융 로직보다 <strong>게임 컨셉</strong>을 우선한 CLI 프로젝트입니다.
-     전략 포켓몬을 랜덤 생성하고, 가짜 데이터 기반 체육관에서 생존 테스트를 합니다.</p>
+     전략 포켓몬을 만들고, 가짜 데이터 기반 체육관에서 생존 테스트를 하며,
+     <strong>유전 알고리즘(GA)으로 최적의 시그널 조합을 탐색</strong>합니다.</p>
+  <div class="note">정체: 시그널(포켓몬)을 GA로 배합해 시장 국면(체육관)을 돌파하는 전략을 찾는 랩.
+     포켓몬 배틀은 이 퀀트 연구를 "만질 수 있게" 해주는 인터페이스입니다.</div>
 
   <h2>🧩 컨셉</h2>
   <table>
     <tr><th>게임 용어</th><th>실제 의미</th></tr>
-    <tr><td>전략 포켓몬</td><td>트레이딩 전략</td></tr>
-    <tr><td>유전자</td><td>전략 속성 (지표)</td></tr>
+    <tr><td>포켓몬 1마리</td><td>시그널 1개</td></tr>
+    <tr><td>트레이너 / 전략</td><td>시그널을 운용하는 모델</td></tr>
+    <tr><td>체육관</td><td>시장 국면 (regime)</td></tr>
     <tr><td>체육관 도전</td><td>백테스트</td></tr>
-    <tr><td>생존 / 사망</td><td>백테스트 통과 / 실패</td></tr>
+    <tr><td>생존 / 사망</td><td>통과 / 실패</td></tr>
+    <tr><td>교배 · 진화</td><td>유전 알고리즘 (GA)</td></tr>
   </table>
 
-  <h2>🧬 유전자</h2>
-  <p>전략은 아래 유전자를 랜덤 조합해 만들어집니다.</p>
+  <h2>🧬 유전자 (시그널)</h2>
+  <p>전략은 아래 유전자를 조합해 만들어집니다.</p>
   <table>
     <tr><th>유전자</th><th>점수</th><th>의미</th></tr>
     <tr><td><code>DD</code></td><td>+20</td><td>Drawdown</td></tr>
@@ -135,78 +143,85 @@
   </table>
   <p>예시: <code>DD몬</code>, <code>DD-RSI몬</code>, <code>DD-RSI-MA몬</code>, <code>타이탄 드래곤</code></p>
 
-  <h2>🏟️ 체육관</h2>
-  <p>각 체육관은 <code>difficulty</code>, <code>volatility</code> 두 변수만 가집니다. (실제 주가 데이터 미사용 — 가짜 데이터)</p>
+  <h2>🏟️ 체육관 (시장 국면)</h2>
+  <p>각 체육관은 <code>difficulty</code>, <code>volatility</code>를 가집니다. <strong>값은 실제 역사 데이터 근거</strong>이며,
+     난이도(생존 어려움)와 변동성(VIX 피크)은 <strong>서로 비례하지 않습니다.</strong></p>
   <table>
-    <tr><th>체육관</th><th>difficulty</th><th>volatility</th></tr>
-    <tr><td><code>DOTCOM</code></td><td>90</td><td>80</td></tr>
-    <tr><td><code>FINANCIAL_CRISIS</code></td><td>85</td><td>70</td></tr>
-    <tr><td><code>COVID</code></td><td>40</td><td>90</td></tr>
-    <tr><td><code>RATE_SHOCK</code></td><td>60</td><td>50</td></tr>
+    <tr><th>체육관</th><th>difficulty</th><th>volatility</th><th>근거</th></tr>
+    <tr><td><code>FINANCIAL_CRISIS</code></td><td>90</td><td>80</td><td>S&P -57%·시스템 붕괴, VIX~80 → 최난도</td></tr>
+    <tr><td><code>DOTCOM</code></td><td>85</td><td>55</td><td>-49%(나스닥-78%), 2.5년 느린 약세장</td></tr>
+    <tr><td><code>RATE_SHOCK</code></td><td>60</td><td>40</td><td>-25%, 채권 동반하락이나 질서있음</td></tr>
+    <tr><td><code>COVID</code></td><td>40</td><td>95</td><td>V자 즉시회복(생존쉬움), VIX 82.7 역대최고</td></tr>
   </table>
+  <div class="note">💡 코로나는 <strong>변동성 최강이지만 생존 난이도 최저</strong>(빨리 회복). 닷컴은 <strong>느린 약세장이라 변동성은 중간이지만 난이도 높음.</strong> 이 디커플링이 핵심.</div>
 
   <h2>⚔️ 전투 로직</h2>
   <pre><code>최종 점수 = (유전자 점수 합) + random(-20 ~ +20)
 
 최종 점수 >= 체육관 difficulty  →  생존
 그렇지 않으면                    →  사망</code></pre>
-  <p>생존률에 따라 등급이 매겨집니다.</p>
-  <table>
-    <tr><th>등급</th><th>생존률</th></tr>
-    <tr><td><code>S</code></td><td>≥ 0.9</td></tr>
-    <tr><td><code>A</code></td><td>≥ 0.7</td></tr>
-    <tr><td><code>B</code></td><td>≥ 0.5</td></tr>
-    <tr><td><code>C</code></td><td>≥ 0.3</td></tr>
-    <tr><td><code>D</code></td><td>그 외</td></tr>
-  </table>
+  <p>생존률 등급: <code>S</code>≥0.9 · <code>A</code>≥0.7 · <code>B</code>≥0.5 · <code>C</code>≥0.3 · <code>D</code> 그 외</p>
+  <div class="note"><code>random(±20)</code>이 <strong>"랜덤 계측값 주입" 지점</strong>입니다. 나중에 yfinance 실데이터 백테스트로 교체하면 = "실계측".</div>
 
   <h2>🚀 실행</h2>
-  <div class="warn">⚠️ 반드시 <strong>프로젝트 루트</strong>에서 실행하세요. <code>app/backend/</code> 내부 파일을 직접 실행하면 상대 import가 깨집니다.</div>
+  <div class="warn">⚠️ 반드시 <strong>프로젝트 루트</strong>에서 실행하세요. <code>app/backend/</code> 내부 파일을 직접 실행하면 상대 import가 깨집니다. 한글 깨짐(Windows): <code>$env:PYTHONIOENCODING="utf-8"</code></div>
+
+  <h3>단판 모드 — 전략 한 마리 도전</h3>
   <pre><code>python main.py          # 유전자 개수 랜덤
 python main.py -g 3     # 유전자 3개 고정</code></pre>
-  <p>한글이 깨지면 (Windows):</p>
-  <pre><code>$env:PYTHONIOENCODING="utf-8"
-python main.py</code></pre>
+
+  <h3>🧬 진화 모드 — 단일목적 GA</h3>
+  <pre><code>python main.py --evolve
+python main.py --evolve --pop 20 --generations 8 --trials 30 --seed 42</code></pre>
+  <table>
+    <tr><th>옵션</th><th>의미</th><th>기본</th></tr>
+    <tr><td><code>--evolve</code></td><td>진화 모드 실행</td><td>-</td></tr>
+    <tr><td><code>--pop</code></td><td>개체군 크기</td><td>20</td></tr>
+    <tr><td><code>--generations</code></td><td>세대 수</td><td>10</td></tr>
+    <tr><td><code>--trials</code></td><td>전략당 평가 도전 횟수(평균낼 표본)</td><td>20</td></tr>
+    <tr><td><code>--seed</code></td><td>랜덤 시드 고정 (재현 가능)</td><td>랜덤</td></tr>
+  </table>
 
   <h3>출력 예시</h3>
-  <pre><code>=== PocketQuant ===
+  <pre><code>=== PocketQuant · 진화 모드 (단일목적 GA) ===
+개체군 20 · 세대 8 · 시도 30
 
-전략 생성
-DD + RSI + MA
-이름: DD-RSI-MA몬
+[세대  1] 최고적합도 0.62  최강: BB+DD+FX+MA+RSI
+[세대  6] 최고적합도 0.66  최강: DD+RSI+MA+BB+FX
+[세대  8] 최고적합도 0.62  최강: DD+RSI+MA+BB+FX
 
-체육관 도전
+=== 최종 챔피언 ===
+유전자: DD, RSI, MA, BB, FX
+이름: DD-RSI-MA-BB-FX몬
+적합도(평균 생존률): 62.5%
 
-DOTCOM
-<span class="survive">생존</span>
-
-COVID
-<span class="survive">생존</span>
-
-RATE_SHOCK
-<span class="death">사망</span>
-
-결과
-생존 2
-사망 1
-등급 B</code></pre>
+시장별 박살 현황 (생존률 낮은 순):
+    <span class="bar-bad">FINANCIAL_CRISIS    16.7%  ###</span>
+    <span class="bar-bad">DOTCOM              43.3%  #########</span>
+    <span class="bar-ok">RATE_SHOCK          90.0%  ##################</span>
+    <span class="bar-ok">COVID              100.0%  ####################</span></code></pre>
+  <div class="note">📌 <strong>이 출력의 핵심:</strong> 단일목적 GA는 "유전자 다 모으기"로 수렴합니다.
+     그런데 그 <strong>챔피언조차 <span class="death">FINANCIAL_CRISIS·DOTCOM에서는 박살</span></strong>납니다.
+     → "왜 한 전략으로 모든 국면을 못 이기나?"가 눈에 보이고, 이게 <strong>다목적 최적화(NSGA-III)</strong>가 필요한 이유입니다.</div>
 
   <h2>📁 구조</h2>
   <pre><code>pocket_quant/
-├─ main.py              # CLI 진입점 (argparse)
+├─ main.py              # CLI 진입점 (단판 / 진화 모드)
 └─ app/
    └─ backend/
       ├─ models.py      # dataclass + 유전자 점수 / 등급 테이블
-      ├─ strategy.py    # 전략 포켓몬 생성 + 이름 자동 생성
-      ├─ gym.py         # 체육관 4종 정의
-      └─ battle.py      # 점수 계산 → 생존 / 사망 판정</code></pre>
+      ├─ strategy.py    # 전략 생성 + 이름 자동 생성
+      ├─ gym.py         # 체육관 4종 (시장 국면)
+      ├─ battle.py      # 점수 계산 → 생존 / 사망 판정
+      └─ evolve.py      # 단일목적 GA (개체군/선택/교배/돌연변이/세대)</code></pre>
 
-  <h2>🔮 확장 여지 <span style="color:var(--muted);font-size:.9rem;">(의도적으로 단순 유지)</span></h2>
+  <h2>🔮 로드맵</h2>
   <table>
-    <tr><th>확장</th><th>방법</th></tr>
-    <tr><td>실제 데이터</td><td>가짜 데이터를 실제 가격 시계열로 교체 시 <code>battle.fight()</code>만 수정</td></tr>
-    <tr><td>체육관 추가</td><td><code>gym.py</code>의 <code>GYMS</code> 리스트에 한 줄</td></tr>
-    <tr><td>유전자 추가</td><td><code>models.py</code>의 <code>GENE_SCORES</code>에 한 줄</td></tr>
+    <tr><th>단계</th><th>내용</th></tr>
+    <tr><td>✅ v0.2 단일목적 GA</td><td>개체군·선택·교배·돌연변이·세대 + 시장별 박살 로그</td></tr>
+    <tr><td>⏭️ 다목적 (NSGA-III)</td><td>체육관별 생존력을 각각의 목적으로 → 전략 Pareto front</td></tr>
+    <tr><td>🔭 실데이터</td><td><code>battle.fight()</code>를 yfinance 백테스트로 교체</td></tr>
+    <tr><td>🔬 오박사(LLM)</td><td>승패 후 "왜 졌는지" 성과 귀인 해설</td></tr>
   </table>
 
   <footer>
