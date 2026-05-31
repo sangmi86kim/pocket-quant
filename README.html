@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎮 PocketQuant</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --card: #1a1d27;
+    --border: #2a2e3a;
+    --text: #e6e8ee;
+    --muted: #9aa0ad;
+    --accent: #ffcb05;     /* 포켓몬 옐로우 */
+    --accent2: #3b6cff;    /* 포켓몬 블루 */
+    --green: #4ade80;
+    --red: #f87171;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", "Malgun Gothic", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.65;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 48px 24px 80px; }
+  header {
+    text-align: center;
+    padding: 40px 20px;
+    background: linear-gradient(135deg, #1a1d27 0%, #232838 100%);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    margin-bottom: 40px;
+  }
+  header h1 { font-size: 2.6rem; margin: 0 0 10px; }
+  header .badge {
+    display: inline-block;
+    background: var(--accent);
+    color: #1a1d27;
+    font-weight: 700;
+    font-size: .8rem;
+    padding: 4px 12px;
+    border-radius: 999px;
+    margin-bottom: 14px;
+  }
+  header p { color: var(--muted); font-size: 1.05rem; margin: 6px 0 0; }
+  h2 {
+    margin-top: 48px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--border);
+    font-size: 1.5rem;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 18px 0;
+    background: var(--card);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); }
+  th { background: #232838; color: var(--accent); font-weight: 600; }
+  tr:last-child td { border-bottom: none; }
+  code {
+    background: #232838;
+    color: var(--accent);
+    padding: 2px 7px;
+    border-radius: 5px;
+    font-family: "Cascadia Code", Consolas, monospace;
+    font-size: .9em;
+  }
+  pre {
+    background: #0b0d13;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    overflow-x: auto;
+    font-family: "Cascadia Code", Consolas, monospace;
+    font-size: .9rem;
+    line-height: 1.5;
+  }
+  pre code { background: none; color: var(--text); padding: 0; }
+  .note {
+    background: rgba(59,108,255,.12);
+    border-left: 4px solid var(--accent2);
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin: 18px 0;
+    color: var(--text);
+  }
+  .warn {
+    background: rgba(248,113,113,.1);
+    border-left: 4px solid var(--red);
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin: 18px 0;
+  }
+  .survive { color: var(--green); font-weight: 700; }
+  .death { color: var(--red); font-weight: 700; }
+  footer { margin-top: 60px; text-align: center; color: var(--muted); font-size: .9rem; }
+  a { color: var(--accent2); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="badge">MVP v0.1</div>
+    <h1>🎮 PocketQuant</h1>
+    <p>전략을 "포켓몬"처럼 키우고, 과거 위기를 "체육관"으로 돌파시키는 장난감 퀀트 프로젝트</p>
+  </header>
+
+  <p>복잡한 금융 로직보다 <strong>게임 컨셉</strong>을 우선한 CLI 프로젝트입니다.
+     전략 포켓몬을 랜덤 생성하고, 가짜 데이터 기반 체육관에서 생존 테스트를 합니다.</p>
+
+  <h2>🧩 컨셉</h2>
+  <table>
+    <tr><th>게임 용어</th><th>실제 의미</th></tr>
+    <tr><td>전략 포켓몬</td><td>트레이딩 전략</td></tr>
+    <tr><td>유전자</td><td>전략 속성 (지표)</td></tr>
+    <tr><td>체육관 도전</td><td>백테스트</td></tr>
+    <tr><td>생존 / 사망</td><td>백테스트 통과 / 실패</td></tr>
+  </table>
+
+  <h2>🧬 유전자</h2>
+  <p>전략은 아래 유전자를 랜덤 조합해 만들어집니다.</p>
+  <table>
+    <tr><th>유전자</th><th>점수</th><th>의미</th></tr>
+    <tr><td><code>DD</code></td><td>+20</td><td>Drawdown</td></tr>
+    <tr><td><code>RSI</code></td><td>+15</td><td>Relative Strength Index</td></tr>
+    <tr><td><code>MA</code></td><td>+25</td><td>Moving Average</td></tr>
+    <tr><td><code>BB</code></td><td>+10</td><td>Bollinger Bands</td></tr>
+    <tr><td><code>FX</code></td><td>+5</td><td>FX 노출</td></tr>
+  </table>
+  <p>예시: <code>DD몬</code>, <code>DD-RSI몬</code>, <code>DD-RSI-MA몬</code>, <code>타이탄 드래곤</code></p>
+
+  <h2>🏟️ 체육관</h2>
+  <p>각 체육관은 <code>difficulty</code>, <code>volatility</code> 두 변수만 가집니다. (실제 주가 데이터 미사용 — 가짜 데이터)</p>
+  <table>
+    <tr><th>체육관</th><th>difficulty</th><th>volatility</th></tr>
+    <tr><td><code>DOTCOM</code></td><td>90</td><td>80</td></tr>
+    <tr><td><code>FINANCIAL_CRISIS</code></td><td>85</td><td>70</td></tr>
+    <tr><td><code>COVID</code></td><td>40</td><td>90</td></tr>
+    <tr><td><code>RATE_SHOCK</code></td><td>60</td><td>50</td></tr>
+  </table>
+
+  <h2>⚔️ 전투 로직</h2>
+  <pre><code>최종 점수 = (유전자 점수 합) + random(-20 ~ +20)
+
+최종 점수 >= 체육관 difficulty  →  생존
+그렇지 않으면                    →  사망</code></pre>
+  <p>생존률에 따라 등급이 매겨집니다.</p>
+  <table>
+    <tr><th>등급</th><th>생존률</th></tr>
+    <tr><td><code>S</code></td><td>≥ 0.9</td></tr>
+    <tr><td><code>A</code></td><td>≥ 0.7</td></tr>
+    <tr><td><code>B</code></td><td>≥ 0.5</td></tr>
+    <tr><td><code>C</code></td><td>≥ 0.3</td></tr>
+    <tr><td><code>D</code></td><td>그 외</td></tr>
+  </table>
+
+  <h2>🚀 실행</h2>
+  <div class="warn">⚠️ 반드시 <strong>프로젝트 루트</strong>에서 실행하세요. <code>app/backend/</code> 내부 파일을 직접 실행하면 상대 import가 깨집니다.</div>
+  <pre><code>python main.py          # 유전자 개수 랜덤
+python main.py -g 3     # 유전자 3개 고정</code></pre>
+  <p>한글이 깨지면 (Windows):</p>
+  <pre><code>$env:PYTHONIOENCODING="utf-8"
+python main.py</code></pre>
+
+  <h3>출력 예시</h3>
+  <pre><code>=== PocketQuant ===
+
+전략 생성
+DD + RSI + MA
+이름: DD-RSI-MA몬
+
+체육관 도전
+
+DOTCOM
+<span class="survive">생존</span>
+
+COVID
+<span class="survive">생존</span>
+
+RATE_SHOCK
+<span class="death">사망</span>
+
+결과
+생존 2
+사망 1
+등급 B</code></pre>
+
+  <h2>📁 구조</h2>
+  <pre><code>pocket_quant/
+├─ main.py              # CLI 진입점 (argparse)
+└─ app/
+   └─ backend/
+      ├─ models.py      # dataclass + 유전자 점수 / 등급 테이블
+      ├─ strategy.py    # 전략 포켓몬 생성 + 이름 자동 생성
+      ├─ gym.py         # 체육관 4종 정의
+      └─ battle.py      # 점수 계산 → 생존 / 사망 판정</code></pre>
+
+  <h2>🔮 확장 여지 <span style="color:var(--muted);font-size:.9rem;">(의도적으로 단순 유지)</span></h2>
+  <table>
+    <tr><th>확장</th><th>방법</th></tr>
+    <tr><td>실제 데이터</td><td>가짜 데이터를 실제 가격 시계열로 교체 시 <code>battle.fight()</code>만 수정</td></tr>
+    <tr><td>체육관 추가</td><td><code>gym.py</code>의 <code>GYMS</code> 리스트에 한 줄</td></tr>
+    <tr><td>유전자 추가</td><td><code>models.py</code>의 <code>GENE_SCORES</code>에 한 줄</td></tr>
+  </table>
+
+  <footer>
+    🎈 장난감 프로젝트입니다. 자유롭게 사용하세요.
+  </footer>
+
+</div>
+</body>
+</html>
