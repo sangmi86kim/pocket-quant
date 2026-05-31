@@ -149,6 +149,8 @@ pocket_quant/
 - 🔭 **실데이터** — `battle.fight()`를 yfinance 백테스트로 교체
 - 🔬 **오박사(LLM)** — 승패 후 "왜 졌는지" 성과 귀인 해설
 
+> 🧠 전략 탐색을 최적화 문제(`maximize Y over X`)로 정식화한 설계 노트는 **[OPTIMIZATION.md](OPTIMIZATION.md)** 참고.
+
 ---
 
 ## 📜 라이선스
