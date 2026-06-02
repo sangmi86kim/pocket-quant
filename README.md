@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="docs/concept_image.png" alt="PocketQuant — 최강의 트레이더가 되어라" width="100%">
-</p>
-
 # 🎮 PocketQuant
 
 > **Gotta Money 'Em All**
@@ -13,6 +9,10 @@
 
 PocketQuant는 **포켓몬 파티 구성을 포트폴리오 최적화 문제로 재해석**하여,
 유전 알고리즘(GA, 나아가 NSGA-III)으로 **최적의 전략 조합을 탐색하는 실험 프로젝트**다.
+
+<p align="center">
+  <img src="docs/concept_image.png" alt="PocketQuant — 최강의 트레이더가 되어라" width="100%">
+</p>
 
 > *비공식 팬메이드 학습 프로젝트입니다. 닌텐도 · 게임프리크 · The Pokémon Company와 무관하며 비상업적입니다.*
 
