@@ -25,15 +25,17 @@ def main() -> None:
     parser.add_argument("--generations", type=int, default=10, help="[진화] 세대 수")
     parser.add_argument("--seed", type=int, default=None,
                         help="랜덤 시드 고정 (GA 재현용)")
+    parser.add_argument("--md", nargs="?", const="",
+                        help="Markdown 리포트 저장 (경로 생략 시 reports/ 아래 자동 저장)")
     args = parser.parse_args()
 
     # 입력을 받아 해당 서비스(실행 흐름)에 넘기기만 한다.
     if args.dex:
         run_pokedex()
     elif args.evolve:
-        run_evolve(args.pop, args.generations, args.seed)
+        run_evolve(args.pop, args.generations, args.seed, args.md)
     else:
-        run_single(args.genes, args.seed)
+        run_single(args.genes, args.seed, args.md)
 
 
 if __name__ == "__main__":
