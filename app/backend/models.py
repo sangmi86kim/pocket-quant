@@ -16,21 +16,9 @@ from dataclasses import dataclass, field
 
 
 # ──────────────────────────────────────────────
-# 유전자 명단 (값은 레거시 점수 — 실데이터 도입 후 판정엔 안 쓴다)
-# 진짜 점수는 signals.py가 가격으로 직접 계산한다.
-# 여기 dict의 '키'들이 곧 사용 가능한 유전자 목록이다.
-# ──────────────────────────────────────────────
-GENE_SCORES = {
-    "DD": 20,
-    "RSI": 15,
-    "MA": 25,
-    "BB": 10,
-    "FX": 5,
-}
-
-# 사용 가능한 모든 유전자 이름 -> ["DD", "RSI", "MA", "BB", "FX"]
-ALL_GENES = list(GENE_SCORES.keys())
-
+# 유전자 명단은 여기에 없다. 진짜 출처는 signals.py(GENE_SIGNALS / ALL_GENES)다.
+# 옛날엔 여기 GENE_SCORES 라는 가짜 점수표가 명단을 정의했지만, 실데이터 도입 후
+# '실제 시그널을 가진 유전자'만이 진짜 유전자라서 그 정의를 signals로 옮겼다.
 # ──────────────────────────────────────────────
 # GA 적합도 = 스탯 가중합. 가중치를 바꾸면 진화 방향이 바뀐다.
 #   예) 공격형 진화를 원하면 ATK 가중치를 올린다.
@@ -76,10 +64,6 @@ class Strategy:
     """전략 포켓몬 한 마리를 표현하는 데이터"""
     genes: list[str]      # 유전자 목록. 예) ["DD", "RSI"]
     name: str = ""        # 전략 이름 (자동 생성)
-
-    def base_score(self) -> int:
-        """[레거시] 유전자 점수 합. 실데이터 도입 후 판정엔 안 쓰임."""
-        return sum(GENE_SCORES[g] for g in self.genes)
 
 
 @dataclass
