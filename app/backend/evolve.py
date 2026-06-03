@@ -99,6 +99,10 @@ def evolve(loaded_gyms: list, pop_size: int = 20, generations: int = 10,
     on_generation: 세대마다 호출되는 콜백 훅. on_generation(세대번호, 최강전략, 성적)
       - 로깅 / 진행상황 출력 / (확장 시) early stop 등에 쓰는 자리.
     """
+    # 안전 가드: 교배엔 부모 2마리가 필요하고, 세대는 최소 1번 돌아야 한다.
+    pop_size = max(2, pop_size)
+    generations = max(1, generations)
+
     # 초기 개체군: 랜덤 전략 pop_size 마리
     population = [_make(random.sample(ALL_GENES, random.randint(1, len(ALL_GENES))))
                  for _ in range(pop_size)]

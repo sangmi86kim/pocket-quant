@@ -24,25 +24,42 @@ HP/ATK/DEF/SKILL 4스탯을 뽑은 뒤 결과를 출력한다.
 
 ---
 
+## 모듈 책임 (한 줄 정의 — 이 역할 경계를 지킨다)
+
+> **main은 받고, service는 흐름 짜고, dex는 설명하고, signals는 판단하고, battle은 싸우고, evolve는 진화시킨다.**
+
+| 모듈 | 한 줄 책임 |
+|------|-----------|
+| `main.py`    | **받고** — CLI 입력만 받아 service에 넘긴다 |
+| `service.py` | **흐름 짜고** — 단판/진화/도감 실행 순서를 조립하고 출력한다 |
+| `dex.py`     | **설명하고** — 유전자(포켓몬) 설명 카드를 제공한다 |
+| `signals.py` | **판단하고** — 유전자가 가격을 보고 포지션(0~1)을 정한다 |
+| `battle.py`  | **싸우고** — 포지션으로 백테스트해 스탯을 뽑는다 |
+| `evolve.py`  | **진화시킨다** — GA로 전략 개체군을 세대 진화시킨다 |
+| (보조) `data.py` 땡겨오고 · `gym.py` 무대 · `strategy.py` 만들고 · `models.py` 모양 정의 |
+
+---
+
 ## 프로젝트 구조
 
 ```text
 pocket_quant/
-├─ main.py                # CLI 입력만 받음 (argparse → service 호출)
+├─ main.py                # 받고 — CLI 입력만 (argparse → service 호출)
 ├─ requirements.txt       # yfinance · pandas · numpy
 ├─ data_cache/            # (gitignore) 다운로드한 SPY 가격 CSV 캐시
 ├─ app/
 │  ├─ __init__.py
-│  ├─ service.py          # 실행 흐름 조립 (단판/진화 순서 + 시드 + 출력)
+│  ├─ service.py          # 흐름 짜고 — 단판/진화/도감 순서 + 시드 + 출력
 │  └─ backend/
 │     ├─ __init__.py
-│     ├─ models.py        # 데이터 모델(Stats/Strategy/Gym/Report) + 스탯 가중치/등급
-│     ├─ data.py          # yfinance 다운로드 + 디스크 캐시
-│     ├─ signals.py       # 유전자 = 진짜 지표 로직 → 일별 포지션(0~1)
-│     ├─ strategy.py      # 전략 생성 + 이름 자동 생성
-│     ├─ gym.py           # 체육관 정의 (실제 시장 국면 기간)
-│     ├─ battle.py        # 실데이터 백테스트 → 스탯 산출
-│     └─ evolve.py        # 단일목적 GA (적합도=스탯 가중합)
+│     ├─ models.py        # 모양 정의 — 데이터 모델(Stats/Strategy/Gym/Report) + 스탯가중치/등급
+│     ├─ data.py          # 땡겨오고 — yfinance 다운로드 + 디스크 캐시
+│     ├─ signals.py       # 판단하고 — 유전자 지표 로직 → 일별 포지션(0~1)
+│     ├─ dex.py           # 설명하고 — 포켓몬 도감(SIGNAL_CARDS)
+│     ├─ strategy.py      # 만들고 — 전략 생성 + 이름 자동 생성
+│     ├─ gym.py           # 무대 — 체육관 정의 (실제 시장 국면 기간)
+│     ├─ battle.py        # 싸우고 — 실데이터 백테스트 → 스탯 산출
+│     └─ evolve.py        # 진화시킨다 — 단일목적 GA (적합도=스탯 가중합)
 ├─ README.md
 ├─ README.html
 └─ AGENTS.md
@@ -100,7 +117,6 @@ end: str              # 평가 종료일
 gym_name: str
 stats: Stats              # 그 시장에서 뽑힌 HP/ATK/DEF/SKILL
 cagr: float              # 연율수익 (표시용)
-total_return: float      # 기간 총수익 (표시용)
 max_drawdown: float      # 내 전략 MDD (음수)
 market_drawdown: float   # 시장(단순보유) MDD (음수, DEF 계산 기준)
 ```
@@ -209,6 +225,22 @@ ALL_GENES    = list(GENE_SIGNALS.keys())        # strategy.py / evolve.py가 여
 combined_position(genes, prices) -> pd.Series   # 유전자별 포지션의 평균(0~1)
 ```
 
+* 튜닝 파라미터(MA_WINDOW, RSI_*, BB_*, DD_LIMIT, VOL_*, MOM_LOOKBACK)는 파일 상단 상수로 모음.
+
+---
+
+## dex.py (포켓몬 도감)
+
+판정엔 안 쓰는 '설명' 데이터. `--dex`로 출력하며 service가 읽어 포맷한다.
+
+```python
+from .signals import GENE_SIGNALS   # 명단 일치 검증용
+SIGNAL_CARDS = {유전자: {name, type, role, personality, effect, strength, weakness}}
+# 모듈 로드 시 assert set(SIGNAL_CARDS) == set(GENE_SIGNALS) — 도감/명단 불일치 즉시 차단
+```
+
+> 의존: `dex → signals` 단방향 (순환 없음).
+
 ---
 
 ## battle.py
@@ -278,12 +310,13 @@ evolve(loaded_gyms, pop_size, generations, on_generation) -> (best, stats)
 
 ### 역할
 
-CLI 입력만 받는다. argparse로 인자를 파싱해 `app/service.py`의 `run_single`/`run_evolve`를
-호출만 한다. 계산도 흐름 조립도 출력도 하지 않는다 (전부 service/backend 담당).
+CLI 입력만 받는다. argparse로 인자를 파싱해 `app/service.py`의 함수를 호출만 한다.
+계산도 흐름 조립도 출력도 하지 않는다 (전부 service/backend 담당).
 
 ```python
 run_single(gene_count, seed)        # service.py — 단판 흐름
 run_evolve(pop, generations, seed)  # service.py — 진화 흐름
+run_pokedex()                       # service.py — 도감(--dex)
 ```
 
 ### 파이프라인 순서 (service.py가 조립)
@@ -307,8 +340,11 @@ run_evolve(pop, generations, seed)  # service.py — 진화 흐름
 
 # [진화 모드 — 단일목적 GA]
 --evolve           # 진화 모드 실행
---pop              # 개체군 크기 (기본 20)
---generations      # 세대 수 (기본 10)
+--pop              # 개체군 크기 (기본 20, 내부 최소 2)
+--generations      # 세대 수 (기본 10, 내부 최소 1)
+
+# [도감]
+--dex              # 포켓몬 도감(유전자 설명) 출력
 
 # [공통]
 --seed             # 랜덤 시드 고정 (재현 가능 → GA 검증용)
@@ -321,6 +357,7 @@ python main.py                                              # 단판
 python main.py -g 3
 python main.py --evolve                                     # 진화(GA)
 python main.py --evolve --pop 20 --generations 8 --seed 42  # 재현 가능한 진화
+python main.py --dex                                        # 포켓몬 도감
 ```
 
 > 반드시 프로젝트 루트에서 실행. (`app.backend....` 절대 경로 import 구조)

@@ -110,6 +110,12 @@ PocketQuant는 **"가장 강한 전략"** 이 아니라,
 > 한글이 깨지면 (Windows): `$env:PYTHONIOENCODING="utf-8"`
 > 의존성: `pip install -r requirements.txt` (yfinance·pandas·numpy). 첫 실행만 SPY 데이터를 받아 `data_cache/`에 캐시 → 이후 오프라인 동작.
 
+### 📖 도감 — 유전자(포켓몬) 설명 보기
+
+```bash
+python main.py --dex    # DD몬/RSI몬/.../MOM몬 카드 출력
+```
+
 ### 단판 모드 — 전략 한 마리 도전
 
 ```bash
@@ -180,6 +186,7 @@ pocket_quant/
       ├─ models.py      # dataclass (Stats/Strategy/Gym/Report) + 스탯 가중치 / 등급 테이블
       ├─ data.py        # yfinance 다운로드 + 디스크 캐시 (data_cache/) + LoadedGym 로딩
       ├─ signals.py     # 유전자 = 진짜 지표 로직 → 일별 포지션(0~1)
+      ├─ dex.py         # 포켓몬 도감 (유전자 설명 카드)
       ├─ strategy.py    # 전략 생성 + 이름 자동 생성
       ├─ gym.py         # 체육관 4종 (실제 시장 국면 기간)
       ├─ battle.py      # 실데이터 백테스트 → HP/ATK/DEF/SKILL 스탯 (순수 계산)

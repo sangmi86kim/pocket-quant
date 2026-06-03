@@ -74,8 +74,17 @@ class Gym:
     difficulty/volatility 는 이제 판정에 안 쓰는 '연출용 메타데이터'다.
     """
     name: str
-    difficulty: int       # (연출용) 생존 난이도 설명값
-    volatility: int       # (연출용) 변동성 설명값
+
+    difficulty: int
+    # 연출용 난이도 메타데이터.
+    # 현재 백테스트 계산에는 사용하지 않음.
+    # 향후 UI 표시, 체육관 설명, 시즌 난이도 분류에 사용 가능.
+
+    volatility: int
+    # 연출용 변동성 메타데이터.
+    # 현재 백테스트 계산에는 사용하지 않음.
+    # 향후 체육관 속성 표시 및 리그 분류에 사용 가능.
+
     ticker: str = "SPY"   # 어떤 자산으로 그 시기를 재현할지
     start: str = ""       # 평가 시작일 (YYYY-MM-DD)
     end: str = ""         # 평가 종료일 (YYYY-MM-DD)
@@ -87,7 +96,6 @@ class BattleResult:
     gym_name: str
     stats: Stats                  # 그 시장에서 뽑힌 HP/ATK/DEF/SKILL
     cagr: float = 0.0             # 연율수익률 (원시값, 표시용)
-    total_return: float = 0.0     # 기간 총수익률 (원시값, 표시용)
     max_drawdown: float = 0.0     # 내 전략의 최대낙폭 (음수)
     market_drawdown: float = 0.0  # 시장(단순보유)의 최대낙폭 (음수, 비교용)
 

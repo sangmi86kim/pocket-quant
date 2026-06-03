@@ -15,6 +15,8 @@ from app.backend.battle import challenge
 from app.backend.data import load_gyms
 from app.backend.evolve import evolve
 from app.backend.gym import all_gyms
+from app.backend.dex import SIGNAL_CARDS
+from app.backend.signals import ALL_GENES
 from app.backend.strategy import create_strategy
 
 # 스탯 표시 라벨 (이모지는 콘솔 인코딩 이슈 피하려 텍스트로)
@@ -49,6 +51,18 @@ def _format_per_gym_bst(per_gym: dict) -> str:
         bar = "#" * round(bst / 400 * 20)                          # BST 400 = 20칸
         lines.append(f"    {name:<18} {bst:6.1f}  {bar}")
     return "\n".join(lines)
+
+
+def run_pokedex() -> None:
+    """[도감] 전 유전자(포켓몬)의 설명 카드를 출력한다."""
+    print("=== PocketQuant 도감 ===\n")
+    for gene in ALL_GENES:                  # 실제 명단 순서대로
+        c = SIGNAL_CARDS[gene]
+        print(f"[{gene:<3}] {c['name']}   ({c['type']} · {c['role']})")
+        print(f"      성격: {c['personality']}")
+        print(f"      효과: {c['effect']}")
+        print(f"      강점: {c['strength']}")
+        print(f"      약점: {c['weakness']}\n")
 
 
 def run_single(gene_count: int | None, seed: int | None = None) -> None:
