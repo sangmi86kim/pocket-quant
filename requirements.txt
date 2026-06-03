@@ -1,0 +1,4 @@
+# PocketQuant 실데이터 백테스트 의존성
+yfinance>=0.2
+pandas>=2.0
+numpy>=1.24
