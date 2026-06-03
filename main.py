@@ -27,15 +27,17 @@ def main() -> None:
                         help="랜덤 시드 고정 (GA 재현용)")
     parser.add_argument("--md", nargs="?", const="",
                         help="Markdown 리포트 저장 (경로 생략 시 reports/ 아래 자동 저장)")
+    parser.add_argument("--capital", type=float, default=None,
+                        help="실전 시뮬레이션: 시작 자본(원). 예) --capital 10000000")
     args = parser.parse_args()
 
     # 입력을 받아 해당 서비스(실행 흐름)에 넘기기만 한다.
     if args.dex:
         run_pokedex()
     elif args.evolve:
-        run_evolve(args.pop, args.generations, args.seed, args.md)
+        run_evolve(args.pop, args.generations, args.seed, args.md, args.capital)
     else:
-        run_single(args.genes, args.seed, args.md)
+        run_single(args.genes, args.seed, args.md, args.capital)
 
 
 if __name__ == "__main__":
