@@ -117,6 +117,8 @@ end: str              # 평가 종료일
 gym_name: str
 stats: Stats              # 그 시장에서 뽑힌 HP/ATK/DEF/SKILL
 cagr: float              # 연율수익 (표시용)
+total_return: float      # 기간 총수익 (실투자 시뮬용: 시작자본 × (1+이값))
+market_return: float     # 단순보유 기간 총수익 (비교용)
 max_drawdown: float      # 내 전략 MDD (음수)
 market_drawdown: float   # 시장(단순보유) MDD (음수, DEF 계산 기준)
 ```
@@ -314,13 +316,16 @@ CLI 입력만 받는다. argparse로 인자를 파싱해 `app/service.py`의 함
 계산도 흐름 조립도 출력도 하지 않는다 (전부 service/backend 담당).
 
 ```python
-run_single(gene_count, seed, md_path)        # service.py — 단판 흐름
-run_evolve(pop, generations, seed, md_path)  # service.py — 진화 흐름
-run_pokedex()                                # service.py — 도감(--dex)
+run_single(gene_count, seed, md_path, capital)        # service.py — 단판 흐름
+run_evolve(pop, generations, seed, md_path, capital)  # service.py — 진화 흐름
+run_pokedex()                                         # service.py — 도감(--dex)
 ```
 
 > `--md`: Markdown 리포트 저장. 값 생략 시 `reports/pocketquant_{single|evolve}_report.md`,
 > 경로 지정 시 그 경로. service의 `_markdown_report`가 Report를 표로 렌더(진화는 챔피언 기준).
+>
+> `--capital 금액`: 실전 시뮬. 국면마다 `시작자본 × (1 + total_return)` = 최종 잔고를
+> 단순보유와 함께 표시. 체육관은 서로 다른 시대라 **국면별 독립** 시뮬(연속 복리 아님).
 
 ### 파이프라인 순서 (service.py가 조립)
 
@@ -352,6 +357,7 @@ run_pokedex()                                # service.py — 도감(--dex)
 # [공통]
 --seed             # 랜덤 시드 고정 (재현 가능 → GA 검증용)
 --md [경로]        # Markdown 리포트 저장 (경로 생략 시 reports/ 아래 자동)
+--capital 금액     # 실전 시뮬: 시작 자본(원)을 국면별로 굴린 최종 잔고 (예: --capital 10000000)
 ```
 
 ### 실행 예시

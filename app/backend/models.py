@@ -96,6 +96,8 @@ class BattleResult:
     gym_name: str
     stats: Stats                  # 그 시장에서 뽑힌 HP/ATK/DEF/SKILL
     cagr: float = 0.0             # 연율수익률 (원시값, 표시용)
+    total_return: float = 0.0     # 기간 총수익률 (실투자 시뮬용: 시작자본 × (1+이값))
+    market_return: float = 0.0    # 단순보유 기간 총수익률 (비교용)
     max_drawdown: float = 0.0     # 내 전략의 최대낙폭 (음수)
     market_drawdown: float = 0.0  # 시장(단순보유)의 최대낙폭 (음수, 비교용)
 

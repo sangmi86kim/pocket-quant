@@ -53,9 +53,75 @@ def _format_per_gym_bst(per_gym: dict) -> str:
     return "\n".join(lines)
 
 
+def _format_simulation(report, capital: float) -> str:
+    """실투자 시뮬레이션: 각 국면에 시작 자본을 '따로' 넣었다고 가정한 최종 잔고.
+    (체육관들은 서로 다른 시대라 한 번에 굴릴 수 없어 국면별 독립 시뮬이다.)"""
+    lines = [f"  (각 국면에 {capital:,.0f}원씩 따로 투자했다고 가정)"]
+    for r in report.results:
+        final = capital * (1.0 + r.total_return)      # 전략 최종 잔고
+        hold = capital * (1.0 + r.market_return)      # 단순보유 최종 잔고
+        profit = final - capital
+        sign = "+" if profit >= 0 else "-"
+        lines.append(
+            f"  {r.gym_name:<18} "
+            f"전략 {final:>13,.0f}원 ({sign}{abs(profit):,.0f}, {r.total_return * 100:+.1f}%)"
+            f"   단순보유 {hold:>13,.0f}원"
+        )
+    return "\n".join(lines)
+
+
 def _bar(value: float, scale: float = 100.0, width: int = 20) -> str:
     """Markdown/콘솔에 같이 쓰는 간단한 막대그래프."""
     return "#" * round(value / scale * width)
+
+
+def _grade_score(score: float) -> str:
+    """0~100 점수를 포켓몬식 등급으로 바꾼다."""
+    if score >= 90:
+        return "S"
+    if score >= 70:
+        return "A"
+    if score >= 50:
+        return "B"
+    if score >= 30:
+        return "C"
+    return "D"
+
+
+def _style_profile(stats) -> dict:
+    """단일 등급이 놓치는 전략 성격을 보조 판정으로 분해한다."""
+    profile = {
+        "체력": stats.hp,
+        "공격": stats.atk,
+        "방어": stats.def_,
+        "효율": stats.skill,
+        "종합": stats.fitness,
+    }
+    best_role = max(("체력", "공격", "방어", "효율"), key=lambda key: profile[key])
+    style_names = {
+        "체력": "현금 방어형",
+        "공격": "상승장 공격형",
+        "방어": "낙폭 방어형",
+        "효율": "위험 대비 효율형",
+    }
+    profile["스타일"] = style_names[best_role]
+    return profile
+
+
+def _format_profile(stats) -> str:
+    """전략 스타일과 보조 등급을 콘솔용으로 출력한다."""
+    profile = _style_profile(stats)
+    rows = [
+        ("종합", profile["종합"], "4스탯 평균"),
+        ("공격", profile["공격"], "연수익"),
+        ("방어", profile["방어"], "시장 대비 낙폭 방어"),
+        ("체력", profile["체력"], "현금 비중"),
+        ("효율", profile["효율"], "샤프"),
+    ]
+    lines = [f"  스타일: {profile['스타일']}"]
+    for name, score, note in rows:
+        lines.append(f"  {name:<4} {_grade_score(score)}등급  {score:5.1f}점  ({note})")
+    return "\n".join(lines)
 
 
 def _resolve_md_path(path: str | None, mode: str) -> Path | None:
@@ -90,7 +156,7 @@ def _markdown_report(title: str, report) -> str:
         "",
         "## 시장별 백테스트",
         "",
-        "| 시장 | 연수익 | 최대낙폭 | 시장낙폭 | 종족치 |",
+        "| 시장 | 연수익 | 전략 최대낙폭 | 시장 최대낙폭 | 종족치 |",
         "|---|---:|---:|---:|---:|",
     ]
     for r in report.results:
@@ -111,11 +177,20 @@ def _markdown_report(title: str, report) -> str:
         f"| DEF 방어력 | {stats.def_:.1f} | `{_bar(stats.def_)}` |",
         f"| SKILL 솜씨 | {stats.skill:.1f} | `{_bar(stats.skill)}` |",
         "",
-        "## 판정",
+        "## 전략 판정",
         "",
+        f"- 스타일: {_style_profile(stats)['스타일']}",
         f"- 종족치 합계: {report.bst:.1f} / 400",
         f"- 최종 적합도: {report.fitness:.1f} / 100",
         f"- 등급: {report.grade}",
+        "",
+        "| 관점 | 등급 | 점수 | 의미 |",
+        "|---|---:|---:|---|",
+        f"| 종합 | {_grade_score(stats.fitness)} | {stats.fitness:.1f} | 4스탯 평균 |",
+        f"| 공격 | {_grade_score(stats.atk)} | {stats.atk:.1f} | 연수익 |",
+        f"| 방어 | {_grade_score(stats.def_)} | {stats.def_:.1f} | 시장 대비 낙폭 방어 |",
+        f"| 체력 | {_grade_score(stats.hp)} | {stats.hp:.1f} | 현금 비중 |",
+        f"| 효율 | {_grade_score(stats.skill)} | {stats.skill:.1f} | 샤프 |",
         "",
     ])
     return "\n".join(lines)
@@ -134,7 +209,7 @@ def run_pokedex() -> None:
 
 
 def run_single(gene_count: int | None, seed: int | None = None,
-               md_path: str | None = None) -> None:
+               md_path: str | None = None, capital: float | None = None) -> None:
     """[단판 모드] 전략 한 마리를 만들어 전 시장 백테스트하고 스탯을 출력."""
     _apply_seed(seed)
     print("=== PocketQuant 단판 백테스트 ===\n")
@@ -152,21 +227,27 @@ def run_single(gene_count: int | None, seed: int | None = None,
     for r in report.results:
         print(f"  {r.gym_name:<18} "
               f"연수익 {r.cagr * 100:6.1f}%  "
-              f"최대낙폭 {r.max_drawdown * 100:6.1f}%  "
-              f"시장낙폭 {r.market_drawdown * 100:6.1f}%  "
+              f"전략 최대낙폭 {r.max_drawdown * 100:6.1f}%  "
+              f"시장 최대낙폭 {r.market_drawdown * 100:6.1f}%  "
               f"종족치 {r.stats.bst:5.1f}점")
 
     print("\n4. 종합 스탯")
     print(_format_stats(report.stats))
     print(f"\n종족치 합계 {report.bst:.1f} / 400")
     print(f"최종 적합도 {report.fitness:.1f}점   등급 {report.grade}")
+    print("\n5. 전략 판정")
+    print(_format_profile(report.stats))
+
+    if capital is not None:
+        print(f"\n6. 실전 시뮬레이션 (시작 자본 {capital:,.0f}원 · 국면별 독립)")
+        print(_format_simulation(report, capital))
 
     path = _resolve_md_path(md_path, "single")
     _write_markdown(path, _markdown_report("PocketQuant 단판 백테스트 리포트", report))
 
 
 def run_evolve(pop: int, generations: int, seed: int | None = None,
-               md_path: str | None = None) -> None:
+               md_path: str | None = None, capital: float | None = None) -> None:
     """[진화 모드] 단일목적 GA(적합도=스탯 가중합)로 챔피언을 진화시킨다."""
     _apply_seed(seed)
     print("=== PocketQuant 진화 백테스트 ===")
@@ -193,8 +274,14 @@ def run_evolve(pop: int, generations: int, seed: int | None = None,
     print(_format_stats(stats["stats"]))
     print("\n시장별 성적 (종족치 낮은 순 = 약한 시장):")
     print(_format_per_gym_bst(stats["per_gym"]))
+    print("\n전략 판정")
+    print(_format_profile(stats["stats"]))
 
+    # 챔피언 리포트는 시뮬/마크다운 둘 중 하나라도 필요하면 한 번만 계산
     path = _resolve_md_path(md_path, "evolve")
-    if path is not None:
+    if capital is not None or path is not None:
         champion_report = challenge(best, loaded_gyms)
+        if capital is not None:
+            print(f"\n실전 시뮬레이션 (시작 자본 {capital:,.0f}원 · 국면별 독립)")
+            print(_format_simulation(champion_report, capital))
         _write_markdown(path, _markdown_report("PocketQuant 진화 백테스트 리포트", champion_report))

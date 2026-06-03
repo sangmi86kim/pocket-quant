@@ -61,10 +61,12 @@ def fight(strategy: Strategy, loaded: LoadedGym) -> BattleResult:
     # (4) 자산곡선 → 지표들
     equity = (1.0 + strat_ret).cumprod()
     cagr = float(equity.iloc[-1] ** (TRADING_DAYS / len(strat_ret)) - 1.0)
+    total_return = float(equity.iloc[-1] - 1.0)                 # 기간 총수익(실투자 시뮬용)
 
     my_dd = (equity / equity.cummax() - 1.0).min()              # 음수
     market_equity = (1.0 + market_ret).cumprod()
     market_dd = (market_equity / market_equity.cummax() - 1.0).min()  # 음수
+    market_return = float(market_equity.iloc[-1] - 1.0)        # 단순보유 기간 총수익(비교용)
 
     std = strat_ret.std()
     sharpe = float(strat_ret.mean() / std * np.sqrt(TRADING_DAYS)) if std > 0 else 0.0
@@ -85,6 +87,7 @@ def fight(strategy: Strategy, loaded: LoadedGym) -> BattleResult:
     stats = Stats(hp=hp, atk=atk, def_=deff, skill=skill)
     return BattleResult(
         gym_name=gym.name, stats=stats, cagr=cagr,
+        total_return=total_return, market_return=market_return,
         max_drawdown=float(my_dd), market_drawdown=float(market_dd),
     )
 
