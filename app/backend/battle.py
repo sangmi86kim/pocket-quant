@@ -1,45 +1,97 @@
 """
 battle.py - 전투(백테스트)를 '계산'하는 파일, 게임의 엔진
 
+[책임] 순수 계산만 한다. 데이터 로딩(I/O)은 data.py가 미리 끝내서 넘겨준다.
 흐름:
-  fight()     : 전략 1마리 vs 체육관 1곳  -> 한 판 결과(BattleResult)
-  challenge() : 전략 1마리 vs 체육관 여러 곳 -> 전체 성적표(Report)
+  fight()     : 전략 1마리 vs 미리 로딩된 체육관 1곳 -> 그 시장에서의 스탯블록
+  challenge() : 전략 1마리 vs 여러 체육관           -> 종합 성적표(Report)
+
+[핵심 계산] (가격은 이미 LoadedGym으로 받아둔 상태)
+  1) signals.combined_position 으로 일별 포지션(0~1)을 만든다
+  2) 포지션을 하루 lag(shift 1)해서 다음날 수익에 적용 (룩어헤드 방지)
+  3) 워밍업 버퍼를 잘라내고 평가 구간만 남긴다
+  4) 자산곡선에서 CAGR / 최대낙폭 / 샤프 / 평균현금 을 뽑는다
+  5) 그 원시값들을 0~100 스탯(HP/ATK/DEF/SKILL)으로 정규화한다
 """
-import random
+import numpy as np
+import pandas as pd
 
-from .models import BattleResult, Gym, Report, Strategy
+from .data import LoadedGym
+from .models import BattleResult, Report, Stats, Strategy
+from .signals import combined_position
 
-# 랜덤 보정 범위. 매 전투마다 -20 ~ +20 사이 운(運)이 점수에 더해진다.
-# 같은 전략이라도 결과가 매번 조금씩 달라지는 이유가 바로 이것.
-RANDOM_SWING = 20
+TRADING_DAYS = 252          # 연율화 기준 거래일 수
 
-
-def fight(strategy: Strategy, gym: Gym) -> BattleResult:
-    """전략 한 마리가 체육관 한 곳에 도전하는 '한 판'을 계산한다."""
-    # randint(a, b) : a 이상 b 이하 정수 중 랜덤 하나. 여기선 -20 ~ +20
-    bonus = random.randint(-RANDOM_SWING, RANDOM_SWING)
-
-    # 최종 점수 = 유전자 기본 점수 합 + 랜덤 보정
-    # strategy.base_score()는 models.py의 Strategy에 정의돼 있음
-    score = strategy.base_score() + bonus
-
-    # 판정: 최종 점수가 체육관 난이도 이상이면 생존(True), 아니면 사망(False)
-    survived = score >= gym.difficulty
-
-    # 이 한 판의 결과를 데이터로 묶어서 돌려준다
-    return BattleResult(gym_name=gym.name, score=score, survived=survived)
+# ── 스탯 정규화 구간 (이 양 끝값이 0점 / 100점) — 튜닝 포인트 ──
+ATK_CAGR_LO, ATK_CAGR_HI = -0.25, 0.25     # CAGR -25% -> 0,  +25% -> 100
+SKILL_SHARPE_LO, SKILL_SHARPE_HI = -1.0, 3.0  # 샤프 -1 -> 0, 3 -> 100
 
 
-def challenge(strategy: Strategy, gyms: list[Gym]) -> Report:
-    """전략 한 마리가 여러 체육관에 '차례대로' 도전하고 성적표를 만든다."""
-    # 빈 성적표를 먼저 만든다(이 전략의 결과를 담을 그릇)
+def _scale(value: float, lo: float, hi: float) -> float:
+    """value를 [lo,hi] 구간에서 0~100으로 선형 변환(범위 밖은 0/100으로 클램프)."""
+    if hi == lo:
+        return 0.0
+    pct = (value - lo) / (hi - lo) * 100.0
+    return float(min(100.0, max(0.0, pct)))
+
+
+def fight(strategy: Strategy, loaded: LoadedGym) -> BattleResult:
+    """전략 한 마리가 (미리 로딩된) 한 시장 국면을 통과하며 만든 스탯블록을 계산한다."""
+    gym = loaded.gym
+    prices = loaded.prices          # 이미 워밍업 버퍼 포함해 받아둔 가격
+
+    # (1) 일별 포지션(0~1) + (2) 하루 lag 적용한 전략/시장 수익
+    position = combined_position(strategy.genes, prices)
+    market_ret = prices.pct_change()
+    strat_ret = position.shift(1) * market_ret
+
+    # (3) 평가 구간(체육관 기간)만 잘라낸다 — 앞쪽 버퍼는 지표 데우는 데만 쓰임
+    window_start = pd.Timestamp(gym.start)
+    mask = prices.index >= window_start
+    strat_ret = strat_ret[mask].dropna()
+    market_ret = market_ret[mask].dropna()
+    position = position[mask]
+
+    # 데이터가 비정상적으로 비면 0점 스탯으로 방어 반환
+    if len(strat_ret) < 2:
+        return BattleResult(gym_name=gym.name, stats=Stats())
+
+    # (4) 자산곡선 → 지표들
+    equity = (1.0 + strat_ret).cumprod()
+    total_return = float(equity.iloc[-1] - 1.0)
+    cagr = float(equity.iloc[-1] ** (TRADING_DAYS / len(strat_ret)) - 1.0)
+
+    my_dd = (equity / equity.cummax() - 1.0).min()              # 음수
+    market_equity = (1.0 + market_ret).cumprod()
+    market_dd = (market_equity / market_equity.cummax() - 1.0).min()  # 음수
+
+    std = strat_ret.std()
+    sharpe = float(strat_ret.mean() / std * np.sqrt(TRADING_DAYS)) if std > 0 else 0.0
+
+    avg_cash = float((1.0 - position).mean())                   # 0~1
+
+    # (5) 0~100 스탯으로 정규화
+    hp = _scale(avg_cash, 0.0, 1.0)                             # 현금 100% -> HP 100
+    atk = _scale(cagr, ATK_CAGR_LO, ATK_CAGR_HI)
+    # 방어력: 시장 낙폭 대비 내가 얼마나 덜 빠졌나. 시장이 안 빠졌으면(0) 만점.
+    if market_dd < 0:
+        def_ratio = 1.0 - (float(my_dd) / float(market_dd))     # 둘 다 음수 → 양수 비율
+        deff = _scale(def_ratio, 0.0, 1.0)
+    else:
+        deff = 100.0
+    skill = _scale(sharpe, SKILL_SHARPE_LO, SKILL_SHARPE_HI)
+
+    stats = Stats(hp=hp, atk=atk, def_=deff, skill=skill)
+    return BattleResult(
+        gym_name=gym.name, stats=stats,
+        cagr=cagr, total_return=total_return,
+        max_drawdown=float(my_dd), market_drawdown=float(market_dd),
+    )
+
+
+def challenge(strategy: Strategy, loaded_gyms: list[LoadedGym]) -> Report:
+    """전략 한 마리가 (미리 로딩된) 여러 시장 국면을 모두 통과하며 성적표를 만든다."""
     report = Report(strategy=strategy)
-
-    # 체육관을 하나씩 돌면서
-    for gym in gyms:
-        # 한 판 싸우고(fight), 그 결과를 성적표의 results 리스트에 추가
-        report.results.append(fight(strategy, gym))
-
-    # 모든 도전이 끝난 성적표를 돌려준다
-    # (생존 수/사망 수/등급 등은 Report 안에서 자동 계산됨)
+    for loaded in loaded_gyms:
+        report.results.append(fight(strategy, loaded))
     return report

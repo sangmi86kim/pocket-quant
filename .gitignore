@@ -9,6 +9,9 @@ __pycache__/
 venv/
 env/
 
+# 실데이터 캐시 (yfinance 다운로드분 — 재현 가능하므로 커밋 안 함)
+data_cache/
+
 # IDE / OS
 .vscode/
 .idea/

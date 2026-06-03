@@ -6,14 +6,16 @@ evolve.py - 단일목적 유전 알고리즘(GA) MVP
 잘한 놈끼리 교배 + 돌연변이시켜 다음 세대를 만든다. 이걸 여러 세대 반복.
 
 [단일목적]
-적합도(fitness) = 전 체육관 평균 생존률  ← 숫자 하나로 줄세움.
+적합도(fitness) = 종합 스탯 가중평균(0~100)  ← 숫자 하나로 줄세움.
+스탯블록(HP/ATK/DEF/SKILL)은 실데이터 백테스트로 나온다(battle.py).
+
+[v0.3 변경]
+실데이터는 결정론적이라 같은 전략이면 매번 같은 결과 → trials 평균이 불필요.
+이제 evaluate는 1회만 돈다(trials 인자는 호환을 위해 남겨두되 사용 안 함).
 
 [솔직한 한계 — 의도된 것]
-지금 점수 체계에선 '유전자 많을수록 무조건 유리'라, 결국 전 유전자 조합으로 수렴한다.
-그래도 OK. 이 MVP의 목적은 두 가지다:
-  (1) GA 기계(선택→교배→돌연변이→세대)가 제대로 도는지 검증
-  (2) "최적 전략조차 어느 시장에서 박살나는지" 두 눈으로 관찰
-이 관찰이 나중에 왜 다목적(NSGA-III)/타입상성이 필요한지를 알려준다.
+단일목적(스탯 가중합)이라, 가중치가 곧 진화 방향이다. ATK vs HP/DEF는 서로 당긴다
+(현금 많이 들면 방어↑ 공격↓). 이 충돌을 관찰한 뒤 다목적(NSGA-III)으로 간다.
 
 [GA 4단계]
   평가(evaluate) → 선택(selection) → 교배(crossover) → 돌연변이(mutation)
@@ -31,24 +33,20 @@ def _make(genes: list[str]) -> Strategy:
 
 
 # ── 1. 평가 (적합도 계산) ─────────────────────────────
-def evaluate(strategy: Strategy, gyms: list, trials: int = 20) -> dict:
+def evaluate(strategy: Strategy, loaded_gyms: list) -> dict:
     """
-    전략 하나를 여러 번(trials) 도전시켜 평균 생존률을 잰다.
-    전투에 랜덤 보정(±20)이 있어서, 한 번만 재면 운에 휘둘린다 → 여러 번 평균.
+    전략 하나를 (미리 로딩된) 전 체육관에 도전시켜 종합 스탯·적합도를 잰다.
+    실데이터는 결정론적이라 1회만 돌리면 된다.
 
-    반환: {"fitness": 전체평균생존률, "per_gym": {체육관: 생존률}}
+    반환: {
+      "fitness": 종합 적합도(0~100),
+      "per_gym": {체육관: 종족치BST},     # 시장별 강함 한눈에
+      "stats":   종합 스탯블록(Stats),
+    }
     """
-    per_gym = {g.name: 0 for g in gyms}        # 체육관별 생존 횟수 카운터
-    for _ in range(trials):
-        report = challenge(strategy, gyms)     # 한 바퀴 도전
-        for r in report.results:
-            if r.survived:
-                per_gym[r.gym_name] += 1
-    # 횟수 → 생존률(0~1)로 환산
-    per_gym_rate = {name: cnt / trials for name, cnt in per_gym.items()}
-    # 단일목적: 체육관별 생존률을 전부 평균낸 값 하나
-    fitness = sum(per_gym_rate.values()) / len(gyms)
-    return {"fitness": fitness, "per_gym": per_gym_rate}
+    report = challenge(strategy, loaded_gyms)      # 결정론적 1회 도전
+    per_gym = {r.gym_name: r.stats.bst for r in report.results}
+    return {"fitness": report.fitness, "per_gym": per_gym, "stats": report.stats}
 
 
 # ── 2. 선택 (자연선택) ────────────────────────────────
@@ -92,10 +90,10 @@ def mutate(genes: list[str], rate: float = 0.3) -> list[str]:
 
 
 # ── 전체 루프: 세대 진화 ──────────────────────────────
-def evolve(gyms: list, pop_size: int = 20, generations: int = 10,
-           trials: int = 20, on_generation=None) -> tuple:
+def evolve(loaded_gyms: list, pop_size: int = 20, generations: int = 10,
+           on_generation=None) -> tuple:
     """
-    개체군을 여러 세대 진화시키고 (최강 전략, 그 성적)을 돌려준다.
+    (미리 로딩된) 체육관에서 개체군을 여러 세대 진화시키고 (최강 전략, 그 성적)을 돌려준다.
 
     on_generation: 세대마다 호출되는 콜백 훅. on_generation(세대번호, 최강전략, 성적)
       - 로깅 / 진행상황 출력 / (확장 시) early stop 등에 쓰는 자리.
@@ -109,7 +107,7 @@ def evolve(gyms: list, pop_size: int = 20, generations: int = 10,
 
     for gen in range(1, generations + 1):
         # (1) 평가: 모든 개체의 적합도 측정
-        scored = [(s, evaluate(s, gyms, trials)) for s in population]
+        scored = [(s, evaluate(s, loaded_gyms)) for s in population]
 
         # 이번 세대 최강 기록
         scored.sort(key=lambda pair: pair[1]["fitness"], reverse=True)

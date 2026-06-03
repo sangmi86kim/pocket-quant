@@ -2,20 +2,23 @@
 models.py - 데이터의 '모양'을 정의하는 파일
 
 여기서는 로직(계산)을 거의 하지 않습니다.
-"전략은 어떻게 생겼나?", "체육관은 어떤 정보를 갖나?" 처럼
+"전략은 어떻게 생겼나?", "스탯은 어떤 값을 갖나?" 처럼
 프로그램에서 다루는 '명사(데이터)'의 설계도만 모아둔 곳입니다.
 
-핵심 도구 두 가지:
-  - @dataclass : 데이터를 담는 클래스를 아주 간단하게 만들어주는 파이썬 기능
-  - @property  : '함수처럼 계산하지만 변수처럼 꺼내 쓰는' 값
+[v0.3 변경] 생존/사망 이진판정을 버리고, 전략을 '스탯 포켓몬'으로 바꿨다.
+  ❤️ HP   (자본력)  = 현금 비중      = 위기 때 버틸 체력
+  ⚔️ ATK  (공격력)  = CAGR           = 돈 버는 능력
+  🛡️ DEF  (방어력)  = 하락 방어율    = 시장 하락 대비 손실 방어
+  ✨ SKILL(솜씨)    = 샤프비율       = 같은 수익을 얼마나 효율적으로 냈나
+  각 스탯은 0~100으로 정규화된다(포켓몬식). 합 = 종족치(BST).
 """
 from dataclasses import dataclass, field
 
 
 # ──────────────────────────────────────────────
-# 유전자별 점수 보정값
-# "이 유전자를 가지면 점수를 몇 점 더 받나?"를 dict(사전)으로 정리
-# 예) DD 유전자가 있으면 +20점
+# 유전자 명단 (값은 레거시 점수 — 실데이터 도입 후 판정엔 안 쓴다)
+# 진짜 점수는 signals.py가 가격으로 직접 계산한다.
+# 여기 dict의 '키'들이 곧 사용 가능한 유전자 목록이다.
 # ──────────────────────────────────────────────
 GENE_SCORES = {
     "DD": 20,
@@ -25,15 +28,17 @@ GENE_SCORES = {
     "FX": 5,
 }
 
-# 사용 가능한 모든 유전자 이름 목록 -> ["DD", "RSI", "MA", "BB", "FX"]
-# GENE_SCORES의 '열쇠(key)'들만 뽑아서 리스트로 만든 것
+# 사용 가능한 모든 유전자 이름 -> ["DD", "RSI", "MA", "BB", "FX"]
 ALL_GENES = list(GENE_SCORES.keys())
 
 # ──────────────────────────────────────────────
-# 등급 테이블 (생존률 하한선 -> 등급 글자)
-# 위에서부터 검사해서, 생존률이 기준 이상이면 그 등급을 줍니다.
-# 예) 생존률 0.95 -> 0.9 이상이므로 "S"
-#     생존률 0.6  -> 0.5 이상이므로 "B"
+# GA 적합도 = 스탯 가중합. 가중치를 바꾸면 진화 방향이 바뀐다.
+#   예) 공격형 진화를 원하면 ATK 가중치를 올린다.
+# ──────────────────────────────────────────────
+STAT_WEIGHTS = {"HP": 1.0, "ATK": 1.0, "DEF": 1.0, "SKILL": 1.0}
+
+# ──────────────────────────────────────────────
+# 등급 테이블 (적합도 하한선 -> 등급). 적합도는 0~100 → 0~1로 환산해 비교.
 # ──────────────────────────────────────────────
 GRADES = [
     (0.9, "S"),
@@ -44,78 +49,99 @@ GRADES = [
 ]
 
 
-# ==============================================================
-# @dataclass 란?
-#   원래 클래스를 만들려면 __init__ 같은 걸 직접 써야 하는데,
-#   @dataclass를 붙이면 "필드만 적어두면" 생성자를 자동으로 만들어줍니다.
-#   즉, 아래 Strategy는 Strategy(genes=["DD"], name="DD몬") 처럼 바로 만들 수 있어요.
-# ==============================================================
+@dataclass
+class Stats:
+    """전략 포켓몬의 스탯블록. 각 값은 0~100으로 정규화됨."""
+    hp: float = 0.0       # ❤️ 자본력 (현금 비중)
+    atk: float = 0.0      # ⚔️ 공격력 (CAGR)
+    def_: float = 0.0     # 🛡️ 방어력 (하락 방어율)  ※ def는 예약어라 def_
+    skill: float = 0.0    # ✨ 솜씨 (샤프비율)
+
+    @property
+    def bst(self) -> float:
+        """종족치(Base Stat Total) = 네 스탯의 단순 합 (0~400)."""
+        return self.hp + self.atk + self.def_ + self.skill
+
+    @property
+    def fitness(self) -> float:
+        """GA 적합도 = 스탯 가중평균 (0~100). 가중치는 STAT_WEIGHTS."""
+        w = STAT_WEIGHTS
+        total = w["HP"] + w["ATK"] + w["DEF"] + w["SKILL"]
+        return (self.hp * w["HP"] + self.atk * w["ATK"]
+                + self.def_ * w["DEF"] + self.skill * w["SKILL"]) / total
+
 
 @dataclass
 class Strategy:
     """전략 포켓몬 한 마리를 표현하는 데이터"""
-    genes: list[str]      # 유전자 목록. 예) ["DD", "RSI"]  ('list[str]' = 문자열들의 리스트)
-    name: str = ""        # 전략 이름. '= ""'는 기본값(안 넣으면 빈 문자열)
+    genes: list[str]      # 유전자 목록. 예) ["DD", "RSI"]
+    name: str = ""        # 전략 이름 (자동 생성)
 
     def base_score(self) -> int:
-        """
-        이 전략이 가진 유전자 점수를 전부 더한 '기본 점수'를 돌려준다.
-        sum(...) : 괄호 안 값들을 모두 더하는 함수
-        예) 유전자가 ["DD", "RSI"]면 -> 20 + 15 = 35
-        """
+        """[레거시] 유전자 점수 합. 실데이터 도입 후 판정엔 안 쓰임."""
         return sum(GENE_SCORES[g] for g in self.genes)
 
 
 @dataclass
 class Gym:
-    """체육관 하나를 표현하는 데이터. 변수 3개만 가진다(이름/난이도/변동성)."""
-    name: str             # 체육관 이름. 예) "DOTCOM"
-    difficulty: int       # 난이도(이 점수 이상이어야 생존)
-    volatility: int       # 변동성(지금은 연출용 정보, 판정에는 아직 안 씀)
+    """
+    체육관 하나 = 하나의 시장 국면(역사적 기간).
+    실데이터 도입 후 ticker/start/end 로 그 기간 가격을 받아 백테스트한다.
+    difficulty/volatility 는 이제 판정에 안 쓰는 '연출용 메타데이터'다.
+    """
+    name: str
+    difficulty: int       # (연출용) 생존 난이도 설명값
+    volatility: int       # (연출용) 변동성 설명값
+    ticker: str = "SPY"   # 어떤 자산으로 그 시기를 재현할지
+    start: str = ""       # 평가 시작일 (YYYY-MM-DD)
+    end: str = ""         # 평가 종료일 (YYYY-MM-DD)
 
 
 @dataclass
 class BattleResult:
-    """한 체육관에서 싸운 결과(전투 1회분)를 표현하는 데이터."""
-    gym_name: str         # 어떤 체육관이었나
-    score: int            # 그때 나온 최종 점수
-    survived: bool        # 살아남았나? (True=생존, False=사망)
+    """한 체육관(시장 국면)에서 백테스트한 결과 = 그 시장에서의 스탯블록."""
+    gym_name: str
+    stats: Stats                  # 그 시장에서 뽑힌 HP/ATK/DEF/SKILL
+    cagr: float = 0.0             # 연율수익률 (원시값, 표시용)
+    total_return: float = 0.0     # 기간 총수익률 (원시값, 표시용)
+    max_drawdown: float = 0.0     # 내 전략의 최대낙폭 (음수)
+    market_drawdown: float = 0.0  # 시장(단순보유)의 최대낙폭 (음수, 비교용)
 
 
 @dataclass
 class Report:
-    """전체 도전이 끝난 뒤의 '성적표'. 전투 결과 여러 개를 모아 요약한다."""
+    """전체 도전 성적표. 체육관별 결과를 모아 종합 스탯블록을 만든다."""
     strategy: Strategy
-    # field(default_factory=list)
-    #   = "기본값은 빈 리스트로 시작해라"는 뜻.
-    #   리스트 같은 건 기본값을 그냥 [] 로 적으면 안 되고 이렇게 적어야 안전합니다(파이썬 규칙).
     results: list[BattleResult] = field(default_factory=list)
 
-    # ── 아래 @property들은 '계산해서 꺼내 쓰는 값' ──
-    #   report.survive_count 처럼 괄호() 없이 변수처럼 사용합니다.
+    @property
+    def stats(self) -> Stats:
+        """종합 스탯블록 = 체육관별 스탯의 평균."""
+        if not self.results:
+            return Stats()
+        n = len(self.results)
+        return Stats(
+            hp=sum(r.stats.hp for r in self.results) / n,
+            atk=sum(r.stats.atk for r in self.results) / n,
+            def_=sum(r.stats.def_ for r in self.results) / n,
+            skill=sum(r.stats.skill for r in self.results) / n,
+        )
 
     @property
-    def survive_count(self) -> int:
-        """생존한 전투 횟수를 센다."""
-        # results 안에서 survived가 True인 것마다 1을 더함 -> 생존 횟수
-        return sum(1 for r in self.results if r.survived)
+    def fitness(self) -> float:
+        """종합 적합도 (0~100)."""
+        return self.stats.fitness
 
     @property
-    def death_count(self) -> int:
-        """사망한 전투 횟수를 센다 (survived가 False인 것)."""
-        return sum(1 for r in self.results if not r.survived)
-
-    @property
-    def survive_rate(self) -> float:
-        """생존률 = 생존 횟수 / 전체 횟수 (0.0 ~ 1.0 사이 소수)."""
-        if not self.results:        # 도전 기록이 하나도 없으면(빈 리스트면)
-            return 0.0              # 0으로 나누는 오류를 피하려고 0.0 반환
-        return self.survive_count / len(self.results)
+    def bst(self) -> float:
+        """종합 종족치 (0~400)."""
+        return self.stats.bst
 
     @property
     def grade(self) -> str:
-        """생존률을 보고 위 GRADES 표에서 등급(S~D)을 정한다."""
-        for threshold, grade in GRADES:          # (기준선, 등급)을 위에서부터 하나씩
-            if self.survive_rate >= threshold:   # 생존률이 기준선 이상이면
-                return grade                     # 그 등급을 돌려주고 끝
-        return "D"                               # (안전장치) 어디에도 안 걸리면 D
+        """종합 적합도(0~100)를 0~1로 환산해 GRADES에서 등급을 정한다."""
+        f = self.fitness / 100
+        for threshold, grade in GRADES:
+            if f >= threshold:
+                return grade
+        return "D"
