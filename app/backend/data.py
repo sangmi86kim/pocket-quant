@@ -35,6 +35,24 @@ def _cache_path(ticker: str, start: str, end: str) -> str:
     return os.path.join(CACHE_DIR, safe)
 
 
+def _clean_prices(series: pd.Series, ticker: str) -> pd.Series:
+    """캐시/다운로드 가격을 백테스트에 쓸 수 있는 숫자 시계열로 정리한다."""
+    series = pd.to_numeric(series, errors="coerce").dropna().sort_index()
+    series.name = ticker
+    return series
+
+
+def _covers_end(series: pd.Series, end: str) -> bool:
+    """캐시가 요청 종료일까지 충분한지 확인한다. 주말 종료일은 직전 영업일이면 충분하다."""
+    if series.empty:
+        return False
+    last_date = pd.Timestamp(series.index.max()).normalize()
+    end_date = pd.Timestamp(end).normalize()
+    if last_date >= end_date:
+        return True
+    return len(pd.bdate_range(last_date + pd.Timedelta(days=1), end_date)) == 0
+
+
 def get_prices(ticker: str, start: str, end: str) -> pd.Series:
     """
     한 티커의 '수정종가(Adjusted Close)' 시계열을 돌려준다.
@@ -46,15 +64,22 @@ def get_prices(ticker: str, start: str, end: str) -> pd.Series:
     # (1) 캐시 우선 — 있으면 네트워크 없이 즉시 사용
     if os.path.exists(path):
         series = pd.read_csv(path, index_col=0, parse_dates=True).iloc[:, 0]
-        series.name = ticker
-        return series
+        series = _clean_prices(series, ticker)
+        if _covers_end(series, end):
+            return series
 
     # (2) 캐시 없음 -> yfinance로 다운로드
     #     무거운 라이브러리라 여기서(필요할 때만) import 한다.
     import yfinance as yf
 
+    os.makedirs(CACHE_DIR, exist_ok=True)
+    yf.set_tz_cache_location(CACHE_DIR)
+
+    # yfinance의 end는 배타적이므로, 이 함수의 end는 호출자 기준 '포함'으로 맞춘다.
+    download_end = (pd.Timestamp(end) + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+
     # auto_adjust=True -> 'Close'가 이미 배당/분할 반영된 수정종가
-    df = yf.download(ticker, start=start, end=end,
+    df = yf.download(ticker, start=start, end=download_end,
                      auto_adjust=True, progress=False)
     if df is None or df.empty:
         raise RuntimeError(
@@ -66,11 +91,9 @@ def get_prices(ticker: str, start: str, end: str) -> pd.Series:
     close = df["Close"]
     if isinstance(close, pd.DataFrame):       # 여러 티커 형태로 온 경우
         close = close.iloc[:, 0]
-    close = close.dropna()
-    close.name = ticker
+    close = _clean_prices(close, ticker)
 
     # (3) 캐시에 저장 (다음 실행부턴 오프라인)
-    os.makedirs(CACHE_DIR, exist_ok=True)
     close.to_csv(path)
 
     return close

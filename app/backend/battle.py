@@ -42,15 +42,17 @@ def fight(strategy: Strategy, loaded: LoadedGym) -> BattleResult:
 
     # (1) 일별 포지션(0~1) + (2) 하루 lag 적용한 전략/시장 수익
     position = combined_position(strategy.genes, prices)
+    effective_position = position.shift(1)
     market_ret = prices.pct_change()
-    strat_ret = position.shift(1) * market_ret
+    strat_ret = effective_position * market_ret
 
     # (3) 평가 구간(체육관 기간)만 잘라낸다 — 앞쪽 버퍼는 지표 데우는 데만 쓰임
     window_start = pd.Timestamp(gym.start)
-    mask = prices.index >= window_start
+    window_end = pd.Timestamp(gym.end)
+    mask = (prices.index >= window_start) & (prices.index <= window_end)
     strat_ret = strat_ret[mask].dropna()
     market_ret = market_ret[mask].dropna()
-    position = position[mask]
+    effective_position = effective_position[mask].dropna()
 
     # 데이터가 비정상적으로 비면 0점 스탯으로 방어 반환
     if len(strat_ret) < 2:
@@ -67,7 +69,7 @@ def fight(strategy: Strategy, loaded: LoadedGym) -> BattleResult:
     std = strat_ret.std()
     sharpe = float(strat_ret.mean() / std * np.sqrt(TRADING_DAYS)) if std > 0 else 0.0
 
-    avg_cash = float((1.0 - position).mean())                   # 0~1
+    avg_cash = float((1.0 - effective_position).mean())         # 0~1
 
     # (5) 0~100 스탯으로 정규화
     hp = _scale(avg_cash, 0.0, 1.0)                             # 현금 100% -> HP 100
