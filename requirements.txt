@@ -2,3 +2,4 @@
 yfinance>=0.2
 pandas>=2.0
 numpy>=1.24
+optuna>=4.0          # NSGA-III 다목적 최적화 (mode: "nsga3")

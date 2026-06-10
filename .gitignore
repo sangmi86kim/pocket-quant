@@ -20,3 +20,6 @@ worklog/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Optuna storage (NSGA-III study DB)
+*.db

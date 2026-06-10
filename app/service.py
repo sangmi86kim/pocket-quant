@@ -250,6 +250,63 @@ def run_single(gene_count: int | None, seed: int | None = None,
     _write_markdown(path, _markdown_report("PocketQuant 단판 백테스트 리포트", report))
 
 
+def run_nsga3(trials: int, seed: int | None = None,
+              storage: str | None = None, study_name: str = "nsga3_v1") -> None:
+    """[다목적 모드] Optuna NSGA-III — 국면별 라이벌(DCA)전 5목적 + 턴오버.
+    결과는 챔피언 1마리가 아니라 Pareto front(전략 라인업)다."""
+    from app.backend.engine import nsga3   # optuna는 이 모드에서만 필요 — 지연 import
+
+    print("=== PocketQuant NSGA-III 다목적 최적화 ===")
+    print(f"트라이얼 {trials} · 목적 {nsga3.OBJECTIVE_NAMES} · 시드 {seed}\n")
+
+    def on_progress(done, total, front_size):
+        print(f"  [{done:>5}/{total}] Pareto front {front_size}개")
+
+    study, loaded_gyms, dca = nsga3.run_study(
+        trials, seed=seed, storage=storage, study_name=study_name,
+        on_progress=on_progress)
+
+    # 비교 기준: 현 단일목적 챔피언 (동일가중 VOL+REV_RSI+REV_BB)
+    ref = nsga3.reference_vector(loaded_gyms, dca)
+    print("\n=== 기준점: 현 챔피언 VOL+REV_RSI+REV_BB (동일가중·기본 파라미터) ===")
+    print("  " + _format_objective_vector(
+        [min(ref["dotcom"], ref["gfc"]), ref["rebound"], ref["crash_v"],
+         ref["bull"], ref["chop"], ref["turnover"]]))
+
+    summary = nsga3.summarize_front(study)
+    print(f"\n=== Pareto front {summary['front_size']}개 → 하드 필터 통과 "
+          f"{len(summary['passed'])}개 (전 국면 ≥ -{summary['tolerance'] * 100:.0f}, "
+          f"턴오버 ≤ {summary['turnover_cap']}) ===")
+
+    for label, row in summary["labels"].items():
+        print(f"\n[{label}]  trial #{row['number']}")
+        print("  " + _format_objective_vector(row["values"]))
+        print("  " + _format_candidate_params(row["params"]))
+
+    if not summary["labels"]:
+        print("\n  ⚠️ 필터 통과 후보 없음 — tolerance/turnover_cap을 조정해 다시 보세요.")
+
+
+def _format_objective_vector(values: list[float]) -> str:
+    """목적 벡터를 한 줄로 (점수 ×100 표기, 턴오버는 원값)."""
+    names = ["bear", "rebound", "crash_v", "bull", "chop"]
+    scores = " ".join(f"{n} {v * 100:+6.1f}" for n, v in zip(names, values[:5]))
+    return f"{scores}  | turnover {values[5]:.4f}/일"
+
+
+def _format_candidate_params(params: dict) -> str:
+    """후보의 X를 사람 읽는 형태로 — 가중치는 비율(%)로 정규화해 표시."""
+    from app.backend.genes.signals import ALL_GENES
+    w = [params[f"w_{g}"] for g in ALL_GENES]
+    total = sum(w) or 1.0
+    weights = " ".join(f"{g} {x / total * 100:.0f}%" for g, x in zip(ALL_GENES, w))
+    tunables = (f"DD {params['DD_LIMIT']:.2f} · MA {params['MA_WINDOW']} · "
+                f"MOM {params['MOM_LOOKBACK']} · RSI<{params['RSI_OVERSOLD']} · "
+                f"BB k{params['BB_K']:.2f} · VOL {params['VOL_CALM']:.3f}"
+                f"~{params['VOL_CALM'] + params['VOL_SPREAD']:.3f}")
+    return f"가중치: {weights}\n  파라미터: {tunables}"
+
+
 def run_evolve(pop: int, generations: int, seed: int | None = None,
                md_path: str | None = None, capital: float | None = None) -> None:
     """[진화 모드] 단일목적 GA(적합도=스탯 가중합)로 챔피언을 진화시킨다."""
