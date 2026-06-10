@@ -19,9 +19,12 @@ import optuna
 from app.backend.engine import nsga3
 from app.service import _format_candidate_params, _format_objective_vector
 
-STORAGE = "sqlite:///optuna_pocketquant.db"
+# 경로는 전부 프로젝트 루트 기준 절대 경로 — 어디서 실행해도(IDE 포함) 같은 DB를 연다.
+# (상대 경로면 PyCharm처럼 작업 디렉토리가 다른 실행에서 빈 DB를 새로 만들어 버린다.)
+_ROOT = Path(__file__).resolve().parent.parent
+STORAGE = f"sqlite:///{(_ROOT / 'optuna_pocketquant.db').as_posix()}"
 STUDY = "nsga3_v1"
-CSV_OUT = Path("reports") / "nsga3_front.csv"
+CSV_OUT = _ROOT / "reports" / "nsga3_front.csv"
 
 
 def main() -> None:
