@@ -28,7 +28,8 @@ DEFAULTS = {
     "capital": None,      # 실전 시뮬 시작 자본(원). 예) 10000000
     "trials": 600,        # [nsga3] 트라이얼 수
     "storage": None,      # [nsga3] Optuna storage URL (예: "sqlite:///nsga3.db") — 중단/재개용
-    "study": "nsga3_v1",  # [nsga3] 스터디 이름 (storage 사용 시)
+    "study": "nsga3_v2_weights",  # [nsga3] 스터디 이름 (storage 사용 시)
+    "tune_params": False, # [nsga3] True면 시그널 파라미터도 탐색 (v1에서 과적합 — 고도화용)
 }
 
 
@@ -52,7 +53,8 @@ def main() -> None:
         run_evolve(config["pop"], config["generations"], config["seed"],
                    config["md"], config["capital"])
     elif mode == "nsga3":
-        run_nsga3(config["trials"], config["seed"], config["storage"], config["study"])
+        run_nsga3(config["trials"], config["seed"], config["storage"],
+                  config["study"], config["tune_params"])
     elif mode == "single":
         run_single(config["genes"], config["seed"], config["md"], config["capital"])
     else:
