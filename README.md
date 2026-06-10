@@ -279,7 +279,8 @@ pocket_quant/
 - ✅ **v0.4 스타팅 6마리 재배치** — 3타입×2마리, 기권(NaN) 결합, config.json, 백엔드 재구성
 - ✅ **v0.4.1 worst-case 적합도** — 평균 70% + 최약 30% (50/50은 잠만보 부활로 기각 — 실측)
 - ✅ **v0.5 QQQ 통일 + 회복장 체육관 + DCA 라이벌 + 심판 2종** — 훈련 자산=실투자 자산, 6체육관, score_vs_dca, 골든 넘버/컨닝 검사
-- ⏭️ **NSGA-III (Optuna)** — 목적 6개(국면별 라이벌전 5 + 턴오버), X=연속 가중치+시그널 파라미터 → **전략 Pareto front** (Defensive/Balanced/Aggressive 라인업). 설계 확정: [OPTIMIZATION.md](OPTIMIZATION.md)
+- ⏭️ **NSGA-III (Optuna)** — 목적 6개(국면별 라이벌전 5 + 턴오버), X=연속 가중치+시그널 파라미터 → **전략 Pareto front** (Defensive/Balanced/Aggressive 라인업). 설계 확정: [OPTIMIZATION.md](OPTIMIZATION.md) · v1 리그는 `dev/nsga3`에서 가동(트레이더 3000명, 필터 통과 31명)
+- ⏭️ **아카데미 (웜스타트 시드 제너레이터)** — 리그를 랜덤 신인만으로 시작하지 않고, **검증된 유망주를 먼저 입학시켜 출전**시키는 모듈: 현 단일목적 챔피언 · 전수조사 상위 조합 · 이전 리그의 라벨 트레이더들을 `study.enqueue_trial`로 선출전 → 수렴 가속 + 이전 스터디 자산 재활용
 - ⏭️ **배틀 프론티어** — 합성 데이터 스트레스 필터
 - 👑 **사천왕전** — post-COVID hold-out 최종 합격 판정
 - 🗂️ **전략 도감 DB** → 🧭 **시장 판독기** (regime detector, 70% robust + 30% tilt 오버레이) → 🔬 **오박사(LLM)** 성과 귀인 해설
