@@ -40,7 +40,7 @@ def main() -> None:
     dca = {lg.gym.name: fight_dca(lg) for lg in loaded}
 
     # ── 1. 체육관별 DCA 기준선 vs B&H ──
-    print("=== 1. 체육관별 DCA 기준선 (매일 1/N 적립 · 토스 자동 모으기 수수료 0원) ===")
+    print("=== 1. 체육관별 라이벌 '성실이'(DCA) 기준선 (매일 1/N 적립 · 토스 자동 모으기 수수료 0원) ===")
     print(f"{'체육관':<22} {'DCA수익':>8} {'DCA MDD':>8} {'DCA샤프':>7}"
           f" {'B&H수익':>8} {'B&H MDD':>8}")
     for lg in loaded:
