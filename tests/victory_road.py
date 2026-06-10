@@ -27,7 +27,7 @@ victory_road.py - 챔피언로드: 리그 졸업생의 검증 관문 (사천왕 
   명단은 DB에 보존되며, 다음 리그/배틀 프론티어에서 재도전한다.
   여기서 하는 판단은 "누가 죽었나"가 아니라 "누구에게 도전권을 주나"뿐.
 
-[관문 ② 배틀 프론티어] 부트스트랩 합성 역사 — 다음 구현.
+[관문 ② 배틀 프론티어] 평행세계 운빨 검사 — tests/battle_frontier.py
 [관문 ③ 사천왕] post-COVID hold-out — 봉인. 최후의 1회만.
 
 실행: 프로젝트 루트에서  python tests/victory_road.py
@@ -210,7 +210,7 @@ def run_gate1() -> bool:
     print(f"\n=== 관문 ① 결과: 사천왕 도전권 {len(survivors)}/{len(graduates)}명 ===")
     if survivors:
         print("  " + ", ".join(survivors))
-    print("\n관문 ② 배틀 프론티어(부트스트랩 가짜 역사): 미구현 — 다음")
+    print("\n관문 ② 배틀 프론티어(평행세계 운빨 검사): python tests/battle_frontier.py")
     print("관문 ③ 사천왕(post-COVID hold-out): 🔒 봉인 — 최후의 1회만")
     return len(survivors) > 0
 
