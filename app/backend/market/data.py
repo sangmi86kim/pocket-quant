@@ -17,11 +17,11 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-from .models import Gym
+from ..core.models import Gym
 
-# 캐시 폴더: 프로젝트 루트의 data_cache/  (이 파일은 app/backend/ 안에 있음)
+# 캐시 폴더: 프로젝트 루트의 data_cache/  (이 파일은 app/backend/market/ 안에 있음)
 CACHE_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "data_cache")
+    os.path.join(os.path.dirname(__file__), "..", "..", "..", "data_cache")
 )
 
 # 지표(200일 이평 등)를 데우기 위해 평가 시작일보다 앞쪽으로 더 받는 버퍼 일수.

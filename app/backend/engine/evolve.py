@@ -22,9 +22,9 @@ evolve.py - 단일목적 유전 알고리즘(GA) MVP
 """
 import random
 
+from ..core.models import Strategy
+from ..genes.signals import ALL_GENES   # 유전자 명단의 진짜 출처(실제 시그널 레지스트리)
 from .battle import challenge
-from .models import Strategy
-from .signals import ALL_GENES   # 유전자 명단의 진짜 출처(실제 시그널 레지스트리)
 from .strategy import make_name
 
 

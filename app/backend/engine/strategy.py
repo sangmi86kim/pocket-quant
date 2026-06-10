@@ -7,10 +7,9 @@ strategy.py - 전략 포켓몬을 '만드는' 파일
 """
 import random   # 무작위(랜덤) 기능을 쓰기 위한 표준 라이브러리
 
-# 같은 폴더(app/backend) 안의 models.py에서 필요한 것들을 가져온다.
-# 맨 앞의 점(.)은 "같은 패키지(폴더) 안에서 가져와라"는 뜻 (상대 import)
-from .models import Strategy
-from .signals import ALL_GENES   # 유전자 명단의 진짜 출처(실제 시그널 레지스트리)
+# 점 두 개(..)는 "한 단계 위 패키지(app/backend)로 올라가서 가져와라"는 뜻 (상대 import)
+from ..core.models import Strategy
+from ..genes.signals import ALL_GENES   # 유전자 명단의 진짜 출처(실제 시그널 레지스트리)
 
 # 이름 자동 생성에 쓸 단어 풀(pool)
 SUFFIXES = ["몬", "드래곤", "킹", "마스터"]          # 접미사: DD'몬', ATH '드래곤'
