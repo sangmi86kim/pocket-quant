@@ -216,7 +216,7 @@ def run_single(gene_count: int | None, seed: int | None = None,
     _apply_seed(seed)
     print("=== PocketQuant 단판 백테스트 ===\n")
 
-    print("1. 데이터 로딩: 실데이터 5개 국면 (SPY 4 + QQQ 닷컴)")
+    print("1. 데이터 로딩: QQQ 실데이터 5개 국면")
     loaded_gyms = load_gyms(all_gyms())
 
     print("\n2. 전략 생성")
@@ -257,7 +257,7 @@ def run_evolve(pop: int, generations: int, seed: int | None = None,
     print("=== PocketQuant 진화 백테스트 ===")
     print(f"개체군 {pop}마리 · 진화 {generations}세대\n")
 
-    print("1. 데이터 로딩: 실데이터 5개 국면 (SPY 4 + QQQ 닷컴)")
+    print("1. 데이터 로딩: QQQ 실데이터 5개 국면")
     loaded_gyms = load_gyms(all_gyms())
     print()
 

@@ -77,9 +77,10 @@ def main() -> None:
     print(f"\n  전 체육관에서 DCA보다 나은 조합: {len(all_positive)}개"
           f"{' — ' + ', '.join(all_positive[:5]) if all_positive else ''}")
 
-    # ── 3. 현 챔피언(REV_BB) 체육관별 상세 ──
-    print("\n=== 3. 현 챔피언 REV_BB의 체육관별 score_vs_dca (×100) ===")
-    report = challenge(Strategy(genes=["REV_BB"], name="REV_BB"), loaded)
+    # ── 3. 현 챔피언(VOL+REV_RSI+REV_BB) 체육관별 상세 ──
+    print("\n=== 3. 현 챔피언 VOL+REV_RSI+REV_BB의 체육관별 score_vs_dca (×100) ===")
+    report = challenge(Strategy(genes=["VOL", "REV_RSI", "REV_BB"],
+                                name="VOL+REV_RSI+REV_BB"), loaded)
     for r in report.results:
         d = dca[r.gym_name]
         s = score_vs_dca(r, d)
