@@ -66,7 +66,8 @@ pocket_quant/
 │        └─ evolve.py        #   진화시킨다 — 단일목적 GA (적합도=스탯 가중합)
 ├─ tests/
 │  ├─ test_baselines.py      # 적합도 퇴화 검증 ('전부 현금'/'항상 풀매수' 기준선)
-│  └─ check_signals.py       # 시그널 진단 (노출/발동률/상관 — 풀 교체 시마다 실행)
+│  ├─ check_signals.py       # 시그널 진단 (노출/발동률/상관 — 풀 교체 시마다 실행)
+│  └─ walk_forward.py        # 워크 포워드 (과거 4년 선발→다음 1년 OOS 출전, 1999~)
 ├─ worklog/                  # 실험실 노트 (리뷰·계획서·검증 결과)
 ├─ README.md
 └─ AGENTS.md
@@ -75,7 +76,8 @@ pocket_quant/
 > 참고: 3층 분리 — `main.py`(입력) → `app/service.py`(흐름 조립·출력) → `app/backend/*`(계산).
 > backend 의존 방향: `core ← market/genes ← engine` (engine이 최상위 소비자, 순환 없음).
 > 출력 포맷은 별도 `report.py` 없이 `service.py` 안에서 처리한다.
-> tests 실행: `python tests/test_baselines.py` · `python tests/check_signals.py` (pytest도 호환).
+> tests 실행: `python tests/test_baselines.py` · `python tests/check_signals.py` ·
+> `python tests/walk_forward.py` (test_baselines는 pytest도 호환).
 
 ---
 

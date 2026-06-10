@@ -240,13 +240,14 @@ pocket_quant/
 │     ├─ market/           #   data.py(가격+캐시) · gym.py(체육관 4종)
 │     ├─ genes/            #   signals.py(유전자→포지션/기권, 결합 규칙) · dex.py(도감)
 │     └─ engine/           #   battle.py(백테스트→스탯) · strategy.py(생성) · evolve.py(GA)
-├─ tests/                  # test_baselines.py(퇴화 검증) · check_signals.py(시그널 진단)
+├─ tests/                  # 퇴화 검증 · 시그널 진단 · 워크 포워드
 └─ worklog/                # 실험실 노트 (리뷰·계획서·검증 결과)
 ```
 
-검증 도구 두 개를 상시 운용합니다:
+검증 도구 세 개를 상시 운용합니다:
 - `python tests/test_baselines.py` — '전부 현금'/'항상 풀매수' 기준선을 전 조합과 줄세워 "아무것도 안 하기"가 상위권에 못 오는지 확인
 - `python tests/check_signals.py` — 시그널 노출/발동률/상관 진단 (풀 교체 시 자유도 확인)
+- `python tests/walk_forward.py` — **워크 포워드**: 과거 4년으로 1등을 뽑아 다음 1년(처음 보는 데이터)에 출전, 1999~현재 반복. "고르는 과정 자체가 미래에 통하는가"를 잰다 (2026-06 실측: 방어 우위 24/28년, OOS 샤프 0.56 vs B&H 0.53 — PASS)
 
 ---
 
