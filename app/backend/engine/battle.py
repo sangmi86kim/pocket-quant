@@ -57,17 +57,24 @@ def fight(strategy: Strategy, loaded: LoadedGym) -> BattleResult:
     return _score_position(position, loaded)
 
 
-def _score_position(position, loaded: LoadedGym) -> BattleResult:
+def _score_position(position, loaded: LoadedGym,
+                    trade_cost: float | None = None) -> BattleResult:
     """일별 포지션(0~1) 시계열 하나를 채점한다 — fight와 DCA 기준선이 공유하는 엔진.
-    실행 모델(하루 lag, 턴오버 과금, 워밍업 컷)이 모든 참가자에게 동일해야 공정 비교다."""
+    실행 모델(하루 lag, 턴오버 과금, 워밍업 컷)이 모든 참가자에게 동일해야 공정 비교다.
+
+    trade_cost: None이면 모듈 전역 TRADE_COST(워크포워드가 몽키패치하는 그 값).
+    DCA 기준선만 0.0을 넘긴다 — 토스 '주식 자동 모으기'는 매수 수수료 0원이라
+    실제 비용 구조가 비대칭이기 때문(전략의 타이밍 매매는 0.1% 그대로)."""
     gym = loaded.gym
     prices = loaded.prices          # 이미 워밍업 버퍼 포함해 받아둔 가격
+
+    cost = TRADE_COST if trade_cost is None else trade_cost
 
     # (2) 하루 lag 적용한 전략/시장 수익
     effective_position = position.shift(1)
     market_ret = prices.pct_change()
     turnover = effective_position.diff().abs()              # 그날 매매한 자본 비율
-    strat_ret = effective_position * market_ret - turnover * TRADE_COST
+    strat_ret = effective_position * market_ret - turnover * cost
 
     # (3) 평가 구간(체육관 기간)만 잘라낸다 — 앞쪽 버퍼는 지표 데우는 데만 쓰임
     window_start = pd.Timestamp(gym.start)
@@ -140,8 +147,11 @@ def _dca_position(loaded: LoadedGym):
 
 
 def fight_dca(loaded: LoadedGym) -> BattleResult:
-    """DCA 기준선 참가자의 성적 — 한 체육관을 매일 1/N 적립으로 통과한 결과."""
-    return _score_position(_dca_position(loaded), loaded)
+    """DCA 기준선 참가자의 성적 — 한 체육관을 매일 1/N 적립으로 통과한 결과.
+    수수료 0원: 토스 '주식 자동 모으기'는 매수 수수료 면제(사용자 실계좌 확인,
+    2026-06-11). 전략은 타이밍 매매라 면제 대상이 아님 = 비대칭이 현실이고,
+    그만큼 DCA를 이기는 기준이 높아진다."""
+    return _score_position(_dca_position(loaded), loaded, trade_cost=0.0)
 
 
 def score_vs_dca(strat: BattleResult, dca: BattleResult) -> float:
