@@ -159,12 +159,12 @@ def run_gate3() -> bool:
     passed = rival_ok and defense_ok
 
     print(f"\n=== 전 구간 ({HOLDOUT_START}~{DATA_END}) ===")
-    print(f"  챔피언: CAGR {cc:+.1%}  MDD {cm:.1%}  샤프 {cs:.2f}")
-    print(f"  성실이: CAGR {dc:+.1%}  MDD {dm:.1%}  샤프 {ds:.2f}")
-    print(f"  B&H   : CAGR {bc:+.1%}  MDD {bm:.1%}  샤프 {bs:.2f}")
+    print(f"  챔피언: 공격력 {cc:+.1%}/년 (CAGR) · 최대 데미지 {cm:.1%} (MDD) · 컨트롤 {cs:.2f} (샤프)")
+    print(f"  성실이: 공격력 {dc:+.1%}/년 (CAGR) · 최대 데미지 {dm:.1%} (MDD) · 컨트롤 {ds:.2f} (샤프)")
+    print(f"  B&H   : 공격력 {bc:+.1%}/년 (CAGR) · 최대 데미지 {bm:.1%} (MDD) · 컨트롤 {bs:.2f} (샤프)")
     print(f"\n=== 판정 (개봉 전 사전 등록 기준) ===")
     print(f"  ① 라이벌전 (연평균 score > 0)      : {'PASS' if rival_ok else 'FAIL'} ({avg_score * 100:+.1f})")
-    print(f"  ② 방어 (MDD {cm:.1%} vs B&H {bm:.1%}) : {'PASS' if defense_ok else 'FAIL'}")
+    print(f"  ② 방어 (최대 데미지 {cm:.1%} vs B&H {bm:.1%}) : {'PASS' if defense_ok else 'FAIL'}")
     print(f"\n{'👑 사천왕 격파 — 챔피언 확정 (배포 근거 완성)' if passed else '🪑 사천왕 벽 — 결과는 결과대로 기록 (재튜닝 금지, 다음 알파에서 재도전)'}")
 
     _write_html(rows, (cc, cm, cs), (dc, dm, ds), (bc, bm, bs),
@@ -225,7 +225,7 @@ def _write_html(rows, champ_perf, dca_perf, bh_perf, avg_score,
 
 <div class="verdict">{verdict_html}<br>
 <span class="dim">사전 등록 기준 — ① 연도별 성실이전 평균 {avg_score * 100:+.1f}
-({'PASS' if rival_ok else 'FAIL'}) · ② 전 구간 MDD {cm * 100:.1f}% vs B&H {bm * 100:.1f}%
+({'PASS' if rival_ok else 'FAIL'}) · ② 최대 데미지(MDD) {cm * 100:.1f}% vs B&H {bm * 100:.1f}%
 ({'PASS' if defense_ok else 'FAIL'})</span></div>
 
 <h2>📈 자산곡선 (시작 100 · 봉인 구간 전체)</h2>
@@ -233,16 +233,23 @@ def _write_html(rows, champ_perf, dca_perf, bh_perf, avg_score,
 <p class="dim">챔피언은 비용 0.1%/편도 부담, 성실이(일별 적립)는 토스 자동 모으기 기준 무비용.</p>
 
 <h2>🥊 연 단위 라운드</h2>
-<table><tr><th>라운드</th><th>챔피언 수익</th><th>성실이 수익</th><th>B&H 수익</th>
-<th>챔피언 MDD</th><th>B&H MDD</th><th>score</th></tr>
+<table><tr><th>라운드</th><th>챔피언 획득 골드<br><span class="dim">(수익)</span></th>
+<th>성실이 획득 골드<br><span class="dim">(수익)</span></th><th>B&H 획득 골드<br><span class="dim">(수익)</span></th>
+<th>챔피언 최대 데미지<br><span class="dim">(MDD)</span></th><th>B&H 최대 데미지<br><span class="dim">(MDD)</span></th>
+<th>라이벌전 점수<br><span class="dim">(score_vs_dca)</span></th></tr>
 {round_rows}</table>
-<p class="dim">score = 0.4×수익차 + 0.4×낙폭개선 + 0.2×샤프차 (성실이 대비, ×100. 양수 = 성실이보다 강함)</p>
+<p class="dim">라이벌전 점수 = 0.4×수익차 + 0.4×낙폭개선 + 0.2×샤프차 (성실이 대비, ×100. 양수 = 성실이보다 강함)</p>
 
-<h2>📊 전 구간 종합</h2>
-<table><tr><th></th><th>CAGR</th><th>MDD</th><th>샤프</th></tr>
-<tr><td>챔피언</td><td>{cc * 100:+.1f}%</td><td>{cm * 100:.1f}%</td><td>{cs:.2f}</td></tr>
-<tr><td>성실이 (일별 DCA)</td><td>{dc * 100:+.1f}%</td><td>{dm * 100:.1f}%</td><td>{ds:.2f}</td></tr>
-<tr><td>B&H (그냥 들고 있기)</td><td>{bc * 100:+.1f}%</td><td>{bm * 100:.1f}%</td><td>{bs:.2f}</td></tr></table>
+<h2>📊 전 구간 종합 스탯</h2>
+<table><tr><th></th><th>공격력 <span class="dim">(CAGR, 연평균 성장)</span></th>
+<th>최대 데미지 <span class="dim">(MDD, HP가 가장 깊게 패인 순간)</span></th>
+<th>컨트롤 <span class="dim">(샤프, 멀미 대비 수익)</span></th></tr>
+<tr><td>챔피언</td><td>{cc * 100:+.1f}%/년</td><td>{cm * 100:.1f}%</td><td>{cs:.2f}</td></tr>
+<tr><td>성실이 (일별 DCA)</td><td>{dc * 100:+.1f}%/년</td><td>{dm * 100:.1f}%</td><td>{ds:.2f}</td></tr>
+<tr><td>B&H (그냥 들고 있기)</td><td>{bc * 100:+.1f}%/년</td><td>{bm * 100:.1f}%</td><td>{bs:.2f}</td></tr></table>
+<p class="dim">읽는 법: 챔피언은 6년 동안 매년 {cc * 100:+.1f}%씩 자산을 키웠고(공격력),
+가장 깊게 맞은 순간이 {cm * 100:.1f}%였으며(최대 데미지 — B&H는 {bm * 100:.1f}%까지 맞음),
+출렁임 대비 효율(컨트롤)은 {cs:.2f}로 셋 중 가장 안정적으로 벌었다.</p>
 
 <h2>⚠️ 이 시험의 규칙</h2>
 <div class="warn">
