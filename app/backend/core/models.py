@@ -44,7 +44,7 @@ GRADES = [
 
 @dataclass
 class Stats:
-    """전략 포켓몬의 스탯블록. 각 값은 0~100으로 정규화됨."""
+    """트레이더(전략)의 스탯블록. 각 값은 0~100으로 정규화됨."""
     hp: float = 0.0       # ❤️ 자본력 (현금 비중, 표시 전용 — 적합도 가중치 0)
     atk: float = 0.0      # ⚔️ 공격력 (CAGR)
     def_: float = 0.0     # 🛡️ 방어력 (Calmar = CAGR/|MDD|)  ※ def는 예약어라 def_
@@ -66,9 +66,9 @@ class Stats:
 
 @dataclass
 class Strategy:
-    """전략 포켓몬 한 마리를 표현하는 데이터"""
-    genes: list[str]      # 유전자 목록. 예) ["DD", "RSI"]
-    name: str = ""        # 전략 이름 (자동 생성)
+    """트레이더(전략) 한 명을 표현하는 데이터 — 어떤 포켓몬(시그널)들을 데려가는가"""
+    genes: list[str]      # 데려가는 포켓몬 목록. 예) ["DD", "REV_BB"]
+    name: str = ""        # 트레이더 이름 (자동 생성)
 
 
 @dataclass

@@ -2,20 +2,21 @@
 evolve.py - 단일목적 유전 알고리즘(GA) MVP
 
 [하는 일]
-전략 여러 마리(개체군)를 만들어 → 체육관 성적으로 점수를 매기고 →
-잘한 놈끼리 교배 + 돌연변이시켜 다음 세대를 만든다. 이걸 여러 세대 반복.
+트레이더 여러 명(개체군)을 만들어 → 체육관 성적으로 점수를 매기고 →
+잘한 트레이더끼리 교배 + 돌연변이시켜 다음 세대를 만든다. 이걸 여러 세대 반복.
 
 [단일목적]
-적합도(fitness) = 종합 스탯 가중평균(0~100)  ← 숫자 하나로 줄세움.
-스탯블록(HP/ATK/DEF/SKILL)은 실데이터 백테스트로 나온다(battle.py).
+적합도(fitness) = 체육관별 적합도의 [평균 70% + 최약 30%] (models.Report 참고)
+← 숫자 하나로 줄세움. 스탯블록(HP/ATK/DEF/SKILL)은 실데이터 백테스트(battle.py).
 
 [v0.3 변경]
 실데이터는 결정론적이라 같은 전략이면 매번 같은 결과 → trials 평균이 불필요.
-이제 evaluate는 1회만 돈다(trials 인자는 호환을 위해 남겨두되 사용 안 함).
+이제 evaluate는 1회만 돈다.
 
 [솔직한 한계 — 의도된 것]
-단일목적(스탯 가중합)이라, 가중치가 곧 진화 방향이다. ATK vs HP/DEF는 서로 당긴다
-(현금 많이 들면 방어↑ 공격↓). 이 충돌을 관찰한 뒤 다목적(NSGA-III)으로 간다.
+단일목적이라 국면 간 충돌(닷컴 방어 ↔ 회복장 공격)이 숫자 하나로 뭉개진다.
+그 충돌을 벡터 그대로 다루는 다목적 버전이 nsga3.py(Optuna NSGA-III) —
+이 손코딩 GA는 원리 이해용 교보재로 유지한다.
 
 [GA 4단계]
   평가(evaluate) → 선택(selection) → 교배(crossover) → 돌연변이(mutation)
@@ -105,7 +106,7 @@ def evolve(loaded_gyms: list, pop_size: int = 20, generations: int = 10,
     pop_size = max(2, pop_size)
     generations = max(1, generations)
 
-    # 초기 개체군: 랜덤 전략 pop_size 마리
+    # 초기 개체군: 랜덤 트레이더 pop_size 명
     population = [_make(random.sample(ALL_GENES, random.randint(1, len(ALL_GENES))))
                  for _ in range(pop_size)]
 

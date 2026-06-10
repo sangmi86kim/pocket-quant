@@ -1,57 +1,35 @@
 """
-strategy.py - 전략 포켓몬을 '만드는' 파일
+strategy.py - 트레이더(전략)를 '만드는' 파일
 
 하는 일은 두 가지:
-  1) 유전자를 랜덤하게 뽑아서 전략 한 마리를 생성한다.
-  2) 그 전략에 어울리는 이름을 자동으로 지어준다.
+  1) 포켓몬(시그널)을 랜덤하게 뽑아서 트레이더 한 명을 생성한다 (단판 모드의 입구).
+  2) 그 트레이더에 어울리는 이름을 자동으로 지어준다 (연출용).
+※ 용어: '마리'는 포켓몬(시그널) 전용, 전략은 트레이더 '명'으로 센다.
 """
-import random   # 무작위(랜덤) 기능을 쓰기 위한 표준 라이브러리
+import random
 
-# 점 두 개(..)는 "한 단계 위 패키지(app/backend)로 올라가서 가져와라"는 뜻 (상대 import)
 from ..core.models import Strategy
 from ..genes.signals import ALL_GENES   # 유전자 명단의 진짜 출처(실제 시그널 레지스트리)
 
-# 이름 자동 생성에 쓸 단어 풀(pool)
-SUFFIXES = ["몬", "드래곤", "킹", "마스터"]          # 접미사: DD'몬', ATH '드래곤'
-TITLES = ["ATH", "디아블로", "헤르메스", "타이탄"]    # 가끔 붙는 멋진 칭호
+# 이름 자동 생성에 쓸 단어 풀 — 순전히 연출용, 판정과 무관
+SUFFIXES = ["몬", "드래곤", "킹", "마스터"]
+TITLES = ["ATH", "디아블로", "헤르메스", "타이탄"]
 
 
 def make_name(genes: list[str]) -> str:
-    """유전자 조합을 받아서 전략 이름 문자열을 만들어 돌려준다."""
-    # 유전자들을 '-'로 이어붙임. 예) ["DD","RSI"] -> "DD-RSI"
-    base = "-".join(genes)
-
-    # random.random()은 0.0 ~ 1.0 사이 랜덤 소수.
-    # 그게 0.2보다 작을 확률(=20%)일 때만 '멋진 칭호' 이름을 준다.
+    """유전자 조합으로 전략 이름을 짓는다. 20%는 칭호형(타이탄 드래곤),
+    나머지는 조합형(DD-MA몬 — '몬'이 살짝 더 자주 나오게 풀에 중복)."""
     if random.random() < 0.2:
-        # random.choice(리스트) : 리스트에서 무작위로 하나 뽑기
-        # SUFFIXES[1:] = "몬"을 뺀 나머지(드래곤/킹/마스터) -> 칭호엔 화려한 접미사
         return f"{random.choice(TITLES)} {random.choice(SUFFIXES[1:])}"
-
-    # 나머지 80%는 평범하게: "유전자들 + 접미사"
-    # SUFFIXES[:1] + SUFFIXES = ["몬"] + 전체  -> "몬"이 뽑힐 확률을 살짝 높인 것
-    return f"{base}{random.choice(SUFFIXES[:1] + SUFFIXES)}"
+    return f"{'-'.join(genes)}{random.choice(SUFFIXES[:1] + SUFFIXES)}"
 
 
 def create_strategy(gene_count: int | None = None) -> Strategy:
-    """
-    전략 포켓몬 한 마리를 만들어 돌려준다.
-
-    gene_count : 유전자를 몇 개 가질지.
-      - 'int | None' = 정수 또는 None(둘 다 가능)이라는 뜻
-      - 기본값 None -> "안 정해주면 개수도 랜덤으로 정한다"
-    """
+    """트레이더 한 명을 만든다. gene_count=None이면 데려갈 포켓몬 수도 랜덤.
+    범위는 항상 1 ~ len(ALL_GENES)로 강제 — 빈 전략(유전자 0개) 방지."""
     if gene_count is None:
-        # 1개 ~ 전체개수(5개) 사이에서 랜덤으로 개수 결정
         gene_count = random.randint(1, len(ALL_GENES))
-
-    # 안전장치: 개수가 너무 작거나 크면 1~5 범위로 강제로 맞춘다.
-    #   max(1, ...) -> 최소 1 보장,  min(..., 5) -> 최대 5 보장
     gene_count = max(1, min(gene_count, len(ALL_GENES)))
 
-    # random.sample(목록, 개수) : 목록에서 '중복 없이' 개수만큼 뽑기
-    # 예) ALL_GENES에서 3개 -> ["MA", "DD", "MOM"] 같은 식
-    genes = random.sample(ALL_GENES, gene_count)
-
-    # 뽑은 유전자 + 자동 생성한 이름으로 전략(데이터)을 만들어 반환
+    genes = random.sample(ALL_GENES, gene_count)    # 중복 없이 뽑기
     return Strategy(genes=genes, name=make_name(genes))
