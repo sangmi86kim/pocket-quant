@@ -182,7 +182,8 @@ def _markdown_report(title: str, report) -> str:
         "",
         f"- 스타일: {_style_profile(stats)['스타일']}",
         f"- 종족치 합계: {report.bst:.1f} / 400",
-        f"- 최종 적합도: {report.fitness:.1f} / 100",
+        f"- 최종 적합도: {report.fitness:.1f} / 100 (평균 70% + 최약 체육관 30%)",
+        f"- 최약 체육관: {report.weakest_gym[0]} ({report.weakest_gym[1]:.1f}점)",
         f"- 등급: {report.grade}",
         "",
         "| 관점 | 등급 | 점수 | 의미 |",
@@ -215,7 +216,7 @@ def run_single(gene_count: int | None, seed: int | None = None,
     _apply_seed(seed)
     print("=== PocketQuant 단판 백테스트 ===\n")
 
-    print("1. 데이터 로딩: SPY 실데이터 4개 국면")
+    print("1. 데이터 로딩: 실데이터 5개 국면 (SPY 4 + QQQ 닷컴)")
     loaded_gyms = load_gyms(all_gyms())
 
     print("\n2. 전략 생성")
@@ -235,7 +236,9 @@ def run_single(gene_count: int | None, seed: int | None = None,
     print("\n4. 종합 스탯")
     print(_format_stats(report.stats))
     print(f"\n종족치 합계 {report.bst:.1f} / 400")
-    print(f"최종 적합도 {report.fitness:.1f}점   등급 {report.grade}")
+    weak_name, weak_fit = report.weakest_gym
+    print(f"최종 적합도 {report.fitness:.1f}점 (평균 70% + 최약 30%)   등급 {report.grade}")
+    print(f"최약 체육관: {weak_name} ({weak_fit:.1f}점)")
     print("\n5. 전략 판정")
     print(_format_profile(report.stats))
 
@@ -254,7 +257,7 @@ def run_evolve(pop: int, generations: int, seed: int | None = None,
     print("=== PocketQuant 진화 백테스트 ===")
     print(f"개체군 {pop}마리 · 진화 {generations}세대\n")
 
-    print("1. 데이터 로딩: SPY 실데이터 4개 국면")
+    print("1. 데이터 로딩: 실데이터 5개 국면 (SPY 4 + QQQ 닷컴)")
     loaded_gyms = load_gyms(all_gyms())
     print()
 
@@ -270,7 +273,9 @@ def run_evolve(pop: int, generations: int, seed: int | None = None,
     print("\n=== 최종 챔피언 ===")
     print(f"유전자: {', '.join(best.genes)}")
     print(f"이름: {best.name}")
-    print(f"최종 적합도: {stats['fitness']:.1f}점 / 100\n")
+    weak_name, weak_fit = stats["weakest"]
+    print(f"최종 적합도: {stats['fitness']:.1f}점 / 100 (평균 70% + 최약 30%)")
+    print(f"최약 체육관: {weak_name} ({weak_fit:.1f}점)\n")
     print("종합 스탯")
     print(_format_stats(stats["stats"]))
     print("\n시장별 성적 (종족치 낮은 순 = 약한 시장):")

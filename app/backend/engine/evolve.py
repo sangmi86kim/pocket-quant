@@ -40,14 +40,16 @@ def evaluate(strategy: Strategy, loaded_gyms: list) -> dict:
     실데이터는 결정론적이라 1회만 돌리면 된다.
 
     반환: {
-      "fitness": 종합 적합도(0~100),
-      "per_gym": {체육관: 종족치BST},     # 시장별 강함 한눈에
+      "fitness": 종합 적합도(0~100, 평균 50% + 최약 체육관 50%),
+      "per_gym": {체육관: 종족치BST},     # 시장별 강함 한눈에 (표시 전용)
+      "weakest": (최약 체육관 이름, 적합도),
       "stats":   종합 스탯블록(Stats),
     }
     """
     report = challenge(strategy, loaded_gyms)      # 결정론적 1회 도전
     per_gym = {r.gym_name: r.stats.bst for r in report.results}
-    return {"fitness": report.fitness, "per_gym": per_gym, "stats": report.stats}
+    return {"fitness": report.fitness, "per_gym": per_gym,
+            "weakest": report.weakest_gym, "stats": report.stats}
 
 
 # ── 2. 선택 (자연선택) ────────────────────────────────

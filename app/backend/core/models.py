@@ -128,8 +128,33 @@ class Report:
 
     @property
     def fitness(self) -> float:
-        """종합 적합도 (0~100)."""
-        return self.stats.fitness
+        """
+        종합 적합도 (0~100) = 체육관별 적합도의 [평균 70% + 최약 30%].
+
+        [worst-case 반영 이유] 평균만 쓰면 "평시장 점수로 위기장 낙제를 덮는"
+        전략이 1등이 된다. 최약 체육관을 반영해 '어느 국면에서도 무너지지
+        않는' 전략을 우대한다.
+
+        [가중치 30%인 이유 — 실측] '전부 현금'은 모든 체육관에서 균일 16.7점
+        (= 최약 국면이 없음)이라, min 가중치를 올릴수록 현금이 상대적으로 떠오른다.
+        2026-06-11 스윕: min 40%부터 현금이 43/65위로 올라와 퇴화 게이트
+        (tests/test_baselines.py, 하위 25% 룰) FAIL. 30%가 게이트를 지키는
+        최대 worst-case 가중치(현금 64/65위). 상위권 순서는 0~50% 전 구간 동일.
+        ※ 기준은 BST가 아니라 fitness(HP 가중치 0) — BST를 쓰면 HP(현금 비중)가
+          뒷문으로 들어와 '아무것도 안 하기' 퇴화가 부활한다.
+        """
+        if not self.results:
+            return 0.0
+        per_gym = [r.stats.fitness for r in self.results]
+        return 0.7 * (sum(per_gym) / len(per_gym)) + 0.3 * min(per_gym)
+
+    @property
+    def weakest_gym(self) -> tuple[str, float]:
+        """최약 체육관 (이름, 적합도) — 리포트 표시·진단용."""
+        if not self.results:
+            return ("", 0.0)
+        worst = min(self.results, key=lambda r: r.stats.fitness)
+        return (worst.gym_name, worst.stats.fitness)
 
     @property
     def bst(self) -> float:
