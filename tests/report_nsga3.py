@@ -23,7 +23,7 @@ from app.backend.market.gym import all_gyms
 
 _ROOT = Path(__file__).resolve().parent.parent
 STORAGE = f"sqlite:///{(_ROOT / 'optuna_pocketquant.db').as_posix()}"
-STUDY = "nsga3_v1"
+STUDY = "nsga3_v2_weights"      # v1(가중치+파라미터, 관문① 전멸)도 DB에 남아 있음
 OUT = _ROOT / "reports" / "nsga3_report.html"
 
 OBJ_LABELS = {"bear": "하락장", "rebound": "회복장", "crash_v": "급락V",
@@ -38,6 +38,8 @@ def _weights_str(params: dict) -> str:
 
 
 def _params_str(p: dict) -> str:
+    if "DD_LIMIT" not in p:                      # 가중치 전용 리그 (v2)
+        return "파라미터 기본값 고정"
     return (f"DD {p['DD_LIMIT']:.2f} / MA {p['MA_WINDOW']} / MOM {p['MOM_LOOKBACK']} / "
             f"RSI&lt;{p['RSI_OVERSOLD']} / BB k{p['BB_K']:.2f} / "
             f"VOL {p['VOL_CALM']:.3f}~{p['VOL_CALM'] + p['VOL_SPREAD']:.3f}")

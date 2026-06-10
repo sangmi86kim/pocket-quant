@@ -46,16 +46,24 @@ from app.backend.market.data import LoadedGym, WARMUP_DAYS, get_prices
 
 _ROOT = Path(__file__).resolve().parent.parent
 STORAGE = f"sqlite:///{(_ROOT / 'optuna_pocketquant.db').as_posix()}"
-STUDY = "nsga3_v1"
+STUDY = "nsga3_v2_weights"      # v1(가중치+파라미터)은 관문 ①에서 전멸 — DB에 보존
 
 TICKER = "QQQ"
 OOS_YEARS = [2003, 2004, 2005, 2006, 2007, 2011, 2012, 2013, 2014, 2018, 2019]
 
+# 졸업(선발) 필터 허용치. v1의 -5는 파라미터 튜닝으로 부풀린 인샘플 점수에서만
+# 가능했던 기준(그 31명은 전멸). 정직한 가중치 전용 공간(v2)에선 무튜닝 챔피언도
+# 최약 국면 -8.5라 -10이 현실적인 선발선이다. ※ 생존 판정 기준(심판)은 불변.
+GRAD_TOLERANCE = 0.10
+
 
 # ── 후보 로딩 ──────────────────────────────────────
 def _trial_candidate(params: dict) -> tuple[list[float], dict]:
-    """Optuna trial 파라미터 → (가중치, 시그널 파라미터)로 복원."""
+    """Optuna trial 파라미터 → (가중치, 시그널 파라미터)로 복원.
+    가중치 전용 리그(v2)의 트라이얼엔 w_* 만 있다 → 시그널 파라미터는 기본값."""
     weights = [params[f"w_{g}"] for g in ALL_GENES]
+    if "VOL_CALM" not in params:
+        return weights, {}
     sig = {k: params[k] for k in
            ("DD_LIMIT", "MA_WINDOW", "MOM_LOOKBACK", "RSI_OVERSOLD", "BB_K", "VOL_CALM")}
     sig["VOL_STRESSED"] = params["VOL_CALM"] + params["VOL_SPREAD"]
@@ -66,7 +74,7 @@ def load_graduates() -> list[dict]:
     """리그 필터 통과자 + 기준 트레이더(현 단일목적 챔피언)를 명단으로 만든다."""
     optuna.logging.set_verbosity(optuna.logging.WARNING)
     study = optuna.load_study(study_name=STUDY, storage=STORAGE)
-    summary = nsga3.summarize_front(study)
+    summary = nsga3.summarize_front(study, tolerance=GRAD_TOLERANCE)
     label_of = {row["number"]: name for name, row in summary["labels"].items()}
 
     graduates = [{

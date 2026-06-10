@@ -251,20 +251,23 @@ def run_single(gene_count: int | None, seed: int | None = None,
 
 
 def run_nsga3(trials: int, seed: int | None = None,
-              storage: str | None = None, study_name: str = "nsga3_v1") -> None:
+              storage: str | None = None, study_name: str = "nsga3_v2_weights",
+              tune_params: bool = False) -> None:
     """[다목적 모드] Optuna NSGA-III — 국면별 라이벌(DCA)전 5목적 + 턴오버.
-    결과는 챔피언 1마리가 아니라 Pareto front(전략 라인업)다."""
+    결과는 챔피언 1명이 아니라 Pareto front(트레이더 라인업)다.
+    기본 = 가중치 전용 탐색(A안). tune_params=True는 고도화 단계용."""
     from app.backend.engine import nsga3   # optuna는 이 모드에서만 필요 — 지연 import
 
+    space = "가중치 6 + 파라미터 7" if tune_params else "가중치 6 (파라미터 기본값 고정)"
     print("=== PocketQuant NSGA-III 다목적 최적화 ===")
-    print(f"트라이얼 {trials} · 목적 {nsga3.OBJECTIVE_NAMES} · 시드 {seed}\n")
+    print(f"트라이얼 {trials} · 목적 {nsga3.OBJECTIVE_NAMES} · X = {space} · 시드 {seed}\n")
 
     def on_progress(done, total, front_size):
         print(f"  [{done:>5}/{total}] Pareto front {front_size}개")
 
     study, loaded_gyms, dca = nsga3.run_study(
         trials, seed=seed, storage=storage, study_name=study_name,
-        on_progress=on_progress)
+        tune_params=tune_params, on_progress=on_progress)
 
     # 비교 기준: 현 단일목적 챔피언 (동일가중 VOL+REV_RSI+REV_BB)
     ref = nsga3.reference_vector(loaded_gyms, dca)
@@ -300,6 +303,8 @@ def _format_candidate_params(params: dict) -> str:
     w = [params[f"w_{g}"] for g in ALL_GENES]
     total = sum(w) or 1.0
     weights = " ".join(f"{g} {x / total * 100:.0f}%" for g, x in zip(ALL_GENES, w))
+    if "DD_LIMIT" not in params:                 # 가중치 전용 리그 (v2, A안)
+        return f"가중치: {weights}\n  파라미터: 기본값 고정"
     tunables = (f"DD {params['DD_LIMIT']:.2f} · MA {params['MA_WINDOW']} · "
                 f"MOM {params['MOM_LOOKBACK']} · RSI<{params['RSI_OVERSOLD']} · "
                 f"BB k{params['BB_K']:.2f} · VOL {params['VOL_CALM']:.3f}"

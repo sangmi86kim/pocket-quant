@@ -23,7 +23,7 @@ from app.service import _format_candidate_params, _format_objective_vector
 # (상대 경로면 PyCharm처럼 작업 디렉토리가 다른 실행에서 빈 DB를 새로 만들어 버린다.)
 _ROOT = Path(__file__).resolve().parent.parent
 STORAGE = f"sqlite:///{(_ROOT / 'optuna_pocketquant.db').as_posix()}"
-STUDY = "nsga3_v1"
+STUDY = "nsga3_v2_weights"      # v1(가중치+파라미터, 관문① 전멸)도 DB에 남아 있음
 CSV_OUT = _ROOT / "reports" / "nsga3_front.csv"
 
 

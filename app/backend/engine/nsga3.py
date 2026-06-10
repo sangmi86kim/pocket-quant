@@ -46,12 +46,17 @@ def _gym_key(gym_name: str) -> str:
 
 
 def evaluate_candidate(weights: list[float], params: dict,
-                       loaded_gyms: list[LoadedGym], dca: dict) -> dict:
+                       loaded_gyms: list[LoadedGym], dca: dict,
+                       base_positions: dict | None = None) -> dict:
     """후보 1개(가중치+파라미터)를 전 체육관에서 채점해
-    {체육관키: score_vs_dca, "turnover": 일평균} 을 돌려준다."""
+    {체육관키: score_vs_dca, "turnover": 일평균} 을 돌려준다.
+
+    base_positions: {체육관이름: 포지션목록} — 가중치 전용 리그(v2)에선 시그널이
+    트라이얼마다 동일하므로 미리 계산해 넘기면 가중 결합+채점만 남는다(대폭 가속)."""
     out, turnovers = {}, []
     for lg in loaded_gyms:
-        positions = positions_with_params(lg.prices, params)
+        positions = (base_positions[lg.gym.name] if base_positions is not None
+                     else positions_with_params(lg.prices, params))
         position = combine_positions(positions, weights)
         result = _score_position(position, lg)          # 전략과 동일 실행 모델(0.1% 과금)
         out[_gym_key(lg.gym.name)] = score_vs_dca(result, dca[lg.gym.name])
@@ -60,9 +65,19 @@ def evaluate_candidate(weights: list[float], params: dict,
     return out
 
 
-def suggest_candidate(trial: optuna.Trial) -> tuple[list[float], dict]:
-    """탐색공간 정의 — 첫 버전은 보수적으로 (OPTIMIZATION.md 4-3)."""
+def suggest_candidate(trial: optuna.Trial,
+                      tune_params: bool = False) -> tuple[list[float], dict]:
+    """탐색공간 정의.
+
+    [v2 리그 = 가중치 전용이 기본 (A안, 2026-06-11 사용자 결정)]
+    v1 리그(가중치+파라미터 13차원)는 챔피언로드 관문 ①에서 전멸했다 —
+    인샘플↔OOS 상관 -0.21, 유일 생존자는 무튜닝 기본값. 과적합 벡터가
+    파라미터 탐색이었으므로 v2는 파라미터를 기본값에 고정하고 가중치 6개만
+    탐색한다. tune_params=True는 나중에 고도화할 때를 위해 보존.
+    """
     weights = [trial.suggest_float(f"w_{g}", 0.0, 1.0) for g in ALL_GENES]
+    if not tune_params:
+        return weights, {}                       # 시그널 파라미터 = 모듈 기본값
     vol_calm = trial.suggest_float("VOL_CALM", 0.005, 0.015)
     params = {
         "DD_LIMIT": trial.suggest_float("DD_LIMIT", 0.05, 0.25),
@@ -77,10 +92,14 @@ def suggest_candidate(trial: optuna.Trial) -> tuple[list[float], dict]:
     return weights, params
 
 
-def make_objective(loaded_gyms: list[LoadedGym], dca: dict):
+def make_objective(loaded_gyms: list[LoadedGym], dca: dict, tune_params: bool = False):
+    # 가중치 전용 리그: 시그널 포지션은 전 트라이얼 공통 → 체육관당 1번만 계산
+    base_positions = (None if tune_params else
+                      {lg.gym.name: positions_with_params(lg.prices) for lg in loaded_gyms})
+
     def objective(trial: optuna.Trial):
-        weights, params = suggest_candidate(trial)
-        s = evaluate_candidate(weights, params, loaded_gyms, dca)
+        weights, params = suggest_candidate(trial, tune_params)
+        s = evaluate_candidate(weights, params, loaded_gyms, dca, base_positions)
         return (min(s["dotcom"], s["gfc"]),     # bear (압축)
                 s["rebound"], s["crash_v"], s["bull"], s["chop"],
                 s["turnover"])
@@ -88,9 +107,11 @@ def make_objective(loaded_gyms: list[LoadedGym], dca: dict):
 
 
 def run_study(n_trials: int, seed: int | None = 42, storage: str | None = None,
-              study_name: str = "nsga3_v1", on_progress=None):
+              study_name: str = "nsga3_v2_weights", tune_params: bool = False,
+              on_progress=None):
     """스터디 1회 실행. storage(sqlite URL)를 주면 중단/재개 가능.
-    on_progress(완료수, 전체수, front크기) — 진행 콜백 훅."""
+    on_progress(완료수, 전체수, front크기) — 진행 콜백 훅.
+    ⚠️ 같은 study_name에 다른 탐색공간(tune_params)을 섞지 말 것."""
     loaded_gyms = load_gyms(all_gyms())
     dca = {lg.gym.name: fight_dca(lg) for lg in loaded_gyms}
 
@@ -111,7 +132,7 @@ def run_study(n_trials: int, seed: int | None = 42, storage: str | None = None,
                 on_progress(n, n_trials, len(st.best_trials))
         callbacks.append(_cb)
 
-    study.optimize(make_objective(loaded_gyms, dca), n_trials=n_trials,
+    study.optimize(make_objective(loaded_gyms, dca, tune_params), n_trials=n_trials,
                    callbacks=callbacks)
     return study, loaded_gyms, dca
 
