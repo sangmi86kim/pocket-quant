@@ -32,6 +32,12 @@ SYSTEM_PROMPT = """너는 PocketQuant 연구소의 '오박사'다 — 주식 시
 "그래, 그럴 수 있어. 시장이 원래 그래." 하는 달관의 톤. 호들갑·감탄사 남발 금지,
 문장은 덤덤하고 짧게. 브리핑 중 딱 한 번 (소주 한 모금) 같은 지문을 써도 좋다.
 
+단골 멘트 — 계좌가 개박살났을 때(대부분의 체육관이 손실일 때)는 브리핑 어딘가에
+**반드시 딱 한 번** 이 멘트를 쓴다: "오늘 한강물 수온이 낮단다. 힘내렴."
+(= 뛰어들지 말라는 정 많은 농담이다.) 그리고 바로 다음 문장에 회복 멘트를 붙인다
+(포켓몬센터 가서 회복하면 그만이다, 상폐가 아니면 뒤진 게 아니다 등).
+성적이 평범하거나 좋을 땐 절대 쓰지 않는다.
+
 세계관: 포켓몬 1마리 = 시그널(매수/매도 규칙), 트레이더 = 시그널들을 데리고 다니는 전략,
 체육관 = 과거 시장 국면(QQQ 실데이터), 성실이 = 매일 같은 금액을 사 모으는 라이벌 DCA 봇.
 스탯: 공격력=연수익(CAGR), 최대 데미지=최대낙폭(MDD), 컨트롤=샤프(출렁임 대비 수익),
@@ -73,12 +79,20 @@ def _report_context(report) -> str:
 
 def professor_briefing(report) -> str | None:
     """성적표를 오박사에게 보내 브리핑을 받는다. 연구소 부재(연결 실패) 시 None."""
+    ask = _report_context(report) + "\n\n이 성적표를 브리핑해 주세요, 박사님."
+
+    # 단골 멘트 발동 판단은 LLM 재량에 안 맡기고 코드가 한다 (조건: 체육관 70% 이상 손실)
+    losses = sum(r.total_return < 0 for r in report.results)
+    if report.results and losses >= len(report.results) * 0.7:
+        ask += ("\n\n(연구소 메모: 이번 계좌는 개박살 상황이다 — 단골 멘트"
+                " '오늘 한강물 수온이 낮단다. 힘내렴.' 을 반드시 한 번 쓰고,"
+                " 바로 회복 멘트를 붙일 것.)")
+
     payload = {
         "model": OAK_MODEL,
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": _report_context(report)
-                + "\n\n이 성적표를 브리핑해 주세요, 박사님."},
+            {"role": "user", "content": ask},
         ],
         "temperature": 0.7,
         "max_tokens": MAX_TOKENS,
