@@ -52,11 +52,18 @@ def _scale(value: float, lo: float, hi: float) -> float:
 
 def fight(strategy: Strategy, loaded: LoadedGym) -> BattleResult:
     """전략 한 마리가 (미리 로딩된) 한 시장 국면을 통과하며 만든 스탯블록을 계산한다."""
+    # (1) 유전자들로 일별 포지션(0~1)을 만들고, 공용 채점기에 넘긴다
+    position = combined_position(strategy.genes, loaded.prices)
+    return _score_position(position, loaded)
+
+
+def _score_position(position, loaded: LoadedGym) -> BattleResult:
+    """일별 포지션(0~1) 시계열 하나를 채점한다 — fight와 DCA 기준선이 공유하는 엔진.
+    실행 모델(하루 lag, 턴오버 과금, 워밍업 컷)이 모든 참가자에게 동일해야 공정 비교다."""
     gym = loaded.gym
     prices = loaded.prices          # 이미 워밍업 버퍼 포함해 받아둔 가격
 
-    # (1) 일별 포지션(0~1) + (2) 하루 lag 적용한 전략/시장 수익
-    position = combined_position(strategy.genes, prices)
+    # (2) 하루 lag 적용한 전략/시장 수익
     effective_position = position.shift(1)
     market_ret = prices.pct_change()
     turnover = effective_position.diff().abs()              # 그날 매매한 자본 비율
@@ -69,6 +76,7 @@ def fight(strategy: Strategy, loaded: LoadedGym) -> BattleResult:
     strat_ret = strat_ret[mask].dropna()
     market_ret = market_ret[mask].dropna()
     effective_position = effective_position[mask].dropna()
+    turnover = turnover[mask].dropna()
 
     # 데이터가 비정상적으로 비면 0점 스탯으로 방어 반환
     if len(strat_ret) < 2:
@@ -106,7 +114,47 @@ def fight(strategy: Strategy, loaded: LoadedGym) -> BattleResult:
         gym_name=gym.name, stats=stats, cagr=cagr,
         total_return=total_return, market_return=market_return,
         max_drawdown=float(my_dd), market_drawdown=float(market_dd),
+        sharpe=sharpe, turnover=float(turnover.mean()) if len(turnover) else 0.0,
     )
+
+
+# ──────────────────────────────────────────────
+# DCA 기준선 — "이길 대상"은 단순보유가 아니라 사용자의 실제 적립 머신
+# (토스 매일 $20 QQQM 자동매수). 금액은 비율이라 무관하다.
+# ──────────────────────────────────────────────
+def _dca_position(loaded: LoadedGym):
+    """일별 DCA를 포지션 스케줄로 표현한다.
+
+    평가 구간이 N거래일이면 매일 종가에 총자본의 1/N씩 사 모은다:
+    k번째 거래일 매수 후 투자 비중 = k/N (시작 0 → 끝 100%, 매도 없음).
+    같은 채점기(_score_position)를 타므로 하루 lag·거래비용(매수마다 0.1%)도
+    전략과 똑같이 적용된다 = 공정 비교."""
+    prices = loaded.prices
+    mask = (prices.index >= pd.Timestamp(loaded.gym.start)) \
+         & (prices.index <= pd.Timestamp(loaded.gym.end))
+    position = pd.Series(0.0, index=prices.index)
+    n = int(mask.sum())
+    if n > 0:
+        position[mask] = np.arange(1, n + 1) / n
+    return position
+
+
+def fight_dca(loaded: LoadedGym) -> BattleResult:
+    """DCA 기준선 참가자의 성적 — 한 체육관을 매일 1/N 적립으로 통과한 결과."""
+    return _score_position(_dca_position(loaded), loaded)
+
+
+def score_vs_dca(strat: BattleResult, dca: BattleResult) -> float:
+    """그 체육관에서 전략이 DCA보다 얼마나 나았나 (양수 = DCA 머신 개선).
+
+    NSGA-III 목적함수 재료 (코덱스 설계, 가중치는 단순 고정 — 과적합 방지):
+      0.4 × 수익 차이      (전략 총수익 − DCA 총수익)
+      0.4 × 낙폭 개선      (DCA 낙폭 − 전략 낙폭, 얕을수록 +)
+      0.2 × 샤프 차이      (위험 대비 효율)
+    raw 지표만 사용 — 0~100 클램프 스탯/BST 금지(현금 뒷문 방지)."""
+    return (0.4 * (strat.total_return - dca.total_return)
+            + 0.4 * (abs(dca.max_drawdown) - abs(strat.max_drawdown))
+            + 0.2 * (strat.sharpe - dca.sharpe))
 
 
 def challenge(strategy: Strategy, loaded_gyms: list[LoadedGym]) -> Report:

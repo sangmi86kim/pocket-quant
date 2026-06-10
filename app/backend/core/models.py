@@ -97,7 +97,11 @@ class Gym:
 
 @dataclass
 class BattleResult:
-    """한 체육관(시장 국면)에서 백테스트한 결과 = 그 시장에서의 스탯블록."""
+    """한 체육관(시장 국면)에서 백테스트한 결과 = 그 시장에서의 스탯블록.
+
+    [raw 지표] 0~100 스탯은 사람 읽기용(클램프됨). 최적화(NSGA-III)·DCA 비교는
+    아래 원시값을 쓴다 — 코덱스 리뷰 4번(옵티마이저는 raw, 표시는 스탯) 반영.
+    """
     gym_name: str
     stats: Stats                  # 그 시장에서 뽑힌 HP/ATK/DEF/SKILL
     cagr: float = 0.0             # 연율수익률 (원시값, 표시용)
@@ -105,6 +109,8 @@ class BattleResult:
     market_return: float = 0.0    # 단순보유 기간 총수익률 (비교용)
     max_drawdown: float = 0.0     # 내 전략의 최대낙폭 (음수)
     market_drawdown: float = 0.0  # 시장(단순보유)의 최대낙폭 (음수, 비교용)
+    sharpe: float = 0.0           # 샤프 raw (연율화. 출렁임 대비 수익 효율)
+    turnover: float = 0.0         # 일평균 매매 비율 (포지션 변화량 |diff| 평균, 비용·NSGA-III 목적 재료)
 
 
 @dataclass
