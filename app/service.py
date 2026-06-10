@@ -15,7 +15,7 @@ from pathlib import Path
 from app.backend.engine.battle import challenge
 from app.backend.engine.evolve import evolve
 from app.backend.engine.strategy import create_strategy
-from app.backend.genes.dex import SIGNAL_CARDS
+from app.backend.genes.dex import GYM_LEADERS, NPC_CARDS, SIGNAL_CARDS
 from app.backend.genes.signals import ALL_GENES
 from app.backend.market.data import load_gyms
 from app.backend.market.gym import all_gyms
@@ -220,8 +220,10 @@ def _markdown_report(title: str, report) -> str:
 
 
 def run_pokedex() -> None:
-    """[도감] 전 유전자(포켓몬)의 설명 카드를 출력한다."""
-    print("=== PocketQuant 유전자 도감 ===\n")
+    """[도감] 포켓몬(시그널) 카드 + 체육관 관장 + NPC를 출력한다."""
+    print("=== PocketQuant 도감 ===\n")
+
+    print("─── 스타팅 6마리 (시그널) ───\n")
     for gene in ALL_GENES:                  # 실제 명단 순서대로
         c = SIGNAL_CARDS[gene]
         print(f"[{gene:<3}] {c['name']}   ({c['type']} · {c['role']})")
@@ -229,6 +231,20 @@ def run_pokedex() -> None:
         print(f"      효과: {c['effect']}")
         print(f"      강점: {c['strength']}")
         print(f"      약점: {c['weakness']}\n")
+
+    print("─── 체육관 관장 6명 (시장 국면) ───\n")
+    for gym_name, leader in GYM_LEADERS.items():
+        print(f"[{leader['name']}] {gym_name}   ({leader['type']} 타입)")
+        print(f"      \"{leader['quote']}\"")
+        print(f"      주특기: {leader['specialty']}")
+        print(f"      공략법: {leader['counter']}\n")
+
+    print("─── NPC ───\n")
+    for name, c in NPC_CARDS.items():
+        print(f"[{name}] {c['role']}")
+        print(f"      성격: {c['personality']}")
+        print(f"      무서운 점: {c['scary']}")
+        print(f"      전적: {c['record']}\n")
 
 
 def run_single(gene_count: int | None, seed: int | None = None,
