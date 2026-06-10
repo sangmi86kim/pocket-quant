@@ -2,9 +2,9 @@
 service.py - 실행 '흐름'을 조립하는 층 (애플리케이션 서비스)
 
 3층 구조에서 가운데를 맡는다:
-  main.py    = CLI 입력만 받음 (argparse → 어떤 서비스를 부를지 결정)
-  service.py = 단판/진화 '실행 순서'를 조립 (← 이 파일)
-  backend/*  = 실제 기능(데이터 로딩·전략·백테스트·GA·계산)
+  main.py    = config.json 읽어 어떤 서비스를 부를지 결정 (CLI 플래그 없음)
+  service.py = 단판/진화/다목적 '실행 순서'를 조립 (← 이 파일)
+  backend/*  = 실제 기능(데이터 로딩·전략·백테스트·GA·NSGA-III·계산)
 
 여기서는 어려운 계산을 하지 않는다. backend 기능을 '순서대로' 불러
 파이프라인(① 데이터 → ② 전략 → ③ 전투 → ④ 결과 → ⑤ 진화)을 엮고 출력만 한다.
@@ -15,7 +15,7 @@ from pathlib import Path
 from app.backend.engine.battle import challenge
 from app.backend.engine.evolve import evolve
 from app.backend.engine.strategy import create_strategy
-from app.backend.genes.dex import SIGNAL_CARDS
+from app.backend.genes.dex import GYM_LEADERS, NPC_CARDS, SIGNAL_CARDS
 from app.backend.genes.signals import ALL_GENES
 from app.backend.market.data import load_gyms
 from app.backend.market.gym import all_gyms
@@ -125,6 +125,27 @@ def _format_profile(stats) -> str:
     return "\n".join(lines)
 
 
+def _format_objective_vector(values: list[float]) -> str:
+    """[NSGA-III] 목적 벡터를 한 줄로 (점수 ×100 표기, 턴오버는 원값)."""
+    names = ["bear", "rebound", "crash_v", "bull", "chop"]
+    scores = " ".join(f"{n} {v * 100:+6.1f}" for n, v in zip(names, values[:5]))
+    return f"{scores}  | turnover {values[5]:.4f}/일"
+
+
+def _format_candidate_params(params: dict) -> str:
+    """[NSGA-III] 트레이더의 X를 사람 읽는 형태로 — 가중치는 비율(%)로 정규화."""
+    w = [params[f"w_{g}"] for g in ALL_GENES]
+    total = sum(w) or 1.0
+    weights = " ".join(f"{g} {x / total * 100:.0f}%" for g, x in zip(ALL_GENES, w))
+    if "DD_LIMIT" not in params:                 # 가중치 전용 리그 (v2, A안)
+        return f"가중치: {weights}\n  파라미터: 기본값 고정"
+    tunables = (f"DD {params['DD_LIMIT']:.2f} · MA {params['MA_WINDOW']} · "
+                f"MOM {params['MOM_LOOKBACK']} · RSI<{params['RSI_OVERSOLD']} · "
+                f"BB k{params['BB_K']:.2f} · VOL {params['VOL_CALM']:.3f}"
+                f"~{params['VOL_CALM'] + params['VOL_SPREAD']:.3f}")
+    return f"가중치: {weights}\n  파라미터: {tunables}"
+
+
 def _resolve_md_path(path: str | None, mode: str) -> Path | None:
     """--md 인자를 실제 저장 경로로 바꾼다."""
     if path is None:
@@ -199,8 +220,10 @@ def _markdown_report(title: str, report) -> str:
 
 
 def run_pokedex() -> None:
-    """[도감] 전 유전자(포켓몬)의 설명 카드를 출력한다."""
-    print("=== PocketQuant 유전자 도감 ===\n")
+    """[도감] 포켓몬(시그널) 카드 + 체육관 관장 + NPC를 출력한다."""
+    print("=== PocketQuant 도감 ===\n")
+
+    print("─── 스타팅 6마리 (시그널) ───\n")
     for gene in ALL_GENES:                  # 실제 명단 순서대로
         c = SIGNAL_CARDS[gene]
         print(f"[{gene:<3}] {c['name']}   ({c['type']} · {c['role']})")
@@ -209,15 +232,30 @@ def run_pokedex() -> None:
         print(f"      강점: {c['strength']}")
         print(f"      약점: {c['weakness']}\n")
 
+    print("─── 체육관 관장 6명 (시장 국면) ───\n")
+    for gym_name, leader in GYM_LEADERS.items():
+        print(f"[{leader['name']}] {gym_name}   ({leader['type']} 타입)")
+        print(f"      \"{leader['quote']}\"")
+        print(f"      주특기: {leader['specialty']}")
+        print(f"      공략법: {leader['counter']}\n")
+
+    print("─── NPC ───\n")
+    for name, c in NPC_CARDS.items():
+        print(f"[{name}] {c['role']}")
+        print(f"      성격: {c['personality']}")
+        print(f"      무서운 점: {c['scary']}")
+        print(f"      전적: {c['record']}\n")
+
 
 def run_single(gene_count: int | None, seed: int | None = None,
                md_path: str | None = None, capital: float | None = None) -> None:
-    """[단판 모드] 전략 한 마리를 만들어 전 시장 백테스트하고 스탯을 출력."""
+    """[단판 모드] 트레이더 한 명을 만들어 전 시장 백테스트하고 스탯을 출력."""
     _apply_seed(seed)
     print("=== PocketQuant 단판 백테스트 ===\n")
 
-    print("1. 데이터 로딩: QQQ 실데이터 5개 국면")
-    loaded_gyms = load_gyms(all_gyms())
+    gyms = all_gyms()
+    print(f"1. 데이터 로딩: QQQ 실데이터 {len(gyms)}개 국면")   # 체육관 수는 gym.py가 정함
+    loaded_gyms = load_gyms(gyms)
 
     print("\n2. 전략 생성")
     strategy = create_strategy(gene_count)
@@ -250,15 +288,56 @@ def run_single(gene_count: int | None, seed: int | None = None,
     _write_markdown(path, _markdown_report("PocketQuant 단판 백테스트 리포트", report))
 
 
+def run_nsga3(trials: int, seed: int | None = None,
+              storage: str | None = None, study_name: str = "nsga3_v2_weights",
+              tune_params: bool = False) -> None:
+    """[다목적 모드] Optuna NSGA-III — 국면별 라이벌(DCA)전 5목적 + 턴오버.
+    결과는 챔피언 1명이 아니라 Pareto front(트레이더 라인업)다.
+    기본 = 가중치 전용 탐색(A안). tune_params=True는 고도화 단계용."""
+    from app.backend.engine import nsga3   # optuna는 이 모드에서만 필요 — 지연 import
+
+    space = "가중치 6 + 파라미터 7" if tune_params else "가중치 6 (파라미터 기본값 고정)"
+    print("=== PocketQuant NSGA-III 다목적 최적화 ===")
+    print(f"트라이얼 {trials} · 목적 {nsga3.OBJECTIVE_NAMES} · X = {space} · 시드 {seed}\n")
+
+    def on_progress(done, total, front_size):
+        print(f"  [{done:>5}/{total}] Pareto front {front_size}개")
+
+    study, loaded_gyms, dca = nsga3.run_study(
+        trials, seed=seed, storage=storage, study_name=study_name,
+        tune_params=tune_params, on_progress=on_progress)
+
+    # 비교 기준: 현 단일목적 챔피언 (동일가중 VOL+REV_RSI+REV_BB)
+    ref = nsga3.reference_vector(loaded_gyms, dca)
+    print("\n=== 기준점: 현 챔피언 VOL+REV_RSI+REV_BB (동일가중·기본 파라미터) ===")
+    print("  " + _format_objective_vector(
+        [min(ref["dotcom"], ref["gfc"]), ref["rebound"], ref["crash_v"],
+         ref["bull"], ref["chop"], ref["turnover"]]))
+
+    summary = nsga3.summarize_front(study)
+    print(f"\n=== Pareto front {summary['front_size']}개 → 하드 필터 통과 "
+          f"{len(summary['passed'])}개 (전 국면 ≥ -{summary['tolerance'] * 100:.0f}, "
+          f"턴오버 ≤ {summary['turnover_cap']}) ===")
+
+    for label, row in summary["labels"].items():
+        print(f"\n[{label}]  trial #{row['number']}")
+        print("  " + _format_objective_vector(row["values"]))
+        print("  " + _format_candidate_params(row["params"]))
+
+    if not summary["labels"]:
+        print("\n  ⚠️ 필터 통과 후보 없음 — tolerance/turnover_cap을 조정해 다시 보세요.")
+
+
 def run_evolve(pop: int, generations: int, seed: int | None = None,
                md_path: str | None = None, capital: float | None = None) -> None:
     """[진화 모드] 단일목적 GA(적합도=스탯 가중합)로 챔피언을 진화시킨다."""
     _apply_seed(seed)
     print("=== PocketQuant 진화 백테스트 ===")
-    print(f"개체군 {pop}마리 · 진화 {generations}세대\n")
+    print(f"개체군 트레이더 {pop}명 · 진화 {generations}세대\n")
 
-    print("1. 데이터 로딩: QQQ 실데이터 5개 국면")
-    loaded_gyms = load_gyms(all_gyms())
+    gyms = all_gyms()
+    print(f"1. 데이터 로딩: QQQ 실데이터 {len(gyms)}개 국면")   # 체육관 수는 gym.py가 정함
+    loaded_gyms = load_gyms(gyms)
     print()
 
     # 세대마다 호출될 콜백: 진행상황을 한 줄씩 출력 (회사에서 쓰는 그 콜백 자리)

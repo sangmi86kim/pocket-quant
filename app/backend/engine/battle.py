@@ -3,8 +3,11 @@ battle.py - 전투(백테스트)를 '계산'하는 파일, 게임의 엔진
 
 [책임] 순수 계산만 한다. 데이터 로딩(I/O)은 data.py가 미리 끝내서 넘겨준다.
 흐름:
-  fight()     : 전략 1마리 vs 미리 로딩된 체육관 1곳 -> 그 시장에서의 스탯블록
-  challenge() : 전략 1마리 vs 여러 체육관           -> 종합 성적표(Report)
+  fight()        : 전략 1명 vs 미리 로딩된 체육관 1곳 -> 그 시장에서의 스탯블록
+  challenge()    : 전략 1명 vs 여러 체육관            -> 종합 성적표(Report)
+  fight_dca()    : 라이벌 '성실이'(일별 DCA, 무비용) 소환 -> 같은 체육관 성적
+  score_vs_dca() : 그 체육관에서 성실이 대비 얼마나 나았나 (NSGA-III 목적 재료)
+스탯(0~100)은 사람 읽기용, 최적화는 BattleResult의 raw 지표(sharpe/turnover 등)를 쓴다.
 
 [핵심 계산] (가격은 이미 LoadedGym으로 받아둔 상태)
   1) signals.combined_position 으로 일별 포지션(0~1)을 만든다
@@ -147,7 +150,7 @@ def _dca_position(loaded: LoadedGym):
 
 
 def fight_dca(loaded: LoadedGym) -> BattleResult:
-    """DCA 기준선 참가자의 성적 — 한 체육관을 매일 1/N 적립으로 통과한 결과.
+    """라이벌 '성실이'(DCA 기준선)의 성적 — 한 체육관을 매일 1/N 적립으로 통과한 결과.
     수수료 0원: 토스 '주식 자동 모으기'는 매수 수수료 면제(사용자 실계좌 확인,
     2026-06-11). 전략은 타이밍 매매라 면제 대상이 아님 = 비대칭이 현실이고,
     그만큼 DCA를 이기는 기준이 높아진다."""

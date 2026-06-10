@@ -13,19 +13,23 @@ CLI 플래그(argparse)는 쓰지 않는다 — 옵션을 바꾸려면 config.js
 import json
 from pathlib import Path
 
-from app.service import run_evolve, run_pokedex, run_single
+from app.service import run_evolve, run_nsga3, run_pokedex, run_single
 
 CONFIG_PATH = Path(__file__).parent / "config.json"
 
 # 기본값 — config.json에 없는 키는 이 값을 쓴다.
 DEFAULTS = {
-    "mode": "single",     # single(단판) | evolve(진화 GA) | dex(도감)
+    "mode": "single",     # single(단판) | evolve(진화 GA) | nsga3(다목적) | dex(도감)
     "genes": None,        # [단판] 유전자 개수 (None = 랜덤)
     "pop": 20,            # [진화] 개체군 크기
     "generations": 10,    # [진화] 세대 수
     "seed": None,         # 랜덤 시드 (None = 매번 다름, 숫자 = 재현 가능)
     "md": None,           # Markdown 리포트: None=저장 안 함, ""=기본 경로, "경로"=지정 경로
     "capital": None,      # 실전 시뮬 시작 자본(원). 예) 10000000
+    "trials": 600,        # [nsga3] 트라이얼 수
+    "storage": None,      # [nsga3] Optuna storage URL (예: "sqlite:///nsga3.db") — 중단/재개용
+    "study": "nsga3_v2_weights",  # [nsga3] 스터디 이름 (storage 사용 시)
+    "tune_params": False, # [nsga3] True면 시그널 파라미터도 탐색 (v1에서 과적합 — 고도화용)
 }
 
 
@@ -48,10 +52,13 @@ def main() -> None:
     elif mode == "evolve":
         run_evolve(config["pop"], config["generations"], config["seed"],
                    config["md"], config["capital"])
+    elif mode == "nsga3":
+        run_nsga3(config["trials"], config["seed"], config["storage"],
+                  config["study"], config["tune_params"])
     elif mode == "single":
         run_single(config["genes"], config["seed"], config["md"], config["capital"])
     else:
-        raise SystemExit(f"[config] 알 수 없는 mode: {mode!r} (single | evolve | dex 중 하나)")
+        raise SystemExit(f"[config] 알 수 없는 mode: {mode!r} (single | evolve | nsga3 | dex 중 하나)")
 
 
 if __name__ == "__main__":

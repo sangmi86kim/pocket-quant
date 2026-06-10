@@ -136,9 +136,10 @@ ALL_GENES = list(GENE_SIGNALS.keys())
 # 참고: 유전자 설명 카드(포켓몬 도감)는 dex.py(SIGNAL_CARDS)에 있다.
 
 
-def combine_positions(positions: list[pd.Series]) -> pd.Series:
+def combine_positions(positions: list[pd.Series],
+                      weights: list[float] | None = None) -> pd.Series:
     """
-    시그널들의 포지션을 '기권 제외 평균'으로 합친다.
+    시그널들의 포지션을 '기권 제외 (가중)평균'으로 합친다.
 
     [기권(NaN) 규칙]
     상시형 시그널(MA/MOM/DD/VOL)은 매일 0~1 의견을 내지만, 이벤트형 시그널
@@ -147,10 +148,47 @@ def combine_positions(positions: list[pd.Series]) -> pd.Series:
     상시 현금 앵커가 되므로(잉어킹 강제 출전 문제), 그날 의견을 낸 시그널들
     끼리만 평균한다 = 기권한 포켓몬은 벤치, 출전한 포켓몬끼리 싸운다.
       - 전원 기권한 날: 포지션 0.0 (아무도 의견 없으면 들어가지 않는다)
+
+    [weights — NSGA-III 결정변수]
+    weights를 주면 '기권 제외 가중평균'이 된다:
+        position = Σ wᵢ·posᵢ / Σ wᵢ   (그날 의견 낸 i만 합산)
+    분모에 Σw가 있어 가중치의 절대 크기는 의미 없고 비율만 남는다
+    = 예산 제약(Σw=1)이 결합식에 내장 → "전부 최대" 퇴화 경사가 없다.
+    weights=None(기본)은 기존 동일가중 평균과 비트 단위로 같다(골든 테스트 보호).
+      - 그날 의견 낸 시그널들의 가중치 합이 0이면 기권 취급(0.0).
     """
     df = pd.concat(positions, axis=1)
-    combined = df.mean(axis=1)            # NaN(기권)은 pandas 평균에서 자동 제외
+    if weights is None:
+        combined = df.mean(axis=1)        # NaN(기권)은 pandas 평균에서 자동 제외
+    else:
+        w = np.asarray(weights, dtype=float)
+        voted = df.notna().to_numpy()                    # 그날 의견 냈는지
+        values = df.fillna(0.0).to_numpy()
+        denom = (voted * w).sum(axis=1)                  # 출전 시그널들의 가중치 합
+        numer = (values * w).sum(axis=1)
+        combined = pd.Series(
+            np.where(denom > 0, numer / np.where(denom > 0, denom, 1.0), np.nan),
+            index=df.index,
+        )
     return combined.fillna(0.0).clip(0.0, 1.0)
+
+
+# NSGA-III가 탐색하는 시그널 파라미터의 기본값/탐색범위 정의는 nsga3.py에 있다.
+# 여기서는 "파라미터를 주입해 포지션 목록을 만드는" 입구만 제공한다.
+def positions_with_params(prices: pd.Series, params: dict | None = None) -> list[pd.Series]:
+    """ALL_GENES 순서대로, 파라미터를 주입한 포지션 목록을 만든다.
+    params에 없는 키는 모듈 기본값을 쓴다 (params=None이면 전부 기본값 =
+    GENE_SIGNALS 경로와 동일)."""
+    p = params or {}
+    return [
+        signal_DD(prices, limit=p.get("DD_LIMIT", DD_LIMIT)),
+        signal_VOL(prices, calm=p.get("VOL_CALM", VOL_CALM),
+                   stressed=p.get("VOL_STRESSED", VOL_STRESSED)),
+        signal_MA(prices, window=p.get("MA_WINDOW", MA_WINDOW)),
+        signal_MOM(prices, lookback=p.get("MOM_LOOKBACK", MOM_LOOKBACK)),
+        signal_REV_RSI(prices, oversold=p.get("RSI_OVERSOLD", RSI_OVERSOLD)),
+        signal_REV_BB(prices, k=p.get("BB_K", BB_K)),
+    ]
 
 
 def combined_position(genes: list[str], prices: pd.Series) -> pd.Series:

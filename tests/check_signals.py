@@ -35,7 +35,7 @@ def is_event_signal(series: pd.Series) -> bool:
     return bool(series.isna().any())
 
 
-def run_check() -> None:
+def run_check() -> bool:
     loaded = load_gyms(all_gyms())
 
     frames = []          # 상관 계산용 (이벤트형은 발동 여부로 변환)
@@ -78,7 +78,9 @@ def run_check() -> None:
             ok = False
         print(f"  {eg:<8} 상시형과 최대 양의 상관 = {worst:+.2f} ({worst_g})  {verdict}")
     print("  이벤트형이 새 정보를 가져옴" if ok else "  경고: 기존 시그널과 중복 가능성")
+    return ok
 
 
 if __name__ == "__main__":
-    run_check()
+    # 다른 심판들(test_baselines 등)과 동일하게 종료 코드로도 판정을 알린다
+    sys.exit(0 if run_check() else 1)

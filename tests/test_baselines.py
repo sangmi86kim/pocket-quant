@@ -62,7 +62,7 @@ def run_check() -> bool:
     fit_of = {s.name: f for s, f in scored}
     total = len(scored)
 
-    print(f"=== 적합도 순위 (전 조합 {total - 2} + 기준선 2 = {total}마리) ===\n")
+    print(f"=== 적합도 순위 (전 조합 {total - 2} + 기준선 2 = 트레이더 {total}명) ===\n")
     print("상위 10:")
     for i, (s, f) in enumerate(scored[:10], start=1):
         print(f"  {i:2}위  {f:5.1f}점  {s.name}")
