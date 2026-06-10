@@ -30,6 +30,7 @@ DEFAULTS = {
     "storage": None,      # [nsga3] Optuna storage URL (예: "sqlite:///nsga3.db") — 중단/재개용
     "study": "nsga3_v2_weights",  # [nsga3] 스터디 이름 (storage 사용 시)
     "tune_params": False, # [nsga3] True면 시그널 파라미터도 탐색 (v1에서 과적합 — 고도화용)
+    "oak": False,         # True면 리포트 끝에 오박사(LM Studio LLM) 브리핑 — 해설 전용, 판정 아님
 }
 
 
@@ -51,12 +52,13 @@ def main() -> None:
         run_pokedex()
     elif mode == "evolve":
         run_evolve(config["pop"], config["generations"], config["seed"],
-                   config["md"], config["capital"])
+                   config["md"], config["capital"], config["oak"])
     elif mode == "nsga3":
         run_nsga3(config["trials"], config["seed"], config["storage"],
                   config["study"], config["tune_params"])
     elif mode == "single":
-        run_single(config["genes"], config["seed"], config["md"], config["capital"])
+        run_single(config["genes"], config["seed"], config["md"], config["capital"],
+                   config["oak"])
     else:
         raise SystemExit(f"[config] 알 수 없는 mode: {mode!r} (single | evolve | nsga3 | dex 중 하나)")
 

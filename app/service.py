@@ -247,8 +247,18 @@ def run_pokedex() -> None:
         print(f"      전적: {c['record']}\n")
 
 
+def _oak_briefing(report) -> None:
+    """오박사 브리핑 출력 (LLM 해설 — 판정 아님). 연구소 부재 시 조용히 안내만."""
+    from app.oak import professor_briefing   # LM Studio 없을 때도 import 비용 없게 지연
+    print("\n=== 🔬 오박사 브리핑 (해설 전용 — 판정 아님) ===")
+    text = professor_briefing(report)
+    print(text if text else
+          "  오박사가 연구소에 안 계십니다. (LM Studio가 켜져 있는지 확인: localhost:1234)")
+
+
 def run_single(gene_count: int | None, seed: int | None = None,
-               md_path: str | None = None, capital: float | None = None) -> None:
+               md_path: str | None = None, capital: float | None = None,
+               oak: bool = False) -> None:
     """[단판 모드] 트레이더 한 명을 만들어 전 시장 백테스트하고 스탯을 출력."""
     _apply_seed(seed)
     print("=== PocketQuant 단판 백테스트 ===\n")
@@ -283,6 +293,9 @@ def run_single(gene_count: int | None, seed: int | None = None,
     if capital is not None:
         print(f"\n6. 실전 시뮬레이션 (시작 자본 {capital:,.0f}원 · 국면별 독립)")
         print(_format_simulation(report, capital))
+
+    if oak:
+        _oak_briefing(report)
 
     path = _resolve_md_path(md_path, "single")
     _write_markdown(path, _markdown_report("PocketQuant 단판 백테스트 리포트", report))
@@ -329,7 +342,8 @@ def run_nsga3(trials: int, seed: int | None = None,
 
 
 def run_evolve(pop: int, generations: int, seed: int | None = None,
-               md_path: str | None = None, capital: float | None = None) -> None:
+               md_path: str | None = None, capital: float | None = None,
+               oak: bool = False) -> None:
     """[진화 모드] 단일목적 GA(적합도=스탯 가중합)로 챔피언을 진화시킨다."""
     _apply_seed(seed)
     print("=== PocketQuant 진화 백테스트 ===")
@@ -362,11 +376,13 @@ def run_evolve(pop: int, generations: int, seed: int | None = None,
     print("\n전략 판정")
     print(_format_profile(stats["stats"]))
 
-    # 챔피언 리포트는 시뮬/마크다운 둘 중 하나라도 필요하면 한 번만 계산
+    # 챔피언 리포트는 시뮬/마크다운/오박사 중 하나라도 필요하면 한 번만 계산
     path = _resolve_md_path(md_path, "evolve")
-    if capital is not None or path is not None:
+    if capital is not None or path is not None or oak:
         champion_report = challenge(best, loaded_gyms)
         if capital is not None:
             print(f"\n실전 시뮬레이션 (시작 자본 {capital:,.0f}원 · 국면별 독립)")
             print(_format_simulation(champion_report, capital))
+        if oak:
+            _oak_briefing(champion_report)
         _write_markdown(path, _markdown_report("PocketQuant 진화 백테스트 리포트", champion_report))
