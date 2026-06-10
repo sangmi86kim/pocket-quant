@@ -19,10 +19,13 @@ victory_road.py - 챔피언로드: 리그 졸업생의 검증 관문 (사천왕 
   ※ 지표 워밍업(400일)이 훈련 연도와 겹치는 건 누수가 아니다 — 지표 초기화일
      뿐, 후보 선발에 그 구간 '성적'을 쓴 게 아니므로.
 
-[생존 판정]
+[도전권 판정 — 트레이너 슬로건: "상폐가 아니면 뒤진 게 아니다"]
   ① 라이벌전: OOS 연평균 score_vs_dca > 0  (성실이보다 강해야 함 — 핵심)
   ② 방어    : OOS 이어붙임 MDD가 B&H보다 얕음 (기존 워크포워드 룰 계승)
-  둘 다 통과 = 생존. 효율(샤프 vs B&H)은 참고 표기.
+  둘 다 통과 = 사천왕 도전권 획득. 효율(샤프 vs B&H)은 참고 표기.
+  ⚠️ 미통과 = 사망이 아니라 '벤치'다. 시장에 있는 한 복리는 일하고 있고,
+  명단은 DB에 보존되며, 다음 리그/배틀 프론티어에서 재도전한다.
+  여기서 하는 판단은 "누가 죽었나"가 아니라 "누구에게 도전권을 주나"뿐.
 
 [관문 ② 배틀 프론티어] 부트스트랩 합성 역사 — 다음 구현.
 [관문 ③ 사천왕] post-COVID hold-out — 봉인. 최후의 1회만.
@@ -71,7 +74,14 @@ def _trial_candidate(params: dict) -> tuple[list[float], dict]:
 
 
 def load_graduates() -> list[dict]:
-    """리그 필터 통과자 + 기준 트레이더(현 단일목적 챔피언)를 명단으로 만든다."""
+    """챔피언로드 입장 명단 = 기준 트레이더 + 필터 통과자 + 목적별 1등 스페셜리스트.
+
+    [스페셜리스트 트랙 — 다양성 보장]
+    필터(최악 국면 ≥ -10)는 올라운더 선발 기준이라, "한 국면 몰빵형"(예: bear
+    1등인데 상승장 낙제)은 검증장에 입장도 못 했다. 하지만 걔들이 Regime Scanner
+    30% 틸트의 후보군이므로, front에서 목적별 1등 6명을 필터 무시하고 입장시킨다.
+    ⚠️ 단 관문 ①의 생존 기준은 올라운더용(평시 OOS 평균>0)이라 스페셜리스트에겐
+    참고 기록일 뿐 — 본판정은 관문 ②(배틀 프론티어)의 전문 국면 합성 세계에서."""
     optuna.logging.set_verbosity(optuna.logging.WARNING)
     study = optuna.load_study(study_name=STUDY, storage=STORAGE)
     summary = nsga3.summarize_front(study, tolerance=GRAD_TOLERANCE)
@@ -80,13 +90,31 @@ def load_graduates() -> list[dict]:
     graduates = [{
         "name": "현챔피언(동일가중)", "label": "기준",
         "weights": [1.0 if g in ("VOL", "REV_RSI", "REV_BB") else 0.0 for g in ALL_GENES],
-        "params": {}, "mean5": None,
+        "params": {}, "mean5": None, "specialist": False,
     }]
     for r in sorted(summary["passed"], key=lambda r: -r["mean5"]):
         w, sig = _trial_candidate(r["params"])
         graduates.append({
             "name": f"#{r['number']}", "label": label_of.get(r["number"], ""),
-            "weights": w, "params": sig, "mean5": r["mean5"],
+            "weights": w, "params": sig, "mean5": r["mean5"], "specialist": False,
+        })
+
+    # 목적별 1등 스페셜리스트 (front 전체에서, 필터 무시. 이미 명단에 있으면 생략)
+    seen = {g["name"] for g in graduates}
+    front = [{"number": t.number, "values": list(t.values), "params": dict(t.params)}
+             for t in study.best_trials]
+    spec_picks = [(f"{nsga3.OBJECTIVE_NAMES[i]} 1위",
+                   max(front, key=lambda r: r["values"][i])) for i in range(5)]
+    spec_picks.append(("turnover 최저", min(front, key=lambda r: r["values"][5])))
+    for title, r in spec_picks:
+        if f"#{r['number']}" in seen:
+            continue
+        seen.add(f"#{r['number']}")
+        w, sig = _trial_candidate(r["params"])
+        graduates.append({
+            "name": f"#{r['number']}", "label": f"★{title}",
+            "weights": w, "params": sig,
+            "mean5": sum(r["values"][:5]) / 5, "specialist": True,
         })
     return graduates
 
@@ -151,21 +179,25 @@ def run_gate1() -> bool:
         sc, sm, ss = _perf(pd.concat(parts))
         rival_ok = avg > 0
         defense_ok = sm > bm
-        alive = rival_ok and defense_ok
-        if alive:
+        ticket = rival_ok and defense_ok            # 사천왕 도전권 (탈락≠사망)
+        if ticket and not g["specialist"]:
             survivors.append(g["name"])
-        rows.append((g, avg, wins, worst, sc, sm, ss, alive))
+        rows.append((g, avg, wins, worst, sc, sm, ss, ticket))
 
     print(f"{'트레이더':<14} {'라벨':<12} {'평균':>6} {'승':>5} {'최악':>7}"
           f" {'CAGR':>7} {'MDD':>7} {'샤프':>5} {'인샘플':>7}  판정")
-    for g, avg, wins, worst, sc, sm, ss, alive in rows:
+    for g, avg, wins, worst, sc, sm, ss, ticket in rows:
         mean5 = f"{g['mean5'] * 100:+.1f}" if g["mean5"] is not None else "-"
-        mark = "🟢 생존" if alive else "❌ 탈락"
+        if g["specialist"]:
+            mark = "📋 참고 (본판정=관문②)" if not ticket else "📋 참고 (관문①도 통과)"
+        else:
+            mark = "🎫 도전권" if ticket else "🪑 벤치"
         print(f"{g['name']:<14} {g['label']:<12} {avg * 100:>+6.1f} {wins:>3}/{len(OOS_YEARS)}"
               f" {worst * 100:>+7.1f} {sc:>+7.1%} {sm:>7.1%} {ss:>5.2f} {mean5:>7}  {mark}")
 
     print(f"\nB&H 기준선: CAGR {bc:+.1%}  MDD {bm:.1%}  샤프 {bs:.2f}")
-    print(f"생존 조건: ①OOS 평균 score_vs_dca > 0  ②이어붙임 MDD가 B&H({bm:.1%})보다 얕음")
+    print(f"도전권 조건: ①OOS 평균 score_vs_dca > 0  ②이어붙임 MDD가 B&H({bm:.1%})보다 얕음")
+    print("벤치 ≠ 사망 — 상폐가 아니면 뒤진 게 아니다. 명단 보존, 다음 리그/관문②에서 재도전.")
 
     # 과적합 갭: 인샘플 점수가 OOS를 예측하는가
     pairs = [(g["mean5"], avg) for g, avg, *_ in rows if g["mean5"] is not None]
@@ -175,7 +207,7 @@ def run_gate1() -> bool:
         print(f"\n과적합 진단: 인샘플 mean5 ↔ OOS 평균 상관 = {corr:+.2f} "
               f"({'인샘플 순위가 OOS에서도 유지됨' if corr > 0.3 else '인샘플 성적은 OOS를 거의 예측 못함 — 과적합 신호'})")
 
-    print(f"\n=== 관문 ① 결과: 생존 {len(survivors)}/{len(graduates)}명 ===")
+    print(f"\n=== 관문 ① 결과: 사천왕 도전권 {len(survivors)}/{len(graduates)}명 ===")
     if survivors:
         print("  " + ", ".join(survivors))
     print("\n관문 ② 배틀 프론티어(부트스트랩 가짜 역사): 미구현 — 다음")
