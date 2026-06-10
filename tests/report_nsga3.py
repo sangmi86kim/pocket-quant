@@ -183,12 +183,14 @@ def main() -> None:
 </style></head><body>
 
 <h1>🎮 PocketQuant — NSGA-III 리그 결과</h1>
-<p class="dim">스터디 <b>{STUDY}</b> · 트라이얼 {len(study.trials)}개 · 시드 42 ·
-체육관 6개(QQQ) · 라이벌 = 일별 DCA(수수료 0원) · 생성 {stamp}</p>
+<p class="dim">스터디 <b>{STUDY}</b> · 가상 트레이더 {len(study.trials)}명 참가
+(트라이얼 1개 = 포켓몬 6마리를 어떤 비중·세팅으로 굴릴지 정한 트레이더 1명) ·
+시드 42 · 체육관 6개(QQQ) · 라이벌 = 일별 DCA(수수료 0원) · 생성 {stamp}</p>
 
 <div class="cards">
- <div class="card">Pareto front<br><span class="big">{len(front)}</span> 마리</div>
- <div class="card">하드 필터 통과<br><span class="big">{len(summary['passed'])}</span> 마리
+ <div class="card">Pareto front<br><span class="big">{len(front)}</span> 명
+   <br><span class="dim">서로 우열 못 가리는 트레이더</span></div>
+ <div class="card">하드 필터 통과<br><span class="big">{len(summary['passed'])}</span> 명
    <br><span class="dim">전 국면 ≥ -5 · 턴오버 ≤ 0.10</span></div>
  <div class="card">현 챔피언 평균<br><span class="big">{ref_mean * 100:+.1f}</span>
    <br><span class="dim">VOL+REV_RSI+REV_BB (동일가중)</span></div>
@@ -201,7 +203,7 @@ def main() -> None:
 <tr><td>VOL+REV_RSI+REV_BB (동일가중·기본 파라미터)</td>{_vec_cells(ref)}<td>{ref_mean * 100:+.1f}</td></tr></table>
 <p class="dim">점수 = 그 국면에서 라이벌(DCA) 대비 얼마나 나았나 ×100. 양수 = 라이벌보다 강함.</p>
 
-<h2>🏅 라벨 후보 4마리 (배포 후보 라인업)</h2>
+<h2>🏅 라벨 트레이더 4명 (배포 후보 라인업)</h2>
 <table><tr><th>라벨</th><th>trial</th><th>하락장</th><th>회복장</th><th>급락V</th><th>상승장</th><th>횡보장</th><th>턴오버</th><th>평균</th><th>구성 (가중치/파라미터)</th></tr>
 {label_rows}</table>
 
@@ -215,9 +217,9 @@ def main() -> None:
 
 <h2>🔍 하드 필터 스윕 (턴오버 ≤ 0.10 고정)</h2>
 <table><tr><th>조건</th><th>통과</th></tr>{sweep_rows}</table>
-<p class="dim">"전 국면 ≥ 0"(모든 체육관에서 라이벌 승) = 0마리 — 3000트라이얼에서도 만능은 없다.</p>
+<p class="dim">"전 국면 ≥ 0"(모든 체육관에서 라이벌 승) = 0명 — 트레이더 3000명 중에도 만능은 없다.</p>
 
-<h2>📋 필터 통과 {len(summary['passed'])}마리 전체 (평균 점수 순)</h2>
+<h2>📋 필터 통과 트레이더 {len(summary['passed'])}명 전체 (평균 점수 순)</h2>
 <table><tr><th>trial</th><th>하락장</th><th>회복장</th><th>급락V</th><th>상승장</th><th>횡보장</th><th>턴오버</th><th>평균</th><th>가중치</th></tr>
 {passed_rows}</table>
 
