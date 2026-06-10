@@ -12,19 +12,20 @@ service.py - 실행 '흐름'을 조립하는 층 (애플리케이션 서비스)
 import random
 from pathlib import Path
 
-from app.backend.battle import challenge
-from app.backend.data import load_gyms
-from app.backend.evolve import evolve
-from app.backend.gym import all_gyms
-from app.backend.dex import SIGNAL_CARDS
-from app.backend.signals import ALL_GENES
-from app.backend.strategy import create_strategy
+from app.backend.engine.battle import challenge
+from app.backend.engine.evolve import evolve
+from app.backend.engine.strategy import create_strategy
+from app.backend.genes.dex import SIGNAL_CARDS
+from app.backend.genes.signals import ALL_GENES
+from app.backend.market.data import load_gyms
+from app.backend.market.gym import all_gyms
 
 # 스탯 표시 라벨 (이모지는 콘솔 인코딩 이슈 피하려 텍스트로)
+# HP는 표시 전용(적합도 가중치 0), DEF는 Calmar(낙폭 대비 수익) 기반.
 _STAT_ROWS = [
     ("체력   HP    현금 비중", "hp"),
     ("공격력 ATK   연수익", "atk"),
-    ("방어력 DEF   하락 방어", "def_"),
+    ("방어력 DEF   낙폭대비수익", "def_"),
     ("솜씨   SKILL 샤프", "skill"),
 ]
 
@@ -112,10 +113,10 @@ def _format_profile(stats) -> str:
     """전략 스타일과 보조 등급을 콘솔용으로 출력한다."""
     profile = _style_profile(stats)
     rows = [
-        ("종합", profile["종합"], "4스탯 평균"),
+        ("종합", profile["종합"], "ATK/DEF/SKILL 평균"),
         ("공격", profile["공격"], "연수익"),
-        ("방어", profile["방어"], "시장 대비 낙폭 방어"),
-        ("체력", profile["체력"], "현금 비중"),
+        ("방어", profile["방어"], "낙폭 대비 수익(Calmar)"),
+        ("체력", profile["체력"], "현금 비중 · 표시 전용"),
         ("효율", profile["효율"], "샤프"),
     ]
     lines = [f"  스타일: {profile['스타일']}"]
@@ -186,10 +187,10 @@ def _markdown_report(title: str, report) -> str:
         "",
         "| 관점 | 등급 | 점수 | 의미 |",
         "|---|---:|---:|---|",
-        f"| 종합 | {_grade_score(stats.fitness)} | {stats.fitness:.1f} | 4스탯 평균 |",
+        f"| 종합 | {_grade_score(stats.fitness)} | {stats.fitness:.1f} | ATK/DEF/SKILL 평균 |",
         f"| 공격 | {_grade_score(stats.atk)} | {stats.atk:.1f} | 연수익 |",
-        f"| 방어 | {_grade_score(stats.def_)} | {stats.def_:.1f} | 시장 대비 낙폭 방어 |",
-        f"| 체력 | {_grade_score(stats.hp)} | {stats.hp:.1f} | 현금 비중 |",
+        f"| 방어 | {_grade_score(stats.def_)} | {stats.def_:.1f} | 낙폭 대비 수익(Calmar) |",
+        f"| 체력 | {_grade_score(stats.hp)} | {stats.hp:.1f} | 현금 비중 (표시 전용) |",
         f"| 효율 | {_grade_score(stats.skill)} | {stats.skill:.1f} | 샤프 |",
         "",
     ])

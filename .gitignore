@@ -13,6 +13,7 @@ env/
 data_cache/
 docs/
 reports/
+worklog/
 
 # IDE / OS
 .vscode/

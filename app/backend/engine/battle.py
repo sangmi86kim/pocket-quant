@@ -9,6 +9,7 @@ battle.py - 전투(백테스트)를 '계산'하는 파일, 게임의 엔진
 [핵심 계산] (가격은 이미 LoadedGym으로 받아둔 상태)
   1) signals.combined_position 으로 일별 포지션(0~1)을 만든다
   2) 포지션을 하루 lag(shift 1)해서 다음날 수익에 적용 (룩어헤드 방지)
+     + 포지션 변화량(턴오버) × TRADE_COST(토스 0.1%)를 거래비용으로 차감
   3) 워밍업 버퍼를 잘라내고 평가 구간만 남긴다
   4) 자산곡선에서 CAGR / 최대낙폭 / 샤프 / 평균현금 을 뽑는다
   5) 그 원시값들을 0~100 스탯(HP/ATK/DEF/SKILL)으로 정규화한다
@@ -16,15 +17,29 @@ battle.py - 전투(백테스트)를 '계산'하는 파일, 게임의 엔진
 import numpy as np
 import pandas as pd
 
-from .data import LoadedGym
-from .models import BattleResult, Report, Stats, Strategy
-from .signals import combined_position
+from ..core.models import BattleResult, Report, Stats, Strategy
+from ..genes.signals import combined_position
+from ..market.data import LoadedGym
 
 TRADING_DAYS = 252          # 연율화 기준 거래일 수
 
+# ── 거래비용 (토스증권 미국주식 기준) ──
+# 위탁수수료 = 거래대금의 0.1% (2025-12-01부터 상시 적용). 매도 시 SEC Fee 0.00206%는
+# 무시 가능한 수준이라 제외. 포지션 변화량(턴오버)만큼 편도 수수료를 차감한다:
+#   예) 현금(0) → 풀매수(1) 진입 = 자본의 100% 거래 = 0.1% 비용.
+# 평가 구간 안의 매매만 과금한다(워밍업 중 진입한 초기 포지션은 무료 = 구간 철학과 일치).
+TRADE_COST = 0.001
+
 # ── 스탯 정규화 구간 (이 양 끝값이 0점 / 100점) — 튜닝 포인트 ──
-ATK_CAGR_LO, ATK_CAGR_HI = -0.25, 0.25     # CAGR -25% -> 0,  +25% -> 100
+# [퇴화 방지 재설계] 예전 스케일(-25%~+25%)에선 '전부 현금'(CAGR 0%)이 ATK 50점을
+# 공짜로 받아 수익 차이에 둔감했다. 0%를 0점으로 내려 '안 벌면 공격력 없음'으로 만든다.
+ATK_CAGR_LO, ATK_CAGR_HI = 0.0, 0.25          # CAGR 0% -> 0, +25% -> 100
 SKILL_SHARPE_LO, SKILL_SHARPE_HI = -1.0, 3.0  # 샤프 -1 -> 0, 3 -> 100
+# DEF = Calmar(CAGR / |내MDD|) 기반. 예전 '1 - 내MDD/시장MDD'는 비중을 줄일수록
+# 거의 1:1로 점수가 올라 '아무것도 안 하기'가 방어 만점이었다. Calmar는 비중 일괄
+# 축소에 거의 불변(분자/분모가 같이 줄어듦)이라 그 퇴화 경사가 사라지고,
+# '낙폭을 적게 겪으면서 번 놈'만 진짜 방어 점수를 받는다.
+DEF_CALMAR_LO, DEF_CALMAR_HI = -1.0, 3.0      # Calmar -1 -> 0, 3 -> 100 (현금=0 -> 25)
 
 
 def _scale(value: float, lo: float, hi: float) -> float:
@@ -44,7 +59,8 @@ def fight(strategy: Strategy, loaded: LoadedGym) -> BattleResult:
     position = combined_position(strategy.genes, prices)
     effective_position = position.shift(1)
     market_ret = prices.pct_change()
-    strat_ret = effective_position * market_ret
+    turnover = effective_position.diff().abs()              # 그날 매매한 자본 비율
+    strat_ret = effective_position * market_ret - turnover * TRADE_COST
 
     # (3) 평가 구간(체육관 기간)만 잘라낸다 — 앞쪽 버퍼는 지표 데우는 데만 쓰임
     window_start = pd.Timestamp(gym.start)
@@ -74,14 +90,15 @@ def fight(strategy: Strategy, loaded: LoadedGym) -> BattleResult:
     avg_cash = float((1.0 - effective_position).mean())         # 0~1
 
     # (5) 0~100 스탯으로 정규화
-    hp = _scale(avg_cash, 0.0, 1.0)                             # 현금 100% -> HP 100
+    hp = _scale(avg_cash, 0.0, 1.0)                             # 현금 100% -> HP 100 (표시 전용)
     atk = _scale(cagr, ATK_CAGR_LO, ATK_CAGR_HI)
-    # 방어력: 시장 낙폭 대비 내가 얼마나 덜 빠졌나. 시장이 안 빠졌으면(0) 만점.
-    if market_dd < 0:
-        def_ratio = 1.0 - (float(my_dd) / float(market_dd))     # 둘 다 음수 → 양수 비율
-        deff = _scale(def_ratio, 0.0, 1.0)
+    # 방어력 = Calmar(CAGR / |내MDD|): 낙폭 한 단위당 얼마나 벌었나(위험조정 수익).
+    # 낙폭이 0이면 나누기가 안 되므로: 벌었으면 만점, 못 벌었으면(현금) Calmar 0 취급.
+    if my_dd < 0:
+        calmar = cagr / abs(float(my_dd))
+        deff = _scale(calmar, DEF_CALMAR_LO, DEF_CALMAR_HI)
     else:
-        deff = 100.0
+        deff = 100.0 if cagr > 0 else _scale(0.0, DEF_CALMAR_LO, DEF_CALMAR_HI)
     skill = _scale(sharpe, SKILL_SHARPE_LO, SKILL_SHARPE_HI)
 
     stats = Stats(hp=hp, atk=atk, def_=deff, skill=skill)
