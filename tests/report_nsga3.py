@@ -235,7 +235,13 @@ def main() -> None:
 합리적으로 버림). / Balanced #1707은 REV_RSI 79% = 사실상 역발상 단독에 가까움.
 </div>
 
-<footer>PocketQuant · dev/nsga3 · python tests/report_nsga3.py 로 재생성 ·
+<div style="display:flex; gap:16px; align-items:center; margin-top:36px;">
+  <img src="../character/dr_oh.png" alt="오박사" width="180" style="border-radius:10px;">
+  <div class="dim" style="font-size:14px;">"강한 놈이 살아남는 게 아니라,
+  살아남은 놈이 강한 거다."<br>— 오박사, 한강 둔치에서</div>
+</div>
+
+<footer>PocketQuant · python tests/report_nsga3.py 로 재생성 ·
 데이터: optuna_pocketquant.db (sqlite)</footer>
 </body></html>"""
 

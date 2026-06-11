@@ -28,7 +28,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import numpy as np
 import pandas as pd
 
-from app.backend.core.models import Gym
+from app.backend.core.models import Gym, Report, Strategy
 from app.backend.engine import battle
 from app.backend.engine.battle import (_dca_position, _score_position, fight_dca,
                                        score_vs_dca)
@@ -167,18 +167,30 @@ def run_gate3() -> bool:
     print(f"  ② 방어 (최대 데미지 {cm:.1%} vs B&H {bm:.1%}) : {'PASS' if defense_ok else 'FAIL'}")
     print(f"\n{'👑 사천왕 격파 — 챔피언 확정 (배포 근거 완성)' if passed else '🪑 사천왕 벽 — 결과는 결과대로 기록 (재튜닝 금지, 다음 알파에서 재도전)'}")
 
+    # 오박사 코너 — LM Studio가 켜져 있으면 hold-out 성적표를 직접 브리핑.
+    # 부재 시엔 둔치 고정 대사 (리포트 생성은 오박사 없이도 항상 성공해야 한다).
+    from app.oak import professor_briefing
+    oak_report = Report(
+        strategy=Strategy(genes=["VOL", "REV_RSI", "REV_BB"], name="현챔피언"),
+        results=[r[1] for r in rows])
+    oak_text = professor_briefing(oak_report) \
+        or "그래. 그럴 수 있어. 시장이 원래 그래. (소주 한 모금)"
+
     _write_html(rows, (cc, cm, cs), (dc, dm, ds), (bc, bm, bs),
                 avg_score, rival_ok, defense_ok, passed,
-                champ_ret, dca_ret, bh_ret)
+                champ_ret, dca_ret, bh_ret, oak_text)
     print(f"\nHTML 리포트: {OUT}")
     return passed
 
 
 def _write_html(rows, champ_perf, dca_perf, bh_perf, avg_score,
-                rival_ok, defense_ok, passed, champ_ret, dca_ret, bh_ret) -> None:
+                rival_ok, defense_ok, passed, champ_ret, dca_ret, bh_ret,
+                oak_text: str = "") -> None:
+    import html as _html
     cc, cm, cs = champ_perf
     dc, dm, ds = dca_perf
     bc, bm, bs = bh_perf
+    oak_html = _html.escape(oak_text)
 
     round_rows = ""
     for name, res, dca, s in rows:
@@ -250,6 +262,13 @@ def _write_html(rows, champ_perf, dca_perf, bh_perf, avg_score,
 <p class="dim">읽는 법: 챔피언은 6년 동안 매년 {cc * 100:+.1f}%씩 자산을 키웠고(공격력),
 가장 깊게 맞은 순간이 {cm * 100:.1f}%였으며(최대 데미지 — B&H는 {bm * 100:.1f}%까지 맞음),
 출렁임 대비 효율(컨트롤)은 {cs:.2f}로 셋 중 가장 안정적으로 벌었다.</p>
+
+<h2>🍶 오박사 코너</h2>
+<div style="display:flex; gap:18px; align-items:flex-start;">
+  <img src="../character/dr_oh.png" alt="오박사" width="280"
+       style="border-radius:10px; flex-shrink:0;">
+  <div style="white-space:pre-wrap; line-height:1.7;">{oak_html}</div>
+</div>
 
 <h2>⚠️ 이 시험의 규칙</h2>
 <div class="warn">
