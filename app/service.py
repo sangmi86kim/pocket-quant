@@ -77,7 +77,7 @@ def _bar(value: float, scale: float = 100.0, width: int = 20) -> str:
 
 
 def _grade_score(score: float) -> str:
-    """0~100 점수를 포켓몬식 등급으로 바꾼다."""
+    """0~100 점수를 포켓퀀트식 등급으로 바꾼다."""
     if score >= 90:
         return "S"
     if score >= 70:
@@ -220,7 +220,7 @@ def _markdown_report(title: str, report) -> str:
 
 
 def run_pokedex() -> None:
-    """[도감] 포켓몬(시그널) 카드 + 체육관 관장 + NPC를 출력한다."""
+    """[도감] 포켓퀀트(시그널) 카드 + 체육관 관장 + NPC를 출력한다."""
     print("=== PocketQuant 도감 ===\n")
 
     print("─── 스타팅 6마리 (시그널) ───\n")

@@ -186,7 +186,7 @@ def main() -> None:
 
 <h1>🎮 PocketQuant — NSGA-III 리그 결과</h1>
 <p class="dim">스터디 <b>{STUDY}</b> · 가상 트레이더 {len(study.trials)}명 참가
-(트라이얼 1개 = 포켓몬 6마리를 어떤 비중·세팅으로 굴릴지 정한 트레이더 1명) ·
+(트라이얼 1개 = 포켓퀀트 6마리를 어떤 비중·세팅으로 굴릴지 정한 트레이더 1명) ·
 시드 42 · 체육관 6개(QQQ) · 라이벌 = 성실이(일별 DCA, 수수료 0원) · 생성 {stamp}</p>
 
 <div class="cards">
