@@ -24,7 +24,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import pandas as pd
 
 from app.backend.core.models import Strategy
-from app.backend.engine.battle import challenge, fight_dca, score_vs_dca
+from app.backend.engine.battle import (challenge, fight_dca, fight_savings,
+                                       score_vs_dca)
 from app.backend.genes import signals
 from app.backend.genes.signals import ALL_GENES
 from app.backend.market.data import load_gyms
@@ -47,6 +48,11 @@ def main() -> None:
         d = dca[lg.gym.name]
         print(f"{lg.gym.name:<22} {d.total_return:>+7.1%} {d.max_drawdown:>8.1%}"
               f" {d.sharpe:>7.2f} {d.market_return:>+7.1%} {d.market_drawdown:>8.1%}")
+
+    # 저축왕(연 3% 무위험, 낙폭 0) — 비교 표시 전용 (적합도 줄세우기엔 미참가)
+    savings = " · ".join(f"{lg.gym.name.split()[0]} {fight_savings(lg).total_return:+.1%}"
+                         for lg in loaded)
+    print(f"\n  [저축왕] 같은 기간 은행 복리(연 3%): {savings}")
 
     # ── 2. 전수조사: score_vs_dca 줄세우기 ──
     entries = [Strategy(genes=list(c), name="+".join(c))

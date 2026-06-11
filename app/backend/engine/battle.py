@@ -26,6 +26,11 @@ from ..market.data import LoadedGym
 
 TRADING_DAYS = 252          # 연율화 기준 거래일 수
 
+# ── 저축왕 금리 (기준선 NPC) ──
+# CMA/자유적금 수준의 무위험 연이율. 시장엔 안 들어가고 은행에서 복리만 받는
+# 기준선 캐릭터 '저축왕'이 쓴다. 환경 바뀌면 여기만 조정.
+SAVINGS_RATE_ANNUAL = 0.03
+
 # ── 거래비용 (토스증권 미국주식 기준) ──
 # 위탁수수료 = 거래대금의 0.1% (2025-12-01부터 상시 적용). 매도 시 SEC Fee 0.00206%는
 # 무시 가능한 수준이라 제외. 포지션 변화량(턴오버)만큼 편도 수수료를 차감한다:
@@ -155,6 +160,34 @@ def fight_dca(loaded: LoadedGym) -> BattleResult:
     2026-06-11). 전략은 타이밍 매매라 면제 대상이 아님 = 비대칭이 현실이고,
     그만큼 DCA를 이기는 기준이 높아진다."""
     return _score_position(_dca_position(loaded), loaded, trade_cost=0.0)
+
+
+def fight_savings(loaded: LoadedGym) -> BattleResult:
+    """기준선 NPC '저축왕'의 성적 — 시장에 안 들어가고 연 3%(CMA/자유적금) 복리만.
+
+    가격과 무관하게 해석적으로 계산한다 (거래일 252일 기준 일복리, 낙폭 0).
+    ⚠️ 무낙폭 + 양수 수익이라 스탯 엔진에선 DEF(Calmar)가 만점 — 적합도로
+    줄 세우면 챔피언보다 높게 보이는 착시가 있다. 그래서 저축왕은 게이트/GA
+    순위엔 안 넣고 기준선 '표시 전용'이다."""
+    gym = loaded.gym
+    mask = (loaded.prices.index >= pd.Timestamp(gym.start)) \
+         & (loaded.prices.index <= pd.Timestamp(gym.end))
+    n_days = int(mask.sum())
+    total_return = float((1.0 + SAVINGS_RATE_ANNUAL) ** (n_days / TRADING_DAYS) - 1.0)
+
+    market_ret = loaded.prices.pct_change()[mask].dropna()
+    market_equity = (1.0 + market_ret).cumprod()
+    market_dd = float((market_equity / market_equity.cummax() - 1.0).min()) if len(market_ret) else 0.0
+    market_return = float(market_equity.iloc[-1] - 1.0) if len(market_ret) else 0.0
+
+    stats = Stats(hp=100.0,                                          # 전액 현금(은행)
+                  atk=_scale(SAVINGS_RATE_ANNUAL, ATK_CAGR_LO, ATK_CAGR_HI),
+                  def_=100.0,                                        # 낙폭 0 + 양수 수익
+                  skill=_scale(0.0, SKILL_SHARPE_LO, SKILL_SHARPE_HI))
+    return BattleResult(gym_name=gym.name, stats=stats, cagr=SAVINGS_RATE_ANNUAL,
+                        total_return=total_return, market_return=market_return,
+                        max_drawdown=0.0, market_drawdown=market_dd,
+                        sharpe=0.0, turnover=0.0)
 
 
 def score_vs_dca(strat: BattleResult, dca: BattleResult) -> float:
