@@ -2,9 +2,9 @@
 strategy.py - 트레이더(전략)를 '만드는' 파일
 
 하는 일은 두 가지:
-  1) 포켓몬(시그널)을 랜덤하게 뽑아서 트레이더 한 명을 생성한다 (단판 모드의 입구).
+  1) 포켓퀀트(시그널)을 랜덤하게 뽑아서 트레이더 한 명을 생성한다 (단판 모드의 입구).
   2) 그 트레이더에 어울리는 이름을 자동으로 지어준다 (연출용).
-※ 용어: '마리'는 포켓몬(시그널) 전용, 전략은 트레이더 '명'으로 센다.
+※ 용어: '마리'는 포켓퀀트(시그널) 전용, 전략은 트레이더 '명'으로 센다.
 """
 import random
 
@@ -25,7 +25,7 @@ def make_name(genes: list[str]) -> str:
 
 
 def create_strategy(gene_count: int | None = None) -> Strategy:
-    """트레이더 한 명을 만든다. gene_count=None이면 데려갈 포켓몬 수도 랜덤.
+    """트레이더 한 명을 만든다. gene_count=None이면 데려갈 포켓퀀트 수도 랜덤.
     범위는 항상 1 ~ len(ALL_GENES)로 강제 — 빈 전략(유전자 0개) 방지."""
     if gene_count is None:
         gene_count = random.randint(1, len(ALL_GENES))

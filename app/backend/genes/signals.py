@@ -133,7 +133,7 @@ GENE_SIGNALS = {
 # 사용 가능한 모든 유전자 이름 -> ["DD", "VOL", "MA", "MOM", "REV_RSI", "REV_BB"]
 ALL_GENES = list(GENE_SIGNALS.keys())
 
-# 참고: 유전자 설명 카드(포켓몬 도감)는 dex.py(SIGNAL_CARDS)에 있다.
+# 참고: 유전자 설명 카드(포켓퀀트 도감)는 dex.py(SIGNAL_CARDS)에 있다.
 
 
 def combine_positions(positions: list[pd.Series],
@@ -146,7 +146,7 @@ def combine_positions(positions: list[pd.Series],
     (REV_*)은 발동일에만 의견(1.0)을 내고 평소엔 기권(NaN)한다.
     기권을 0으로 취급하면 "의견 없음"이 "현금 가라"로 집계돼 이벤트형 시그널이
     상시 현금 앵커가 되므로(잉어킹 강제 출전 문제), 그날 의견을 낸 시그널들
-    끼리만 평균한다 = 기권한 포켓몬은 벤치, 출전한 포켓몬끼리 싸운다.
+    끼리만 평균한다 = 기권한 포켓퀀트은 벤치, 출전한 포켓퀀트끼리 싸운다.
       - 전원 기권한 날: 포지션 0.0 (아무도 의견 없으면 들어가지 않는다)
 
     [weights — NSGA-III 결정변수]
