@@ -15,7 +15,7 @@ nsga3.py - Optuna NSGA-III 다목적 최적화 (설계: OPTIMIZATION.md 4절)
   파라미터: DD_LIMIT / MA_WINDOW / MOM_LOOKBACK / RSI_OVERSOLD / BB_K /
     VOL_CALM / VOL_SPREAD(STRESSED = CALM + SPREAD, 순서 보장).
 
-[주의 — 잠만보와 front의 극단점]
+[주의 — 돼지저금통와 front의 극단점]
   turnover minimize 목적이 있으므로 "아무것도 안 하기"(전 가중치≈0)가
   front의 한쪽 극단(턴오버 0)으로 반드시 살아남는다. 이건 다목적의 정상
   거동이고, 배포 후보는 summarize_front의 하드 필터(전 국면 ≥ -tol)로 거른다.
