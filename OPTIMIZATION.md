@@ -184,14 +184,16 @@ Low-turnover : 점수 허용선 내 턴오버 최소
 
 ---
 
-## 5. 본업(화질 다목적 최적화)과의 매핑
+## 5. 일반 다목적 최적화 파이프라인과의 매핑
 
-| 화질 최적화 (회사) | PocketQuant |
+이 랩의 구조는 산업 현장의 전형적인 다목적 파라미터 튜닝 파이프라인 그대로다:
+
+| 일반 최적화 파이프라인 | PocketQuant |
 |---|---|
-| 화질 지표 5개 (목적함수) | 국면별 score_vs_dca 5개 + 턴오버 |
-| 이미지 파라미터 LUT (~9⁴⁰) | 시그널 가중치 6 + 파라미터 ~6 (작게 시작) |
-| 랜덤 검증 → 실계측 교체 | 가짜 점수(v0.1) → yfinance 실계측(v0.3) ✅ 완료 |
-| Pareto front → 세팅 라인업 | front → Defensive/Balanced/Aggressive 라인업 |
+| 품질 지표 N개 (목적함수) | 국면별 score_vs_dca 5개 + 턴오버 |
+| 파라미터 탐색공간 | 시그널 가중치 6 + 파라미터 ~6 (작게 시작) |
+| 더미 입력으로 루프 검증 → 실계측 교체 | 가짜 점수(v0.1) → yfinance 실계측(v0.3) ✅ 완료 |
+| Pareto front → 운영 세팅 라인업 | front → Defensive/Balanced/Aggressive 라인업 |
 | 학습/검증 분리 | 훈련 체육관 / 워크포워드·부트스트랩·hold-out |
 | 콜백 훅 | `on_generation` / Optuna callbacks |
 

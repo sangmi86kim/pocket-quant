@@ -354,7 +354,7 @@ def run_evolve(pop: int, generations: int, seed: int | None = None,
     loaded_gyms = load_gyms(gyms)
     print()
 
-    # 세대마다 호출될 콜백: 진행상황을 한 줄씩 출력 (회사에서 쓰는 그 콜백 자리)
+    # 세대마다 호출될 콜백: 진행상황을 한 줄씩 출력 (로깅/조기종료를 끼우는 표준 훅 자리)
     def on_generation(gen, best, stats):
         genes = "+".join(best.genes)
         print(f"[{gen:2}세대] 최고 적합도 {stats['fitness']:5.1f}점  최강 전략: {genes}")
