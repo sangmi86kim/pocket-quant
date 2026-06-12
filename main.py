@@ -26,7 +26,7 @@ DEFAULTS = {
     "seed": None,         # 랜덤 시드 (None = 매번 다름, 숫자 = 재현 가능)
     "md": None,           # Markdown 리포트: None=저장 안 함, ""=기본 경로, "경로"=지정 경로
     "capital": None,      # 실전 시뮬 시작 자본(원). 예) 10000000
-    "trials": 600,        # [nsga3] 트라이얼 수
+    "trials": 600,        # [nsga3] 총 목표 trial 수 — 스터디 재개 시 모자란 만큼만 추가 실행
     "storage": None,      # [nsga3] Optuna storage URL (예: "sqlite:///nsga3.db") — 중단/재개용
     "study": "nsga3_v2_weights",  # [nsga3] 스터디 이름 (storage 사용 시)
     "tune_params": False, # [nsga3] True면 시그널 파라미터도 탐색 (v1에서 과적합 — 고도화용)

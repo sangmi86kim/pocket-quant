@@ -18,7 +18,8 @@ nsga3.py - Optuna NSGA-III 다목적 최적화 (설계: OPTIMIZATION.md 4절)
 [주의 — 돼지저금통와 front의 극단점]
   turnover minimize 목적이 있으므로 "아무것도 안 하기"(전 가중치≈0)가
   front의 한쪽 극단(턴오버 0)으로 반드시 살아남는다. 이건 다목적의 정상
-  거동이고, 배포 후보는 summarize_front의 하드 필터(전 국면 ≥ -tol)로 거른다.
+  거동이고, 배포 후보는 summarize_front의 하드 필터 3종(전 국면 ≥ -tol ·
+  턴오버 cap · 최악 MDD ≤ DCA)으로 거른다.
 
 실행 진입점은 service.run_nsga3 (config.json: mode="nsga3").
 """
@@ -92,6 +93,18 @@ def suggest_candidate(trial: optuna.Trial,
     return weights, params
 
 
+def decode_params(params: dict) -> tuple[list[float], dict]:
+    """Optuna trial.params → (가중치, 시그널 파라미터). suggest_candidate의 역함수.
+    가중치 전용 리그(v2) 트라이얼엔 w_* 만 있다 → 시그널 파라미터는 기본값."""
+    weights = [params[f"w_{g}"] for g in ALL_GENES]
+    if "VOL_CALM" not in params:
+        return weights, {}
+    sig = {k: params[k] for k in
+           ("DD_LIMIT", "MA_WINDOW", "MOM_LOOKBACK", "RSI_OVERSOLD", "BB_K", "VOL_CALM")}
+    sig["VOL_STRESSED"] = params["VOL_CALM"] + params["VOL_SPREAD"]
+    return weights, sig
+
+
 def make_objective(loaded_gyms: list[LoadedGym], dca: dict, tune_params: bool = False):
     # 가중치 전용 리그: 시그널 포지션은 전 트라이얼 공통 → 체육관당 1번만 계산
     base_positions = (None if tune_params else
@@ -106,12 +119,36 @@ def make_objective(loaded_gyms: list[LoadedGym], dca: dict, tune_params: bool = 
     return objective
 
 
+def _guard_search_space(study, tune_params: bool) -> None:
+    """같은 study_name에 다른 탐색공간이 섞이는 사고 방지 (코덱스 리뷰 P2, 06-11).
+
+    config.json에서 tune_params만 바꿔 같은 스터디를 재개하면 v1/v2 후보가
+    한 front에 섞인다 — v1 과적합 전멸 전례가 있어 운영상 치명적. 새 스터디면
+    현재 탐색공간을 user_attrs로 도장 찍고, 기존 스터디면 대조해 다르면 중단.
+    도장 없는 구버전 스터디는 trial 파라미터 키로 공간을 추정한다."""
+    expected = {"tune_params": tune_params, "genes": list(ALL_GENES),
+                "objectives": OBJECTIVE_NAMES}
+    stamped = study.user_attrs.get("search_space")
+    if stamped is None and study.trials:
+        stamped = {**expected,
+                   "tune_params": "VOL_CALM" in study.trials[0].params}
+    if stamped is not None and stamped != expected:
+        raise RuntimeError(
+            f"[nsga3] 스터디 {study.study_name!r}의 탐색공간이 현재 설정과 다름 — "
+            f"섞이면 front가 오염된다.\n  스터디: {stamped}\n  현재  : {expected}\n"
+            "  → config의 study_name을 새로 짓거나 tune_params를 스터디와 맞출 것.")
+    if study.user_attrs.get("search_space") != expected:
+        study.set_user_attr("search_space", expected)
+
+
 def run_study(n_trials: int, seed: int | None = 42, storage: str | None = None,
               study_name: str = "nsga3_v2_weights", tune_params: bool = False,
               on_progress=None):
     """스터디 1회 실행. storage(sqlite URL)를 주면 중단/재개 가능.
-    on_progress(완료수, 전체수, front크기) — 진행 콜백 훅.
-    ⚠️ 같은 study_name에 다른 탐색공간(tune_params)을 섞지 말 것."""
+    n_trials = '총 목표 trial 수' — 재개 시 모자란 만큼만 추가 실행한다
+    (Optuna 원래 의미는 '추가 실행 수'라 예산 관리가 흔들렸음. 코덱스 리뷰 P2).
+    on_progress(완료수, 목표수, front크기) — 진행 콜백 훅.
+    같은 study_name에 다른 탐색공간을 섞으면 _guard_search_space가 중단시킨다."""
     loaded_gyms = load_gyms(all_gyms())
     dca = {lg.gym.name: fight_dca(lg) for lg in loaded_gyms}
 
@@ -123,17 +160,25 @@ def run_study(n_trials: int, seed: int | None = 42, storage: str | None = None,
         load_if_exists=bool(storage),
     )
     study.set_metric_names(OBJECTIVE_NAMES)
+    if storage:
+        _guard_search_space(study, tune_params)
+
+    done = len(study.trials)
+    remaining = max(0, n_trials - done)
+    if done:
+        print(f"  스터디 재개: 기존 {done} trial → 목표 {n_trials}까지 {remaining}개 추가")
 
     callbacks = []
     if on_progress:
         def _cb(st, _trial):
             n = len(st.trials)
-            if n % 200 == 0 or n == n_trials:
+            if n % 200 == 0 or n >= n_trials:
                 on_progress(n, n_trials, len(st.best_trials))
         callbacks.append(_cb)
 
-    study.optimize(make_objective(loaded_gyms, dca, tune_params), n_trials=n_trials,
-                   callbacks=callbacks)
+    if remaining:
+        study.optimize(make_objective(loaded_gyms, dca, tune_params),
+                       n_trials=remaining, callbacks=callbacks)
     return study, loaded_gyms, dca
 
 
@@ -144,22 +189,58 @@ def reference_vector(loaded_gyms: list[LoadedGym], dca: dict) -> dict:
     return evaluate_candidate(weights, {}, loaded_gyms, dca)
 
 
-def summarize_front(study, tolerance: float = 0.05, turnover_cap: float = 0.10) -> dict:
+def _worst_mdd(weights: list[float], params: dict,
+               loaded_gyms: list[LoadedGym]) -> float:
+    """후보의 전 체육관 최악 MDD (음수, 가장 깊은 값)."""
+    return min(
+        _score_position(
+            combine_positions(positions_with_params(lg.prices, params), weights),
+            lg).max_drawdown
+        for lg in loaded_gyms)
+
+
+def summarize_front(study, tolerance: float = 0.05, turnover_cap: float = 0.10,
+                    loaded_gyms: list[LoadedGym] | None = None,
+                    dca: dict | None = None) -> dict:
     """front를 배포 후보로 거른다.
 
-    하드 필터: 전 국면 score ≥ -tolerance (실측: 전 국면 양수 후보는 0개라
-    tolerance 필수) + 턴오버 ≤ cap (비용 민감도 0.2% FAIL 실측 근거).
+    하드 필터 3종 (OPTIMIZATION.md 4-5와 일치):
+      ① 전 국면 score ≥ -tolerance (실측: 전 국면 양수 후보는 0개라 tolerance 필수)
+      ② 턴오버 ≤ cap (비용 민감도 0.2% FAIL 실측 근거)
+      ③ 최악 MDD ≤ DCA 최악 MDD — 문서에만 있다가 06-12 구현 (코덱스 리뷰 P2).
+        score_vs_dca에 MDD가 40% 들어가도 수익/샤프 큰 후보가 깊은 낙폭을
+        상쇄하고 통과할 수 있어서, "방어 오버레이" 해석을 게이트로 강제한다.
     라벨: Defensive(bear 최고) / Balanced(5국면 평균 최고) /
           Aggressive(rebound+bull 최고) / Low-turnover(필터 내 턴오버 최소).
+
+    loaded_gyms/dca: 호출처가 이미 로드했으면 전달(재로드 방지), 없으면 여기서
+    로드한다. MDD는 목적값에 없어서 후보별 재계산이 필요한데, front가 크면
+    비싸므로 결과를 study 객체에 캐시한다 (같은 프로세스 내 반복 호출 대비).
     """
+    if loaded_gyms is None:
+        loaded_gyms = load_gyms(all_gyms())
+    if dca is None:
+        dca = {lg.gym.name: fight_dca(lg) for lg in loaded_gyms}
+    dca_worst = min(r.max_drawdown for r in dca.values())
+
+    mdd_cache = getattr(study, "_pq_mdd_cache", None)
+    if mdd_cache is None:
+        mdd_cache = {}
+        study._pq_mdd_cache = mdd_cache
+
     front = [{"number": t.number, "values": list(t.values), "params": dict(t.params)}
              for t in study.best_trials]
     for row in front:
         row["mean5"] = sum(row["values"][:5]) / 5
         row["min5"] = min(row["values"][:5])
+        if row["number"] not in mdd_cache:
+            mdd_cache[row["number"]] = _worst_mdd(*decode_params(row["params"]),
+                                                  loaded_gyms)
+        row["worst_mdd"] = mdd_cache[row["number"]]
 
     passed = [r for r in front
-              if r["min5"] >= -tolerance and r["values"][5] <= turnover_cap]
+              if r["min5"] >= -tolerance and r["values"][5] <= turnover_cap
+              and r["worst_mdd"] >= dca_worst]   # MDD는 음수 — 클수록(얕을수록) 좋음
 
     labels = {}
     if passed:
@@ -169,4 +250,5 @@ def summarize_front(study, tolerance: float = 0.05, turnover_cap: float = 0.10) 
         labels["Low-turnover"] = min(passed, key=lambda r: r["values"][5])
 
     return {"front_size": len(front), "passed": passed, "labels": labels,
-            "tolerance": tolerance, "turnover_cap": turnover_cap}
+            "tolerance": tolerance, "turnover_cap": turnover_cap,
+            "dca_worst_mdd": dca_worst}

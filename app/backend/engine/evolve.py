@@ -18,6 +18,11 @@ evolve.py - 단일목적 유전 알고리즘(GA) MVP
 그 충돌을 벡터 그대로 다루는 다목적 버전이 nsga3.py(Optuna NSGA-III) —
 이 손코딩 GA는 원리 이해용 교보재로 유지한다.
 
+[⚠️ legacy 경계 — 교보재 전용 (코덱스 리뷰 06-11)]
+이 GA의 적합도는 0~100 클램프 스탯(ATK/DEF/SKILL) 기반이라, "최적화 목적에
+클램프 스탯 금지 — raw 지표만"(AGENTS.md 6번) 규칙상 **새 후보 선발·검증
+경로에 쓰면 안 된다.** 실험 선발은 nsga3.py(raw score_vs_dca 벡터)가 담당.
+
 [GA 4단계]
   평가(evaluate) → 선택(selection) → 교배(crossover) → 돌연변이(mutation)
 """
@@ -41,7 +46,7 @@ def evaluate(strategy: Strategy, loaded_gyms: list) -> dict:
     실데이터는 결정론적이라 1회만 돌리면 된다.
 
     반환: {
-      "fitness": 종합 적합도(0~100, 평균 50% + 최약 체육관 50%),
+      "fitness": 종합 적합도(0~100, 평균 70% + 최약 체육관 30% — models.Report),
       "per_gym": {체육관: 종족치BST},     # 시장별 강함 한눈에 (표시 전용)
       "weakest": (최약 체육관 이름, 적합도),
       "stats":   종합 스탯블록(Stats),

@@ -61,18 +61,6 @@ GRAD_TOLERANCE = 0.10
 
 
 # ── 후보 로딩 ──────────────────────────────────────
-def _trial_candidate(params: dict) -> tuple[list[float], dict]:
-    """Optuna trial 파라미터 → (가중치, 시그널 파라미터)로 복원.
-    가중치 전용 리그(v2)의 트라이얼엔 w_* 만 있다 → 시그널 파라미터는 기본값."""
-    weights = [params[f"w_{g}"] for g in ALL_GENES]
-    if "VOL_CALM" not in params:
-        return weights, {}
-    sig = {k: params[k] for k in
-           ("DD_LIMIT", "MA_WINDOW", "MOM_LOOKBACK", "RSI_OVERSOLD", "BB_K", "VOL_CALM")}
-    sig["VOL_STRESSED"] = params["VOL_CALM"] + params["VOL_SPREAD"]
-    return weights, sig
-
-
 def load_graduates() -> list[dict]:
     """챔피언로드 입장 명단 = 기준 트레이더 + 필터 통과자 + 목적별 1등 스페셜리스트.
 
@@ -93,24 +81,28 @@ def load_graduates() -> list[dict]:
         "params": {}, "mean5": None, "specialist": False,
     }]
     for r in sorted(summary["passed"], key=lambda r: -r["mean5"]):
-        w, sig = _trial_candidate(r["params"])
+        w, sig = nsga3.decode_params(r["params"])
         graduates.append({
             "name": f"#{r['number']}", "label": label_of.get(r["number"], ""),
             "weights": w, "params": sig, "mean5": r["mean5"], "specialist": False,
         })
 
     # 목적별 1등 스페셜리스트 (front 전체에서, 필터 무시. 이미 명단에 있으면 생략)
+    # ⚠️ score 목적 5개만 — turnover 최저는 스페셜리스트가 아니다. turnover를
+    # minimize하는 목적이 있어 front의 그 극단은 거의 확실히 "가중치≈0 =
+    # 돼지저금통"이고, 필터 무시 입장은 퇴화 후보를 관문에 되올리는 뒷문이 된다
+    # (코덱스 리뷰 P2, 06-11). Low-turnover는 summarize_front의 필터 통과자
+    # 안에서 라벨로만 뽑는다.
     seen = {g["name"] for g in graduates}
     front = [{"number": t.number, "values": list(t.values), "params": dict(t.params)}
              for t in study.best_trials]
     spec_picks = [(f"{nsga3.OBJECTIVE_NAMES[i]} 1위",
                    max(front, key=lambda r: r["values"][i])) for i in range(5)]
-    spec_picks.append(("turnover 최저", min(front, key=lambda r: r["values"][5])))
     for title, r in spec_picks:
         if f"#{r['number']}" in seen:
             continue
         seen.add(f"#{r['number']}")
-        w, sig = _trial_candidate(r["params"])
+        w, sig = nsga3.decode_params(r["params"])
         graduates.append({
             "name": f"#{r['number']}", "label": f"★{title}",
             "weights": w, "params": sig,
