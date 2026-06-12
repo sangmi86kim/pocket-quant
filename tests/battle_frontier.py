@@ -106,9 +106,14 @@ def run_gate2() -> bool:
     graduates = load_graduates()
     champion = graduates[0]
     specialists = [g for g in graduates if g["specialist"]]
-    bench_top = next(g for g in graduates[1:] if not g["specialist"])
-    bench_top = {**bench_top, "label": f"참고(벤치1위·{bench_top['label']})"}
-    entrants = [champion, bench_top] + specialists
+    # 하드 필터 통과자가 0명이면 벤치 1위가 없다 — 없이 진행 (크래시 방지)
+    bench_top = next((g for g in graduates[1:] if not g["specialist"]), None)
+    entrants = [champion] + specialists
+    if bench_top is not None:
+        bench_top = {**bench_top, "label": f"참고(벤치1위·{bench_top['label']})"}
+        entrants = [champion, bench_top] + specialists
+    else:
+        print("⚠️ 하드 필터 통과자 0명 — 벤치 1위 없이 관문을 진행한다.")
 
     print("=== 챔피언로드 관문 ② 배틀 프론티어: 평행세계 운빨 검사 ===")
     print(f"재료: QQQ {DATA_START}~{DATA_END} (사천왕 구간 봉인 유지)")

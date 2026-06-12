@@ -327,10 +327,11 @@ def run_nsga3(trials: int, seed: int | None = None,
         [min(ref["dotcom"], ref["gfc"]), ref["rebound"], ref["crash_v"],
          ref["bull"], ref["chop"], ref["turnover"]]))
 
-    summary = nsga3.summarize_front(study)
+    summary = nsga3.summarize_front(study, loaded_gyms=loaded_gyms, dca=dca)
     print(f"\n=== Pareto front {summary['front_size']}개 → 하드 필터 통과 "
           f"{len(summary['passed'])}개 (전 국면 ≥ -{summary['tolerance'] * 100:.0f}, "
-          f"턴오버 ≤ {summary['turnover_cap']}) ===")
+          f"턴오버 ≤ {summary['turnover_cap']}, "
+          f"최악 MDD ≤ DCA {summary['dca_worst_mdd']:.1%}) ===")
 
     for label, row in summary["labels"].items():
         print(f"\n[{label}]  trial #{row['number']}")

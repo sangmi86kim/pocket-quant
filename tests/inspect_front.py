@@ -47,13 +47,13 @@ def main() -> None:
          ref["bull"], ref["chop"], ref["turnover"]]))
 
     # tolerance 스윕 — 필터를 얼마나 풀면 후보가 몇 개인가
-    print("\n=== 하드 필터 스윕 (턴오버 ≤ 0.10 고정) ===")
+    print("\n=== 하드 필터 스윕 (턴오버 ≤ 0.10 · MDD ≤ DCA 최악 고정) ===")
     for tol in (0.0, 0.02, 0.05, 0.10):
-        s = nsga3.summarize_front(study, tolerance=tol)
+        s = nsga3.summarize_front(study, tolerance=tol, loaded_gyms=loaded, dca=dca)
         print(f"  전 국면 ≥ {-tol * 100:+.0f} : {len(s['passed'])}개 통과")
 
     # 기본 필터의 라벨 후보 상세
-    summary = nsga3.summarize_front(study)
+    summary = nsga3.summarize_front(study, loaded_gyms=loaded, dca=dca)
     print(f"\n=== 라벨 후보 (전 국면 ≥ -5, 턴오버 ≤ 0.10) ===")
     for label, row in summary["labels"].items():
         print(f"\n[{label}]  trial #{row['number']}  (5국면 평균 {row['mean5'] * 100:+.1f})")

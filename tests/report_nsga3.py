@@ -113,11 +113,11 @@ def main() -> None:
     optuna.logging.set_verbosity(optuna.logging.WARNING)
     study = optuna.load_study(study_name=STUDY, storage=STORAGE)
     front = study.best_trials
-    summary = nsga3.summarize_front(study)
-    passed_numbers = {r["number"] for r in summary["passed"]}
-
     loaded = load_gyms(all_gyms())
     dca = {lg.gym.name: fight_dca(lg) for lg in loaded}
+    summary = nsga3.summarize_front(study, loaded_gyms=loaded, dca=dca)
+    passed_numbers = {r["number"] for r in summary["passed"]}
+
     ref_d = nsga3.reference_vector(loaded, dca)
     ref = [min(ref_d["dotcom"], ref_d["gfc"]), ref_d["rebound"], ref_d["crash_v"],
            ref_d["bull"], ref_d["chop"], ref_d["turnover"]]
@@ -125,7 +125,7 @@ def main() -> None:
 
     sweep_rows = ""
     for tol in (0.0, 0.02, 0.05, 0.10):
-        s = nsga3.summarize_front(study, tolerance=tol)
+        s = nsga3.summarize_front(study, tolerance=tol, loaded_gyms=loaded, dca=dca)
         sweep_rows += (f"<tr><td>전 국면 ≥ {-tol * 100:+.0f}</td>"
                        f"<td>{len(s['passed'])}개</td></tr>")
 
