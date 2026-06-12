@@ -37,15 +37,27 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+# Windows cp949 콘솔에서 이모지 크래시 방지 (3.7+)
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8")    # type: ignore[union-attr]
+    except Exception:
+        pass
+
 import numpy as np
 import optuna
 import pandas as pd
 
 from app.backend.core.models import Gym
 from app.backend.engine import battle, nsga3
-from app.backend.engine.battle import _score_position, fight_dca, score_vs_dca
+from app.backend.engine.battle import (_score_position, fight_dca, score_vs_dca,
+                                         terminal_balance)
 from app.backend.genes.signals import ALL_GENES, combine_positions, positions_with_params
 from app.backend.market.data import LoadedGym, WARMUP_DAYS, get_prices
+from app.backend.market.regime import REGIME_LABELS, dominant_regime
+from app.service import _update_regime_picks
+
+SEED_KRW = 1_000_000   # 표시·판정용 시드 (06-13 — 매년 새로 들고 들어감)
 
 _ROOT = Path(__file__).resolve().parent.parent
 STORAGE = f"sqlite:///{(_ROOT / 'optuna_pocketquant.db').as_posix()}"
@@ -139,12 +151,15 @@ def _perf(returns: pd.Series) -> tuple[float, float, float]:
     return cagr, mdd, sharpe
 
 
-def run_gate1() -> bool:
+def run_gate1(graduates: list | None = None) -> bool:
+    """챔피언로드 ① 시험장 — graduates를 외부에서 주입할 수 있다 (06-13).
+    None이면 기존 sqlite 스터디(load_graduates)에서 자동 로드."""
     prices = get_prices(TICKER, "1999-03-10", "2026-06-09")
     loadeds = {y: _loaded_window(prices, y) for y in OOS_YEARS}
     dca = {y: fight_dca(lg) for y, lg in loadeds.items()}
 
-    graduates = load_graduates()
+    if graduates is None:
+        graduates = load_graduates()
     print(f"=== 챔피언로드 관문 ① 리그 본선: OOS {len(OOS_YEARS)}개 연도 "
           f"({OOS_YEARS[0]}~{OOS_YEARS[-1]}, 훈련 체육관 미사용 해) ===")
     print(f"도전자 {len(graduates)}명 (리그 통과 {len(graduates) - 1} + 기준 1)\n")
@@ -157,14 +172,17 @@ def run_gate1() -> bool:
     bc, bm, bs = _perf(bh_all)
 
     rows, survivors = [], []
+    balances: dict[str, dict[int, int]] = {}    # {후보 이름: {year: 종료 잔고}}
     for g in graduates:
         scores, parts = [], []
+        balances[g["name"]] = {}
         for y in OOS_YEARS:
             res = _score_position(
                 combine_positions(positions_with_params(loadeds[y].prices, g["params"]),
                                   g["weights"]), loadeds[y])
             scores.append(score_vs_dca(res, dca[y]))
             parts.append(_daily_returns(loadeds[y], g["weights"], g["params"]))
+            balances[g["name"]][y] = terminal_balance(res, SEED_KRW)
         avg = float(np.mean(scores))
         wins = sum(s > 0 for s in scores)
         worst = float(min(scores))
@@ -190,6 +208,44 @@ def run_gate1() -> bool:
     print(f"\nB&H 기준선: CAGR {bc:+.1%}  MDD {bm:.1%}  샤프 {bs:.2f}")
     print(f"도전권 조건: ①OOS 평균 score_vs_dca > 0  ②이어붙임 MDD가 B&H({bm:.1%})보다 얕음")
     print("벤치 ≠ 사망 — 상폐가 아니면 뒤진 게 아니다. 명단 보존, 다음 리그/관문②에서 재도전.")
+
+    # ── 매년 100만원 시드 잔고 표 + 연도별 1등 + 국면 라벨 (사용자 안 06-13) ──
+    # 옵티마이저는 점수(score_vs_dca 다목적)로 탐색, 사람용 표시·판정만 잔고차.
+    # 국면 라벨은 Regime_Scanner와 동일 정의(market.regime) — 외부 도구 입력원.
+    year_head = " ".join(f"{y - 2000:>5}" for y in OOS_YEARS)   # '03 04 05...
+    print("\n=== 시험장 11년 × 100만원 시드 (단위: 만원, 종료 잔고) ===")
+    print(f"  {'후보':<14} {'라벨':<12} {year_head}  {'합계':>6}")
+    for g in graduates:
+        cells = " ".join(f"{balances[g['name']][y] / 10000:>5.0f}" for y in OOS_YEARS)
+        tot = sum(balances[g["name"]].values()) // 10000
+        print(f"  {g['name']:<14} {g['label']:<12} {cells}  {tot:>5,}")
+    dca_bals = {y: terminal_balance(dca[y], SEED_KRW) for y in OOS_YEARS}
+    dca_cells = " ".join(f"{dca_bals[y] / 10000:>5.0f}" for y in OOS_YEARS)
+    dca_tot = sum(dca_bals.values()) // 10000
+    print(f"  {'성실이':<14} {'(DCA)':<12} {dca_cells}  {dca_tot:>5,}")
+
+    # 성실이도 1등 후보로 등록 (사용자 안 06-13: "성실이도 챔피언로드 보내")
+    balances["성실이"] = dca_bals
+
+    # ── 연도별 1등 + 국면 → gate1_oos (Regime Scanner 입력원) ──
+    gate1 = []
+    for y in OOS_YEARS:
+        regime_en = dominant_regime(prices, f"{y}-01-01", f"{y}-12-31")
+        regime = REGIME_LABELS[regime_en]
+        win_name = max(balances, key=lambda n: balances[n][y])
+        win_bal = balances[win_name][y]
+        gate1.append({"year": y, "regime": regime, "regime_en": regime_en,
+                      "winner": win_name, "잔고": win_bal,
+                      "성실이": dca_bals[y], "차": win_bal - dca_bals[y]})
+
+    print("\n=== 시험장 연도별 1등 + 국면 ===")
+    for e in gate1:
+        sign = "+" if e["차"] >= 0 else ""
+        print(f"  {e['year']} {e['regime']:<4} {e['winner']:<14} "
+              f"{e['잔고']:>10,}원  (성실이 {e['성실이']:>10,}원, {sign}{e['차']:,})")
+
+    out = _update_regime_picks("gate1_oos", gate1)
+    print(f"\nsaved: {out}")
 
     # 과적합 갭: 인샘플 점수가 OOS를 예측하는가
     pairs = [(g["mean5"], avg) for g, avg, *_ in rows if g["mean5"] is not None]

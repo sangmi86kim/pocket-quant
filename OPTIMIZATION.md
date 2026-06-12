@@ -89,6 +89,13 @@ Y = 0.7 × mean(체육관별 fitness) + 0.3 × min(체육관별 fitness)
 
 ### 4-2. Y — 목적 벡터 (6목적)
 
+> **내부(옵티마이저) vs 표시·판정 분리** (06-13 사용자 결정):
+> - **내부**: `score_vs_dca` 6목적 (raw 지표 다목적) — NSGA-III 탐색·필터·게이트.
+> - **표시·판정**: "100만원 시드 → 종료 잔고 vs 성실이 잔고" 단위 통일. 사람이
+>   읽는 모든 층(NSGA-III 통과 후보 표, 챔피언로드 3관문)에서 동일 단위.
+> - 회귀 테스트 골든 넘버는 내부(`score_vs_dca`)라 안 깨짐.
+> - 시드 1,000,000원은 비율(`total_return`)의 표시 환산일 뿐 — 옵티마이저 무영향.
+
 기준선 = **일별 DCA** (실엔진: 토스 매일 $20 QQQM 자동 모으기, **매수 수수료 0원**).
 전략은 0.1% 과금 — 비용 비대칭이 현실이고 그대로 모델링한다 (`battle.fight_dca`).
 
@@ -167,9 +174,12 @@ front = study.best_trials                           # Pareto front
 하드 필터 (front에서 배포 후보 거르기):
 ```
 모든 체육관 score_vs_dca ≥ −tolerance     # 실측: 전 체육관 양수 조합 0개 → tolerance 필수
-최악 MDD ≤ DCA 최악 MDD
 턴오버 ≤ 실거래 임계 (비용 민감도 근거)
 ```
+
+> MDD 하드필터는 06-13 사용자 결정으로 제거: "어차피 깨져도 안 팔면 그만이야".
+> 낙폭 페널티는 `score_vs_dca`의 0.4×낙폭개선 항에 이미 들어가 있고, 6목적
+> 다목적이 위험을 체육관별로 분담한다. 600 trials로도 통과 0이 될 만큼 빡빡했음.
 
 라벨 (Regime Scanner 30% 오버레이와 연결):
 ```
@@ -178,6 +188,27 @@ Balanced     : 평균 최고 + 턴오버 허용     ├ bull/calm     → 70% Ba
 Aggressive   : rebound/bull 최고          ┘ uncertain     → 100% Balanced
 Low-turnover : 점수 허용선 내 턴오버 최소
 ```
+
+### 4-5b. 국면별 1등 추적 — Regime Scanner 입력원 (`reports/regime_picks.json`)
+
+훈련장(NSGA-III) + 챔피언로드 3관문 각각에서 시험단위(체육관/연도/세계)마다
+잔고 1등 후보 + 국면 라벨을 누적 저장. 추후 Regime Scanner가 같은 라벨 체계로
+"지금 어떤 국면" 추론하면 → 그 국면 1등 후보를 30% 오버레이.
+
+```
+gate0_training : 6체육관 × 잔고 1등 (인샘플)            ← service.run_nsga3
+gate1_oos      : OOS 11년 × 잔고 1등 + 국면 라벨        ← tests/victory_road.py
+gate2_worlds   : arena 3개(전천후/bear/rebound) × 세계 1등 카운트  ← tests/battle_frontier.py
+gate3_holdout  : 봉인 6년 × 챔피언 잔고 + 국면 라벨     ← tests/elite_four.py
+```
+
+국면 라벨 정의는 [Regime_Scanner](../Regime_Scanner) 프로젝트(`backend/signals.py`)와
+동기 — 4종(`bull`/`bear`/`sideways`/`volatile`). 50/200 이동평균 · 60일 수익률 ·
+20일 실현변동성 백분위(룩어헤드 방지). PocketQuant 쪽 단일 소스는
+`app/backend/market/regime.py` — Regime_Scanner config 변경 시 양쪽 같이 손볼 것.
+
+⚠️ 평행세계(gate2)는 합성이라 일별 판정 불가 → 풀명(전천후/bear/rebound) 그대로 사용.
+인샘플(gate0)은 체육관 이름(닷컴/금융위기/...) 그대로.
 
 ### 4-6. 검증 프로토콜 (학습 = 실데이터, 검증 = 3단)
 

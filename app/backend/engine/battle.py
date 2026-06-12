@@ -210,6 +210,18 @@ def score_vs_dca(strat: BattleResult, dca: BattleResult) -> float:
             + 0.2 * (strat.sharpe - dca.sharpe))
 
 
+# ── 표시·판정용: 100만원 시드 → 종료 잔고 ──
+# 옵티마이저(score_vs_dca)는 raw 지표 다목적이지만, 사람이 보는 층(리포트·관문
+# 판정)은 "100만원 들고 들어가서 끝에 얼마"로 통일한다 (06-13 사용자 결정).
+# 시드 값은 비율 환산이라 옵티마이저/회귀 테스트엔 영향 없음 — 표시 단위일 뿐.
+DEFAULT_SEED_KRW = 1_000_000
+
+
+def terminal_balance(result: BattleResult, seed: int = DEFAULT_SEED_KRW) -> int:
+    """평가 종료 시 잔고 (원). seed × (1 + total_return) — 사람용 표기 전용."""
+    return int(round(seed * (1.0 + result.total_return)))
+
+
 def challenge(strategy: Strategy, loaded_gyms: list[LoadedGym]) -> Report:
     """전략 한 마리가 (미리 로딩된) 여러 시장 국면을 모두 통과하며 성적표를 만든다."""
     report = Report(strategy=strategy)

@@ -25,21 +25,31 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+# Windows cp949 콘솔에서 이모지 크래시 방지 (3.7+)
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8")    # type: ignore[union-attr]
+    except Exception:
+        pass
+
 import numpy as np
 import pandas as pd
 
 from app.backend.core.models import Gym, Report, Strategy
 from app.backend.engine import battle
 from app.backend.engine.battle import (_dca_position, _score_position, fight_dca,
-                                       score_vs_dca)
+                                       score_vs_dca, terminal_balance)
 from app.backend.genes.signals import ALL_GENES, combine_positions, positions_with_params
 from app.backend.market.data import LoadedGym, WARMUP_DAYS, get_prices
+from app.backend.market.regime import REGIME_LABELS, dominant_regime
+from app.service import _update_regime_picks
 
 _ROOT = Path(__file__).resolve().parent.parent
 OUT = _ROOT / "reports" / "elite_four_report.html"
 
 HOLDOUT_START, DATA_END = "2020-07-01", "2026-06-09"
 TICKER = "QQQ"
+SEED_KRW = 1_000_000   # 표시·판정용 시드 (06-13 — 매년 100만원)
 
 # 도전자: 관문 ①·② 통과자 (고정 — 여기서 다른 후보를 끼워넣지 않는다)
 CHAMPION_WEIGHTS = [1.0 if g in ("VOL", "REV_RSI", "REV_BB") else 0.0 for g in ALL_GENES]
@@ -166,6 +176,32 @@ def run_gate3() -> bool:
     print(f"  ① 라이벌전 (연평균 score > 0)      : {'PASS' if rival_ok else 'FAIL'} ({avg_score * 100:+.1f})")
     print(f"  ② 방어 (최대 데미지 {cm:.1%} vs B&H {bm:.1%}) : {'PASS' if defense_ok else 'FAIL'}")
     print(f"\n{'👑 사천왕 격파 — 챔피언 확정 (배포 근거 완성)' if passed else '🪑 사천왕 벽 — 결과는 결과대로 기록 (재튜닝 금지, 다음 알파에서 재도전)'}")
+
+    # ── 매년 100만원 시드 잔고 + 국면 라벨 → gate3_holdout (사용자 안 06-13) ──
+    # 사천왕은 도전자 1명(챔피언)뿐이라 "후보 1등"보다 "연도별 잔고 + 국면"이 본질.
+    # Regime Scanner가 추후 "이 국면에서 챔피언이 약했다"는 신호를 읽을 수 있게 기록.
+    gate3 = []
+    for name, start, end in ROUNDS:
+        regime_en = dominant_regime(prices, start, end)
+        regime = REGIME_LABELS[regime_en]
+        # rows 매칭 (name으로)
+        _, res, dca_res, s = next(r for r in rows if r[0] == name)
+        c_bal = terminal_balance(res, SEED_KRW)
+        d_bal = terminal_balance(dca_res, SEED_KRW)
+        gate3.append({"year": name, "regime": regime, "regime_en": regime_en,
+                      "winner": "현챔피언", "잔고": c_bal, "성실이": d_bal,
+                      "차": c_bal - d_bal, "성실이_이김": c_bal > d_bal,
+                      "score": float(s)})
+
+    print("\n=== 사천왕 라운드별 잔고 + 국면 (100만원 시드 → 종료 잔고) ===")
+    for e in gate3:
+        sign = "+" if e["차"] >= 0 else ""
+        mark = "✅" if e["성실이_이김"] else "❌"
+        print(f"  {e['year']:<14} {e['regime']:<4} 챔피언 {e['잔고']:>10,}원  "
+              f"성실이 {e['성실이']:>10,}원  ({sign}{e['차']:,})  {mark}")
+
+    out = _update_regime_picks("gate3_holdout", gate3)
+    print(f"saved: {out}")
 
     # 오박사 코너 — LM Studio가 켜져 있으면 hold-out 성적표를 직접 브리핑.
     # 부재 시엔 둔치 고정 대사 (리포트 생성은 오박사 없이도 항상 성공해야 한다).

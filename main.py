@@ -30,6 +30,9 @@ DEFAULTS = {
     "storage": None,      # [nsga3] Optuna storage URL (예: "sqlite:///nsga3.db") — 중단/재개용
     "study": "nsga3_v2_weights",  # [nsga3] 스터디 이름 (storage 사용 시)
     "tune_params": False, # [nsga3] True면 시그널 파라미터도 탐색 (v1에서 과적합 — 고도화용)
+    "population_size": 50,        # [nsga3] NSGA-III 한 세대 크기 (사용자 본업 5목적 검증치)
+    "early_stop_window": None,    # [nsga3] HV MA(window) 정체 시 self stop (예: 5). None=끔
+    "adaptive_mutation": False,   # [nsga3] True면 HV 정체/개선 신호로 mutation_prob 자동 조정
     "oak": False,         # True면 리포트 끝에 오박사(LM Studio LLM) 브리핑 — 해설 전용, 판정 아님
 }
 
@@ -55,7 +58,9 @@ def main() -> None:
                    config["md"], config["capital"], config["oak"])
     elif mode == "nsga3":
         run_nsga3(config["trials"], config["seed"], config["storage"],
-                  config["study"], config["tune_params"])
+                  config["study"], config["tune_params"],
+                  config["population_size"], config["early_stop_window"],
+                  config["adaptive_mutation"])
     elif mode == "single":
         run_single(config["genes"], config["seed"], config["md"], config["capital"],
                    config["oak"])
