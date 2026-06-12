@@ -9,8 +9,18 @@ service.py - 실행 '흐름'을 조립하는 층 (애플리케이션 서비스)
 여기서는 어려운 계산을 하지 않는다. backend 기능을 '순서대로' 불러
 파이프라인(① 데이터 → ② 전략 → ③ 전투 → ④ 결과 → ⑤ 진화)을 엮고 출력만 한다.
 """
+import json
 import random
+import sys
 from pathlib import Path
+
+# Windows 콘솔 기본 cp949에선 이모지(⚠️/👑/🎫 등)가 인코딩 에러로 크래시.
+# 모든 진입점에서 stdout/stderr를 utf-8로 재설정 (3.7+ 지원, 실패해도 무시).
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8")    # type: ignore[union-attr]
+    except Exception:
+        pass
 
 from app.backend.engine.battle import challenge
 from app.backend.engine.evolve import evolve
@@ -301,24 +311,65 @@ def run_single(gene_count: int | None, seed: int | None = None,
     _write_markdown(path, _markdown_report("PocketQuant 단판 백테스트 리포트", report))
 
 
+# ── Regime Scanner 입력원: 각 관문(훈련장·시험장·평행세계·사천왕)에서 ──
+# ── 잔고 1등 후보를 누적 저장. 섹션별로 부분 갱신 (다른 섹션 보존).      ──
+_REGIME_PICKS_PATH = Path("reports/regime_picks.json")
+
+
+def _update_regime_picks(section: str, data) -> Path:
+    """reports/regime_picks.json의 한 섹션만 갱신 (다른 섹션 보존)."""
+    _REGIME_PICKS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    payload = {}
+    if _REGIME_PICKS_PATH.exists():
+        payload = json.loads(_REGIME_PICKS_PATH.read_text(encoding="utf-8"))
+    payload[section] = data
+    _REGIME_PICKS_PATH.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    return _REGIME_PICKS_PATH
+
+
 def run_nsga3(trials: int, seed: int | None = None,
               storage: str | None = None, study_name: str = "nsga3_v2_weights",
-              tune_params: bool = False) -> None:
+              tune_params: bool = False, population_size: int = 50,
+              early_stop_window: int | None = None,
+              adaptive_mutation: bool = False) -> None:
     """[다목적 모드] Optuna NSGA-III — 국면별 라이벌(DCA)전 5목적 + 턴오버.
     결과는 챔피언 1명이 아니라 Pareto front(트레이더 라인업)다.
-    기본 = 가중치 전용 탐색(A안). tune_params=True는 고도화 단계용."""
+    기본 = 가중치 전용 탐색(A안). tune_params=True는 고도화 단계용.
+    early_stop_window: HV MA(window) 정체 시 self stop (None=끔).
+    adaptive_mutation: True면 HV 정체/개선 신호로 mutation_prob 자동 조정."""
     from app.backend.engine import nsga3   # optuna는 이 모드에서만 필요 — 지연 import
 
     space = "가중치 6 + 파라미터 7" if tune_params else "가중치 6 (파라미터 기본값 고정)"
+    notes = []
+    if early_stop_window:
+        notes.append(f"HV-MA({early_stop_window}) 얼리스탑")
+    if adaptive_mutation:
+        notes.append("적응형 mutation")
+    note_str = (" · " + " · ".join(notes)) if notes else ""
     print("=== PocketQuant NSGA-III 다목적 최적화 ===")
-    print(f"트라이얼 {trials} · 목적 {nsga3.OBJECTIVE_NAMES} · X = {space} · 시드 {seed}\n")
+    print(f"트라이얼 {trials} · 목적 {nsga3.OBJECTIVE_NAMES} · X = {space}"
+          f" · 인구 {population_size} · 시드 {seed}{note_str}\n")
 
     def on_progress(done, total, front_size):
         print(f"  [{done:>5}/{total}] Pareto front {front_size}개")
 
-    study, loaded_gyms, dca = nsga3.run_study(
+    study, loaded_gyms, dca, hv_cb, mut_cb = nsga3.run_study(
         trials, seed=seed, storage=storage, study_name=study_name,
-        tune_params=tune_params, on_progress=on_progress)
+        tune_params=tune_params, on_progress=on_progress,
+        population_size=population_size, early_stop_window=early_stop_window,
+        adaptive_mutation=adaptive_mutation)
+
+    if hv_cb and hv_cb.hv:
+        curve = " → ".join(f"{v:.4f}" for v in hv_cb.hv)
+        tail = " (정체로 중단)" if getattr(hv_cb, "stopped", False) else ""
+        print(f"\nHV 곡선 ({len(hv_cb.hv)}세대){tail}: {curve}")
+    if mut_cb and mut_cb.history:
+        print(f"\n적응형 mutation 궤적 ({len(mut_cb.history)}세대):")
+        for h in mut_cb.history:
+            arrow = "↓" if h["improved"] else "↑"
+            print(f"  g{h['gen']:>2} HV {h['hv']:.4f} MA {h['ma']:.4f} "
+                  f"{arrow} mut_prob {h['mut_prob']:.4f}")
 
     # 비교 기준: 현 단일목적 챔피언 (동일가중 VOL+REV_RSI+REV_BB)
     ref = nsga3.reference_vector(loaded_gyms, dca)
@@ -330,8 +381,7 @@ def run_nsga3(trials: int, seed: int | None = None,
     summary = nsga3.summarize_front(study, loaded_gyms=loaded_gyms, dca=dca)
     print(f"\n=== Pareto front {summary['front_size']}개 → 하드 필터 통과 "
           f"{len(summary['passed'])}개 (전 국면 ≥ -{summary['tolerance'] * 100:.0f}, "
-          f"턴오버 ≤ {summary['turnover_cap']}, "
-          f"최악 MDD ≤ DCA {summary['dca_worst_mdd']:.1%}) ===")
+          f"턴오버 ≤ {summary['turnover_cap']}) ===")
 
     for label, row in summary["labels"].items():
         print(f"\n[{label}]  trial #{row['number']}")
@@ -340,6 +390,46 @@ def run_nsga3(trials: int, seed: int | None = None,
 
     if not summary["labels"]:
         print("\n  ⚠️ 필터 통과 후보 없음 — tolerance/turnover_cap을 조정해 다시 보세요.")
+        return
+
+    # ── 표시·판정용 잔고 (100만원 시드) — 사람이 보는 층, 옵티마이저 아님 ──
+    bals = {}
+    for r in summary["passed"]:
+        w, sig = nsga3.decode_params(r["params"])
+        bals[r["number"]] = nsga3.evaluate_balances(w, sig, loaded_gyms, dca)
+
+    # 체육관별 짧은 별명 (표 칼럼용) — GYM_KEYS의 한글 토큰("닷컴", "금융위기"...)
+    nick = {lg.gym.name: next(t for t in nsga3.GYM_KEYS if t in lg.gym.name)
+            for lg in loaded_gyms}
+    gym_order = [lg.gym.name for lg in loaded_gyms]
+
+    print("\n=== 라벨 후보 잔고 (100만원 시드 → 종료 잔고, 단위 만원) ===")
+    head = "  " + f"{'후보':<10}{'라벨':<14}" + "".join(f"{nick[g]:>9}" for g in gym_order)
+    print(head)
+    for label, row in summary["labels"].items():
+        b = bals[row["number"]]
+        cells = "".join(f"{b[g]['strat']/10000:>9.1f}" for g in gym_order)
+        print(f"  #{row['number']:<9}{label:<14}{cells}")
+    sample = next(iter(bals.values()))
+    dca_cells = "".join(f"{sample[g]['dca']/10000:>9.1f}" for g in gym_order)
+    print(f"  {'성실이':<10}{'(DCA)':<14}{dca_cells}")
+
+    # ── gate0_training: 6체육관 각각 잔고 1등 (통과 후보 중) → Regime Scanner 입력 ──
+    gate0 = []
+    for g in gym_order:
+        win_num, win_b = max(bals.items(), key=lambda kv: kv[1][g]["strat"])
+        gate0.append({"gym": g, "nick": nick[g], "winner": f"#{win_num}",
+                      "잔고": win_b[g]["strat"], "성실이": win_b[g]["dca"],
+                      "차": win_b[g]["strat"] - win_b[g]["dca"]})
+
+    print("\n=== 훈련장 1등 (체육관별, 통과 후보 중 잔고 최고) ===")
+    for e in gate0:
+        sign = "+" if e["차"] >= 0 else ""
+        print(f"  {e['nick']:<8} {e['winner']:<8} {e['잔고']:>10,}원  "
+              f"(성실이 {e['성실이']:>10,}원, {sign}{e['차']:,})")
+
+    out = _update_regime_picks("gate0_training", gate0)
+    print(f"\nsaved: {out}")
 
 
 def run_evolve(pop: int, generations: int, seed: int | None = None,
