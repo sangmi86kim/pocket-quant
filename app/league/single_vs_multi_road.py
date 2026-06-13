@@ -49,7 +49,7 @@ from app.league.victory_road import run_gate1
 SEED_KRW = 1_000_000
 OUT_MD = _ROOT / "reports" / "single_vs_multi_road.md"
 
-# ── 다목적 NSGA-III v1 TOP10 (hall_of_fame.md 정규화 가중치 그대로) ──
+# ── 다목적 NSGA-III v1 TOP10 (hall_of_fame_v1.md 정규화 가중치 그대로) ──
 # 비율만 의미하므로 raw 합이 1 아니어도 OK (combine_positions가 Σw로 정규화).
 MULTI_TOP10 = [
     # (label, [DD, VOL, MA, MOM, REV_RSI, REV_BB])
