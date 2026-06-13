@@ -80,7 +80,7 @@ def run_nsga3(trials: int, seed: int | None = None,
     early_stop_window: HV MA(window) 정체 시 self stop (None=끔).
     adaptive_mutation: True면 HV 정체/개선 신호로 mutation_prob 자동 조정."""
     _apply_seed(seed)
-    from app.backend.engine import nsga3   # optuna는 이 모드에서만 필요 — 지연 import
+    from app.backend.search import nsga3   # optuna는 이 모드에서만 필요 — 지연 import
 
     space = "가중치 6 + 파라미터 7" if tune_params else "가중치 6 (파라미터 기본값 고정)"
     notes = []

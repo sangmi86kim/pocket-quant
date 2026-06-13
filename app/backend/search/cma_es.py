@@ -16,11 +16,11 @@ from typing import Callable
 
 import optuna
 
-from ..data_io.data import LoadedGym, load_gyms
-from ..genes.signals import ALL_GENES
-from ..market.gym import all_gyms
-from .battle import fight_dca
-from .nsga3 import decode_params, evaluate_balances
+from app.backend.data_io.data import LoadedGym, load_gyms
+from app.backend.genes.signals import ALL_GENES
+from app.backend.market.gym import all_gyms
+from app.backend.engine.battle import fight_dca
+from app.backend.search.nsga3 import decode_params, evaluate_balances
 
 SEED_KRW = 1_000_000
 

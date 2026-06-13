@@ -5,7 +5,7 @@
 
 [입장]
 - 현 챔피언 (다목적 옛 답, 동일가중 VOL+REV_RSI+REV_BB) 1명
-- 다목적 NSGA-III v1 TOP10 — `hall_of_fame.md` 가중치 그대로 (재현 안 돌리고 박아 넣음)
+- 다목적 NSGA-III v1 TOP10 — `hall_of_fame_v1.md` 가중치 그대로 (재현 안 돌리고 박아 넣음)
 - 단일목적 TPE 5시드 1등 — `single_obj_sweep.py` 결과 (시드별 1등 가중치)
 - 기준선 4인방 (어플삭제맨/저축왕/성실이/돼지저금통) — 관문 어댑터가 자동/우리 inline
 
@@ -255,7 +255,7 @@ def main() -> None:
         "",
         "도전자 21명 (현챔 1 + 다목적 TOP10 + 단일목적 TPE 5시드 + 기준선 4):",
         "- **다목적(옛)** 현챔피언 = 동일가중 VOL+REV_RSI+REV_BB",
-        "- **다목적** TOP01~TOP10 = NSGA-III 6목적 (`hall_of_fame.md` 가중치)",
+        "- **다목적** TOP01~TOP10 = NSGA-III 6목적 (`hall_of_fame_v1.md` 가중치)",
         "- **단일목적** TPE-s42/07/11/19/23 = 6체육관 잔고 합 max (TPE × 5 시드)",
         "- **기준선** 어플삭제맨 / 저축왕 / 성실이 / 돼지저금통",
         "",

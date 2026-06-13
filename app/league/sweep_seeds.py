@@ -27,7 +27,7 @@ for s in (sys.stdout, sys.stderr):
 
 import optuna
 
-from app.backend.engine import nsga3
+from app.backend.search import nsga3
 from app.backend.engine.battle import terminal_balance
 
 SEEDS = [42, 7, 11, 19, 23]

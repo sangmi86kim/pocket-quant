@@ -85,7 +85,7 @@ PocketQuant는 **"가장 강한 전략"** 이 아니라,
 
 ### 야생 7마리 (v1.x 시즌, 2026-06-13 잡힘)
 
-스타팅 6마리는 모두 가격 기반 → 자산 바뀌면(SPY 등) 무력하다는 한계 발견 ([v1 마감 결과](reports/hall_of_fame.md)).
+스타팅 6마리는 모두 가격 기반 → 자산 바뀌면(SPY 등) 무력하다는 한계 발견 ([v1 마감 결과](reports/hall_of_fame_v1.md)).
 자산-횡단 알파를 만들려면 **가격 외 정보원**이 필요 — 그래서 야생 7마리 추가:
 
 | 타입 | 유전자 | 외부 정보원 | 로직 |
@@ -102,7 +102,7 @@ PocketQuant는 **"가장 강한 전략"** 이 아니라,
 
 > 트레이더 이름은 데려간 포켓퀀트 조합으로 자동 생성됩니다 — 새 캐릭터가 아니라
 > **누구를 데려갔느냐의 표기**. v1 챔피언은 `[REV_RSI·REV_BB]` (TPE-s11, 55%/45%), 옛
-> 다목적 챔피언은 `[VOL·REV_RSI·REV_BB]` 동일가중이었음. v1 마감 결과는 [`hall_of_fame.md`](reports/hall_of_fame.md).
+> 다목적 챔피언은 `[VOL·REV_RSI·REV_BB]` 동일가중이었음. v1 마감 결과는 [`hall_of_fame_v1.md`](reports/hall_of_fame_v1.md).
 
 ---
 

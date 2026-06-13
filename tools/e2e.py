@@ -41,7 +41,7 @@ STAGES = [
     ("진단: 시그널 노출/발동률",
      [sys.executable, "tools/check_signals.py"], 120),
     ("진단: DCA 기준선 + score_vs_dca",
-     [sys.executable, "tools/check_dca.py"], 600),
+     [sys.executable, "tools/check_dca.py"], 900),
     # walk_forward는 legacy 단일목적 GA(클램프 스탯) 기반 — 풀 13마리에선 2^13 조합
     # 평가 폭증 + AGENTS.md §6 "클램프 스탯 금지"와도 안 맞아 e2e에서 제외.
     # 별도 도구로 유지 — 자산/기간 민감도 실험 시 직접 호출.

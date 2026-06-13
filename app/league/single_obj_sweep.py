@@ -1,4 +1,4 @@
-"""단일목적 5시드 분산 — `engine.tpe.run_study` 시드별 호출 + 안정성 보고.
+"""단일목적 5시드 분산 — `search.tpe.run_study` 시드별 호출 + 안정성 보고.
 
 엔진(`app/backend/engine/tpe.py`)이 탐색·1등 추출까지 책임 — 본 어댑터는 5번 호출,
 시드별 1등 표 작성, 시드 간 폭(%)으로 수렴 판정 + reports/single_obj_sweep.md 저장.
@@ -17,8 +17,8 @@ from pathlib import Path
 _ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(_ROOT))
 
-from app.backend.engine import tpe
-from app.backend.engine.nsga3 import evaluate_balances
+from app.backend.search import tpe
+from app.backend.search.nsga3 import evaluate_balances
 from app.backend.genes.signals import ALL_GENES
 
 for _stream in (sys.stdout, sys.stderr):

@@ -296,9 +296,9 @@ v1의 자산-횡단 한계 = 가격 6마리만 보던 게 원인. 야생 7마리
 
 | 엔진 | 모듈 | 성격 |
 |---|---|---|
-| NSGA-III | `app/backend/engine/nsga3.py` | 다목적 (6목적 score_vs_dca + turnover) → Pareto front |
-| TPE | `app/backend/engine/tpe.py` | 단일목적 Bayesian (잔고 합 max). v1 챔피언 TPE-s11 출신 |
-| **CMA-ES** | `app/backend/engine/cma_es.py` (v1.x 신설) | 단일목적 진화전략. 연속 공간 강함 |
+| NSGA-III | `app/backend/search/nsga3.py` | 다목적 (6목적 score_vs_dca + turnover) → Pareto front |
+| TPE | `app/backend/search/tpe.py` | 단일목적 Bayesian (잔고 합 max). v1 챔피언 TPE-s11 출신 |
+| **CMA-ES** | `app/backend/search/cma_es.py` (v1.x 신설) | 단일목적 진화전략. 연속 공간 강함 |
 
 셋 다 같은 인터페이스(`run_study(trials, seed, storage, study_name, on_progress,
 loaded_gyms, dca)`) → service에서 sampler만 갈아끼울 수 있다. `cmaes>=0.10` 의존성 추가.
@@ -306,7 +306,7 @@ loaded_gyms, dca)`) → service에서 sampler만 갈아끼울 수 있다. `cmaes
 ### 운영 규칙 (AGENTS.md §11 재확인)
 
 - 모든 엔진 `load_if_exists=False` 고정. `study_name`은 매 시즌·시드마다 새로.
-- sqlite db는 시즌 임시 작업 영역 → `hall_of_fame.md` 흡수 후 폐기 (`rm *.db`).
+- sqlite db는 시즌 임시 작업 영역 → `hall_of_fame_<버전>.md` 신설 + 인덱스 갱신 후 폐기 (`rm *.db`).
 - 다른 탐색공간(옛 풀 6 vs 새 풀 13) 절대 같은 db에 안 섞임 — `DuplicatedStudyError`로 즉시 차단.
 
 ### 다음 단계 (v1.x 본탐색)

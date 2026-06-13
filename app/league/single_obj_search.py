@@ -1,4 +1,4 @@
-"""단일목적 1시드 — `engine.tpe.run_study` 결과 콘솔 표시.
+"""단일목적 1시드 — `search.tpe.run_study` 결과 콘솔 표시.
 
 엔진(`app/backend/engine/tpe.py`)이 탐색·1등 추출까지 다 한다 — 본 어댑터는
 인쇄·비교만. 5시드 안정성 검증은 `single_obj_sweep.py`.
@@ -11,8 +11,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from app.backend.engine import tpe
-from app.backend.engine.nsga3 import evaluate_balances
+from app.backend.search import tpe
+from app.backend.search.nsga3 import evaluate_balances
 from app.backend.genes.signals import ALL_GENES
 
 for _stream in (sys.stdout, sys.stderr):

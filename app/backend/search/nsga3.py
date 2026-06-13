@@ -26,10 +26,10 @@ nsga3.py - Optuna NSGA-III 다목적 최적화 (설계: OPTIMIZATION.md 4절)
 import numpy as np
 import optuna
 
-from ..genes.signals import ALL_GENES, combine_positions, positions_with_params
-from ..data_io.data import LoadedGym, load_gyms
-from ..market.gym import all_gyms
-from .battle import _score_position, fight_dca, score_vs_dca, terminal_balance
+from app.backend.genes.signals import ALL_GENES, combine_positions, positions_with_params
+from app.backend.data_io.data import LoadedGym, load_gyms
+from app.backend.market.gym import all_gyms
+from app.backend.engine.battle import _score_position, fight_dca, score_vs_dca, terminal_balance
 
 # 체육관 이름 → 목적함수 키 (이름이 바뀌면 여기만 맞추면 됨)
 GYM_KEYS = {
