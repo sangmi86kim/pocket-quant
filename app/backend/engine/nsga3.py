@@ -27,7 +27,7 @@ import numpy as np
 import optuna
 
 from ..genes.signals import ALL_GENES, combine_positions, positions_with_params
-from ..market.data import LoadedGym, load_gyms
+from ..data_io.data import LoadedGym, load_gyms
 from ..market.gym import all_gyms
 from .battle import _score_position, fight_dca, score_vs_dca, terminal_balance
 

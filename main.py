@@ -1,39 +1,28 @@
 """
-main.py - 프로그램의 시작점(진입점). 실행 옵션은 config.json에서 읽는다.
+main.py - 진입점. config.json을 읽어 NSGA-III를 돌린다.
 
-3층 구조:
-  main.py    = 입력만 받음 (← 이 파일: config.json을 읽어 service에 넘김)
-  service.py = 단판/진화 '실행 순서'를 조립
-  backend/*  = 실제 기능(데이터·전략·백테스트·GA·계산)
-
-CLI 플래그(argparse)는 쓰지 않는다 — 옵션을 바꾸려면 config.json 값을 고치고
-다시 `python main.py` 하면 된다. config.json이 없으면 DEFAULTS로 단판 실행.
-여기서는 계산도 흐름 조립도 하지 않는다. 설정을 읽어 어떤 서비스를 부를지만 정한다.
+[2026-06-13 정리] 모드 분기 제거. nsga3만 운영한다.
+  도감 보기: python -m app.lab.dex
+  검증 도구: tools/test_*.py · tools/check_*.py · tools/walk_forward.py
+  리그 워크플로우: python app/league/<name>.py
 """
 import json
 from pathlib import Path
 
-from app.service import run_evolve, run_nsga3, run_pokedex, run_single
+from app.service import run_nsga3
 
 CONFIG_PATH = Path(__file__).parent / "config.json"
 
 # 기본값 — config.json에 없는 키는 이 값을 쓴다.
 DEFAULTS = {
-    "mode": "single",     # single(단판) | evolve(진화 GA) | nsga3(다목적) | dex(도감)
-    "genes": None,        # [단판] 유전자 개수 (None = 랜덤)
-    "pop": 20,            # [진화] 개체군 크기
-    "generations": 10,    # [진화] 세대 수
-    "seed": None,         # 랜덤 시드 (None = 매번 다름, 숫자 = 재현 가능)
-    "md": None,           # Markdown 리포트: None=저장 안 함, ""=기본 경로, "경로"=지정 경로
-    "capital": None,      # 실전 시뮬 시작 자본(원). 예) 10000000
-    "trials": 600,        # [nsga3] 총 목표 trial 수 — 스터디 재개 시 모자란 만큼만 추가 실행
-    "storage": None,      # [nsga3] Optuna storage URL (예: "sqlite:///nsga3.db") — 중단/재개용
-    "study": "nsga3_v2_weights",  # [nsga3] 스터디 이름 (storage 사용 시)
-    "tune_params": False, # [nsga3] True면 시그널 파라미터도 탐색 (v1에서 과적합 — 고도화용)
-    "population_size": 50,        # [nsga3] NSGA-III 한 세대 크기 (사용자 본업 5목적 검증치)
-    "early_stop_window": None,    # [nsga3] HV MA(window) 정체 시 self stop (예: 5). None=끔
-    "adaptive_mutation": False,   # [nsga3] True면 HV 정체/개선 신호로 mutation_prob 자동 조정
-    "oak": False,         # True면 리포트 끝에 오박사(LM Studio LLM) 브리핑 — 해설 전용, 판정 아님
+    "trials": 600,                # 총 목표 trial 수 — 스터디 재개 시 모자란 만큼만 추가 실행
+    "seed": None,                 # 시드 (None=매번 다름)
+    "storage": None,              # Optuna storage URL (예: "sqlite:///nsga3.db")
+    "study": "nsga3_v2_weights",  # 스터디 이름 (storage 사용 시)
+    "tune_params": False,         # True면 시그널 파라미터도 탐색 (v1에서 과적합 — 고도화용)
+    "population_size": 50,        # NSGA-III 한 세대 크기
+    "early_stop_window": None,    # HV MA(window) 정체 시 self stop (예: 5). None=끔
+    "adaptive_mutation": False,   # True면 HV 정체/개선 신호로 mutation_prob 자동 조정
 }
 
 
@@ -48,24 +37,10 @@ def load_config() -> dict:
 
 def main() -> None:
     config = load_config()
-    mode = config["mode"]
-
-    # 설정을 읽어 해당 서비스(실행 흐름)에 넘기기만 한다.
-    if mode == "dex":
-        run_pokedex()
-    elif mode == "evolve":
-        run_evolve(config["pop"], config["generations"], config["seed"],
-                   config["md"], config["capital"], config["oak"])
-    elif mode == "nsga3":
-        run_nsga3(config["trials"], config["seed"], config["storage"],
-                  config["study"], config["tune_params"],
-                  config["population_size"], config["early_stop_window"],
-                  config["adaptive_mutation"])
-    elif mode == "single":
-        run_single(config["genes"], config["seed"], config["md"], config["capital"],
-                   config["oak"])
-    else:
-        raise SystemExit(f"[config] 알 수 없는 mode: {mode!r} (single | evolve | nsga3 | dex 중 하나)")
+    run_nsga3(config["trials"], config["seed"], config["storage"],
+              config["study"], config["tune_params"],
+              config["population_size"], config["early_stop_window"],
+              config["adaptive_mutation"])
 
 
 if __name__ == "__main__":

@@ -22,7 +22,7 @@ import pandas as pd
 
 from ..core.models import BattleResult, Report, Stats, Strategy
 from ..genes.signals import combined_position
-from ..market.data import LoadedGym
+from ..data_io.data import LoadedGym
 
 TRADING_DAYS = 252          # 연율화 기준 거래일 수
 

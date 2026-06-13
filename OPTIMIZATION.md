@@ -4,15 +4,17 @@
 > 게임 컨셉(포켓퀀트/체육관) 뒤에 실제로 어떤 최적화가 돌고 있는지,
 > 그리고 다음 단계(Optuna NSGA-III 다목적)를 어떻게 정식화할지 정리한다.
 >
-> v0.2(가짜 데이터·생존률) 시절 내용은 폐기하고 v0.5 기준으로 갱신 (2026-06-11).
+> v0.2(가짜 데이터·생존률) 시절 내용은 폐기.
+> 2026-06-11 v0.5 기준으로 갱신 → 2026-06-13 v1 마감 + 폴더 재구성 반영.
 
 ---
 
-## 1. 문제 정의 (v0.5 단일목적 — ⚠️ legacy 교보재)
+## 1. 문제 정의 (v0.5 단일목적 — ⚠️ legacy, 코드 제거됨 2026-06-13)
 
-> 이 절의 GA(적합도 = 0~100 클램프 스탯)는 **원리 이해용 교보재**다.
-> "최적화 목적에 클램프 스탯 금지 — raw 지표만"(AGENTS.md 6번) 규칙상
-> 새 후보 선발·검증에는 쓰지 않는다 — 그 역할은 4절 NSGA-III(raw `score_vs_dca`).
+> 이 절은 **역사 기록 차원**으로 남긴다 — 단일목적 GA(`engine/evolve.py`)는
+> 2026-06-13 v1 마감 시점에 코드가 삭제됐다. NSGA-III만 운영 (§4).
+> 적합도 = 0~100 클램프 스탯이라 "최적화 목적에 클램프 스탯 금지"
+> (AGENTS.md 6번) 규칙에 걸려 어차피 선발 경로에는 못 썼다.
 
 ```
 maximize   Y(X)
@@ -59,13 +61,18 @@ Y = 0.7 × mean(체육관별 fitness) + 0.3 × min(체육관별 fitness)
 | 2 | **worst-case(min) 가중치 과다** | 현금은 전 체육관 균일 16.7점 = "최약 과목이 없음" → min 가중 0.4부터 현금 30~43/65위 부상 | min 가중치 0.3 (게이트를 지키는 실측 최대치) |
 | 3 | **score_vs_dca를 평균으로 결합** | 하락 체육관에서 DCA가 마이너스 → 현금이 이김 → 평균 시 현금 24~53/65위 | 평균 결합 금지 — NSGA-III에서 **벡터 그대로** 사용 |
 
-- 회귀 가드: `tests/test_baselines.py` (전부 현금 < 풀매수 & 하위 25% 룰).
+- 회귀 가드: `tools/test_baselines.py` (전부 현금 < 풀매수 & 하위 25% 룰).
 - 공통 교훈: **0~100 클램프 스탯/BST를 최적화 목적으로 쓰지 말 것** (raw 지표 사용).
   HP가 아니라도, "낮은 노출 = 안정 점수 공짜"가 되는 모든 통로가 같은 퇴화를 만든다.
 
 ---
 
-## 3. GA 4단계 (`engine/evolve.py`) — 원리 이해용 손코딩
+## 3. GA 4단계 — 원리 이해용 손코딩 (제거됨, 2026-06-13)
+
+⚠️ `engine/evolve.py`는 2026-06-13 정리에서 제거됐다 — NSGA-III만 운영한다.
+단일목적 GA는 v0.5까지 교보재로 유지됐으나, v1 마감(가중치 전용 NSGA-III) 시점에
+의존 코드가 없어져 함께 정리. 이 절(아래 4단계 표·on_generation 콜백 설명)은
+**역사 기록 차원**으로 남긴다 — 새 코드는 NSGA-III(§4)를 참고할 것.
 
 | 단계 | 함수 | 하는 일 |
 |------|------|---------|
@@ -197,9 +204,9 @@ Low-turnover : 점수 허용선 내 턴오버 최소
 
 ```
 gate0_training : 6체육관 × 잔고 1등 (인샘플)            ← service.run_nsga3
-gate1_oos      : OOS 11년 × 잔고 1등 + 국면 라벨        ← tests/victory_road.py
-gate2_worlds   : arena 3개(전천후/bear/rebound) × 세계 1등 카운트  ← tests/battle_frontier.py
-gate3_holdout  : 봉인 6년 × 챔피언 잔고 + 국면 라벨     ← tests/elite_four.py
+gate1_oos      : OOS 11년 × 잔고 1등 + 국면 라벨        ← app/league/victory_road.py
+gate2_worlds   : arena 3개(전천후/bear/rebound) × 세계 1등 카운트  ← app/league/battle_frontier.py
+gate3_holdout  : 봉인 6년 × 챔피언 잔고 + 국면 라벨     ← app/league/elite_four.py
 ```
 
 국면 라벨 정의는 [Regime_Scanner](../Regime_Scanner) 프로젝트(`backend/signals.py`)와
@@ -213,14 +220,16 @@ gate3_holdout  : 봉인 6년 × 챔피언 잔고 + 국면 라벨     ← tests/e
 ### 4-6. 검증 프로토콜 (학습 = 실데이터, 검증 = 3단)
 
 ```
-① QQQ 워크 포워드   : 과거 선발 → 다음 1년 OOS (tests/walk_forward.py, 심판 — 결과 보고 목적함수 고치지 않기)
+① QQQ 워크 포워드   : 과거 선발 → 다음 1년 OOS (tools/walk_forward.py, 심판 — 결과 보고 목적함수 고치지 않기)
 ② 합성 스트레스     : 블록 부트스트랩 ~100세계 생존률 (훈련 목적 아님, Pareto 후 필터)
 ③ 봉인 hold-out     : post-COVID(2020-07~), NSGA-III 최종판정 때 딱 1회
 ```
 
 엔진 안전망 (NSGA-III가 파라미터를 휘젓기 전 필수, 이미 구축):
-- `tests/test_engine_regression.py` — 골든 넘버 16개 (어긋나면: 의도된 변경 → 골든 갱신+워크로그 / 아니면 버그)
-- `tests/test_no_lookahead.py` — 미래 절단 불변식 (시그널 파라미터가 바뀌어도 돌려서 확인)
+- `tools/test_engine_regression.py` — 골든 넘버 16개 (REL_TOL 1e-4 = 4번째 소수점,
+  yfinance 자동 보정 노이즈 흡수. 그보다 큰 차이면 의도된 변경 → 골든 갱신+worklog).
+- `tools/test_no_lookahead.py` — 미래 절단 불변식 (시그널 파라미터가 바뀌어도 돌려서 확인).
+- `tools/e2e.py` — 전 파이프라인 스모크 (10초). 폴더/data.py 같은 큰 변경 후 한 번.
 
 ---
 
@@ -247,6 +256,19 @@ gate3_holdout  : 봉인 6년 × 챔피언 잔고 + 국면 라벨     ← tests/e
 ```
 이기려는 대상 : 사용자의 실제 DCA 머신 (무비용 매일 적립)
 목적          : 국면별 DCA 개선을 동시에 (Pareto), 턴오버는 최소로
-수단          : Optuna NSGA-III — 손코딩 GA에서 익힌 구조를 프레임워크로 확대
+수단          : Optuna NSGA-III — 가중치 6차원, 시그널 파라미터 동결 (v1 과적합 회피)
 검증          : 워크포워드 → 합성 스트레스 → 봉인 hold-out (이 순서, 역류 금지)
+자동화        : tools/e2e.py 한 번 = compileall + 게이트 4 + 진단 2 + walk_forward + nsga3 smoke (≤10s)
 ```
+
+---
+
+## 7. v1 마감 (2026-06-13) — 누적 기록은 `reports/hall_of_fame.md`
+
+- 시즌: 2026-06-12 ~ 2026-06-13. 5 시드 × NSGA-III 2000 trials, 인구 100, HV-MA(5)
+  얼리스탑, 적응형 mutation. 시드 간 잔고 합 ±0.4% 수렴.
+- 챔피언로드 ② 평행세계 400 본판정 1위: **TOP06 (VOL 8% + REV_RSI 57% + REV_BB 30%)
+  토탈 4.92억 / +23.0%** — 어플삭제맨(11위) · 현 챔피언(12위) 둘 다 누름.
+- 한계 (다음 시즌 화두): 유전자 풀 6개 제약(Top10이 같은 종 변주) → **알 깨기**로
+  새 시그널 풀 확장 (외부: KIS API 호가/체결, 매크로 VIX/DXY, 가격 내부 RSI 다이버전스 등).
+  KIS 데이터 파이프라인 자리는 `app/backend/data_io/`에 미리 잡아뒀다.

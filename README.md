@@ -83,7 +83,9 @@ PocketQuant는 **"가장 강한 전략"** 이 아니라,
 > 🧪 구 `RSI`(과열 회피)·`BB`(상단 회피)는 실측 결과 평균 포지션 0.84/0.97 =
 > 사실상 죽은 시그널이라 2026-06-10 재배치에서 도감 제외.
 
-예시 이름: `MA-VOL킹`, `VOL-REV_RSI-REV_BB몬`, `DD-MA-MOM몬`, `타이탄 드래곤`
+> 트레이더 이름은 데려간 포켓퀀트 조합으로 자동 생성됩니다 — 새 캐릭터가 아니라
+> **누구를 데려갔느냐의 표기**. 예) `[MA·VOL]`, `[VOL·REV_RSI·REV_BB]` (현 챔피언),
+> `[DD·MA·MOM]`, `[DD·VOL·MA·MOM·REV_RSI·REV_BB]` (전 유전자 합체).
 
 ---
 
@@ -123,7 +125,7 @@ PocketQuant는 **"가장 강한 전략"** 이 아니라,
 | 🔥 2017 불타입 상승장 | **황소** (불꽃) — "지루하지? 그게 내 필살기야." | 2017-01 ~ 2017-12 | 출렁임 없는 우상향(+33%) → 방어 비용을 회비처럼 징수 |
 | 🌫️ 2015-16 횡보장 | **미로** (에스퍼) — "방향? 그런 건 처음부터 없었어." | 2015-01 ~ 2016-12 | 헛신호 연타로 추세형을 수수료로 말려 죽임 — 현 챔피언도 최약 과목 |
 
-> 🗺️ 관장 상세 카드(주특기/공략법)는 도감에서: `config.json`을 `"mode": "dex"`로 → `python main.py`
+> 🗺️ 관장 상세 카드(주특기/공략법)는 도감에서: `python -m app.lab.dex`
 
 > 💡 하락 3 / 회복·상승·횡보 3으로 일부러 균형을 맞췄다 (회복장은 "시험지가 하락
 > 편향"이라는 지적으로 2026-06-11 추가 — 트레이더의 철학: **나스닥 장기 우상향 베팅,
@@ -162,7 +164,7 @@ PocketQuant는 **"가장 강한 전략"** 이 아니라,
 | 2 | 최약 체육관 가중 50% → 돼지저금통는 "최약 과목이 없어서" 30위까지 부상 | min 가중 30% (게이트 지키는 실측 최대치) |
 | 3 | DCA 대비 점수를 평균으로 결합 → 하락장에서 돼지저금통가 라이벌을 이김 | 평균 결합 금지, NSGA-III에서 벡터 그대로 |
 
-> 감시 장치: `python tests/test_baselines.py` — 돼지저금통가 하위 25% 밖으로 기어나오면 FAIL.
+> 감시 장치: `python tools/test_baselines.py` — 돼지저금통가 하위 25% 밖으로 기어나오면 FAIL.
 
 ---
 
@@ -195,16 +197,19 @@ score_vs_dca = 0.4×(수익 차이) + 0.4×(낙폭 개선) + 0.2×(샤프 차이
 
 ```jsonc
 {
-    "mode": "single",     // single(단판) | evolve(진화 GA) | dex(도감)
-    "genes": null,        // [단판] 유전자 개수 (null = 랜덤)
-    "pop": 20,            // [진화] 개체군 크기
-    "generations": 10,    // [진화] 세대 수
-    "seed": null,         // 랜덤 시드 (숫자 넣으면 재현 가능)
-    "md": null,           // Markdown 리포트: null=안 씀, ""=기본 경로, "경로"=지정
-    "capital": null,      // 실전 시뮬 시작 자본(원). 예) 10000000
-    "oak": false          // true면 리포트 끝에 오박사(로컬 LLM) 브리핑 — LM Studio 필요
+    "trials": 600,                  // 총 목표 trial 수 — 재개 시 모자란 만큼만 추가
+    "seed": null,                   // 랜덤 시드 (숫자 넣으면 재현 가능)
+    "storage": null,                // 예: "sqlite:///optuna_pocketquant.db" (중단/재개)
+    "study": "nsga3_v2_weights",    // 스터디 이름 (storage 사용 시)
+    "tune_params": false,           // true=파라미터도 탐색 (v1 과적합 — 고도화용)
+    "population_size": 50,          // NSGA-III 한 세대 크기
+    "early_stop_window": null,      // HV MA(N) 정체 시 self stop (예: 5). null=끔
+    "adaptive_mutation": false      // true=HV 신호로 mutation_prob 자동 조정
 }
 ```
+
+> **2026-06-13 정리**: `single`/`evolve` 모드는 제거됐고 NSGA-III만 운영합니다.
+> 도감은 `python -m app.lab.dex`로 직접 호출, 챔피언로드 풀라인업은 `app/league/`의 어댑터를 직접 실행하세요.
 
 #### 출력 예시 (시드 42, 2026-06-11 기준)
 
@@ -251,12 +256,12 @@ score_vs_dca = 0.4×(수익 차이) + 0.4×(낙폭 개선) + 0.2×(샤프 차이
 
 심판 도구 (포켓퀀트센터 정기검진):
 
-- `python tests/test_baselines.py` — 🧟 돼지저금통 감시 (퇴화 게이트)
-- `python tests/check_signals.py` — 🩺 시그널 노출/발동률/상관 진단
-- `python tests/check_dca.py` — 🤖 라이벌전 전적 계측
-- `python tests/walk_forward.py` — 🎫 리그 본선 (파라미터로 자산/훈련길이/비용 민감도 실험)
-- `python tests/test_engine_regression.py` — 🔬 골든 넘버 16개 (엔진 계산이 바뀌면 즉시 적발)
-- `python tests/test_no_lookahead.py` — 🕵️ 컨닝 검사 (미래를 잘라도 과거 포지션 불변)
+- `python tools/test_baselines.py` — 🧟 돼지저금통 감시 (퇴화 게이트)
+- `python tools/check_signals.py` — 🩺 시그널 노출/발동률/상관 진단
+- `python tools/check_dca.py` — 🤖 라이벌전 전적 계측
+- `python tools/walk_forward.py` — 🎫 리그 본선 (파라미터로 자산/훈련길이/비용 민감도 실험)
+- `python tools/test_engine_regression.py` — 🔬 골든 넘버 16개 (엔진 계산이 바뀌면 즉시 적발)
+- `python tools/test_no_lookahead.py` — 🕵️ 컨닝 검사 (미래를 잘라도 과거 포지션 불변)
 
 ---
 
@@ -313,8 +318,10 @@ pocket_quant/
 │     ├─ core/             #   models.py — dataclass + 적합도(평균70+최약30)/등급
 │     ├─ market/           #   data.py(가격+캐시) · gym.py(QQQ 체육관 6종)
 │     ├─ genes/            #   signals.py(유전자→포지션/기권, 결합 규칙) · dex.py(도감)
-│     └─ engine/           #   battle.py(백테스트→스탯, DCA 라이벌, score_vs_dca) · strategy.py · evolve.py(GA)
-├─ tests/                  # 심판 도구 6종 (위 표 참고)
+│     └─ engine/           #   battle.py(백테스트→스탯, DCA 라이벌, score_vs_dca) · strategy.py · nsga3.py
+├─ app/lab/                # 실험실: oak.py(LLM NPC) · oak_labnotes.py · dex.py(도감)
+├─ app/league/             # 리그: NSGA-III 탐색 + 챔피언로드 ①②③ + 라인업/분석
+├─ tools/                  # validator + 진단 (test_*, check_*, walk_forward)
 └─ worklog/                # 실험실 노트 (로컬 전용)
 ```
 
@@ -329,7 +336,7 @@ pocket_quant/
 - ✅ **v0.4.1 worst-case 적합도** — 평균 70% + 최약 30% (50/50은 돼지저금통 부활로 기각 — 실측)
 - ✅ **v0.5 QQQ 통일 + 회복장 체육관 + DCA 라이벌 + 심판 2종** — 훈련 자산=실투자 자산, 6체육관, score_vs_dca, 골든 넘버/컨닝 검사
 - ✅ **NSGA-III (Optuna) + 챔피언로드 완주** — v1 리그(13차원)는 관문①에서 체육관 암기(과적합) 적발로 전멸, v2(가중치 전용)는 정직(상관 +0.93)하지만 천장 = 현 챔피언. 사천왕(hold-out) 개봉: **벽** (단 6년 누적은 성실이 전 지표 우위 — 방어 오버레이 가치 입증). 설계: [OPTIMIZATION.md](OPTIMIZATION.md)
-- 🥚 **에그랩 (다음 알파)** — 지수 조합으로 새 포켓퀀트 부화: VIX·금리·QQQ/SPY비율 등 **새 정보를 보는 시그널**로 천장 자체를 올린다. 부화 절차·알 후보: [egglab/README.md](egglab/README.md)
+- 🥚 **에그랩 (다음 알파)** — 지수 조합으로 새 포켓퀀트 부화: VIX·금리·QQQ/SPY비율 등 **새 정보를 보는 시그널**로 천장 자체를 올린다. 부화 절차·알 후보: [app/lab/egglab/README.md](app/lab/egglab/README.md)
 - ⏭️ **웜스타트 시드 제너레이터** — 리그를 랜덤 신인만으로 시작하지 않고, 검증된 유망주(현 챔피언·전수조사 상위·이전 리그 라벨 트레이더)를 `study.enqueue_trial`로 선출전 → 수렴 가속 + 이전 스터디 자산 재활용 (v2 리그에서 실증: 연속 탐색이 동일가중점을 정확히 못 찍음)
 - ✅ **배틀 프론티어** — 블록 부트스트랩 평행세계 운빨 검사 (챔피언 통과 69%/98%, bear 스페셜리스트 #1918 발굴)
 - 🏫 **아카데미 (팔데아 지방 개척)** — **나스닥 데이터로 cGAN을 학습시켜 "다른 지방"의 시장을 합성**하는 생성기. 부트스트랩(기존 역사 재배열)을 넘어, 국면 라벨을 조건(condition)으로 나스닥의 통계적 질감을 가진 **새로운 가격 경로**를 생성 → 새 지방의 체육관을 개설해 트레이더를 유학 보낸다. 본 적 없는 지방에서도 통하는 트레이더 = 진짜 robust.

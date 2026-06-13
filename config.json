@@ -1,1 +1,10 @@
-﻿{ "mode": "single", "genes": null, "pop": 20, "generations": 10, "seed": null, "md": null, "capital": null }
+{
+  "trials": 600,
+  "seed": null,
+  "storage": null,
+  "study": "nsga3_v2_weights",
+  "tune_params": false,
+  "population_size": 50,
+  "early_stop_window": null,
+  "adaptive_mutation": false
+}
