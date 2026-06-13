@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import optuna
 
-from app.backend.search import nsga3
+from app.academy.study import nsga3
 from app.service import _format_candidate_params, _format_objective_vector
 
 # 경로는 전부 프로젝트 루트 기준 절대 경로 — 어디서 실행해도(IDE 포함) 같은 DB를 연다.

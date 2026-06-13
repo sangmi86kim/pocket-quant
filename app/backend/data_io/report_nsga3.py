@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import optuna
 
-from app.backend.search import nsga3
+from app.academy.study import nsga3
 from app.backend.engine.battle import fight_dca
 from app.backend.genes.signals import ALL_GENES
 from app.backend.data_io.data import load_gyms

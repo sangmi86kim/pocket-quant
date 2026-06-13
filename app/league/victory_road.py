@@ -49,9 +49,10 @@ import optuna
 import pandas as pd
 
 from app.backend.core.models import Gym
-from app.backend.engine import battle, nsga3
+from app.backend.engine import battle
 from app.backend.engine.battle import (_score_position, fight_dca, score_vs_dca,
                                          terminal_balance)
+from app.academy.study import nsga3
 from app.backend.genes.signals import ALL_GENES, combine_positions, positions_with_params
 from app.backend.data_io.data import LoadedGym, WARMUP_DAYS, get_prices
 from app.backend.market.regime import REGIME_LABELS, dominant_regime

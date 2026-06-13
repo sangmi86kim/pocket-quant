@@ -1,6 +1,6 @@
 """단일목적 1시드 — `search.tpe.run_study` 결과 콘솔 표시.
 
-엔진(`app/backend/search/tpe.py`)이 탐색·1등 추출까지 다 한다 — 본 어댑터는
+엔진(`app/academy/study/tpe.py`)이 탐색·1등 추출까지 다 한다 — 본 어댑터는
 인쇄·비교만. 5시드 안정성 검증은 `single_obj_sweep.py`.
 """
 from __future__ import annotations
@@ -11,8 +11,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from app.backend.search import tpe
-from app.backend.search.nsga3 import evaluate_balances
+from app.academy.study import tpe
+from app.academy.study.nsga3 import evaluate_balances
 from app.backend.genes.signals import ALL_GENES
 
 for _stream in (sys.stdout, sys.stderr):
@@ -36,7 +36,7 @@ def _format_genes(weights: list[float]) -> str:
 
 def main() -> None:
     print("=== 단일목적 TPE — 6체육관 100만원 시드, 잔고 합 max ===")
-    print(f"시드 {SEED} · trials {TRIALS} · sampler TPE · 가중치 6차원\n")
+    print(f"시드 {SEED} · trials {TRIALS} · sampler TPE · 가중치 {len(ALL_GENES)}차원\n")
 
     t0 = time.perf_counter()
 

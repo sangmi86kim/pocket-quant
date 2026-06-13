@@ -29,7 +29,7 @@ from app.backend.data_io.data import LoadedGym, load_gyms
 from app.backend.genes.signals import ALL_GENES
 from app.backend.market.gym import all_gyms
 from app.backend.engine.battle import fight_dca
-from app.backend.search.nsga3 import decode_params, evaluate_balances
+from app.academy.study.nsga3 import decode_params, evaluate_balances
 
 # 100만원 시드 — sweep_seeds·hall_of_fame과 동일 단위(만원 환산은 표시 층에서).
 SEED_KRW = 1_000_000
@@ -60,6 +60,7 @@ def run_study(
     on_progress: Callable[[int, int, float], None] | None = None,
     loaded_gyms: list[LoadedGym] | None = None,
     dca: dict | None = None,
+    extra_callbacks: list | None = None,
 ) -> tuple[optuna.Study, list[LoadedGym], dict]:
     """TPE 단일목적 탐색.
 
@@ -87,15 +88,17 @@ def run_study(
     done = len(study.trials)
     remaining = max(0, trials - done)
 
-    callbacks = None
+    callbacks: list = []
     if on_progress is not None:
         def _cb(study_: optuna.Study, trial: optuna.trial.FrozenTrial) -> None:
             on_progress(trial.number + 1, trials, study_.best_value)
-        callbacks = [_cb]
+        callbacks.append(_cb)
+    if extra_callbacks:
+        callbacks.extend(extra_callbacks)
 
     study.optimize(
         lambda t: _objective(t, loaded_gyms, dca),
-        n_trials=remaining, callbacks=callbacks,
+        n_trials=remaining, callbacks=callbacks or None,
     )
     return study, loaded_gyms, dca
 
