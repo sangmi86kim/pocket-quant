@@ -1,6 +1,6 @@
 """단일목적 5시드 분산 — `search.tpe.run_study` 시드별 호출 + 안정성 보고.
 
-엔진(`app/backend/engine/tpe.py`)이 탐색·1등 추출까지 책임 — 본 어댑터는 5번 호출,
+엔진(`app/backend/search/tpe.py`)이 탐색·1등 추출까지 책임 — 본 어댑터는 5번 호출,
 시드별 1등 표 작성, 시드 간 폭(%)으로 수렴 판정 + reports/single_obj_sweep.md 저장.
 
 수렴 판정 기준 (sweep_seeds 패턴):
@@ -108,7 +108,7 @@ def main() -> None:
     md = [
         "# 단일목적 TPE × 5 시드 — 결과 요약",
         "",
-        f"- 엔진: `app/backend/engine/tpe.py` (TPE 단일목적 — 잔고 합 max)",
+        f"- 엔진: `app/backend/search/tpe.py` (TPE 단일목적 — 잔고 합 max)",
         f"- 시드: {SEEDS} · trials/시드: {TRIALS}",
         f"- 기준점: 현 챔피언 {champ_sum/10000:.1f}만, 성실이 {dca_sum/10000:.1f}만",
         "",
