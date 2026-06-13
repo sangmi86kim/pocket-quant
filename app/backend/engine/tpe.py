@@ -78,7 +78,9 @@ def run_study(
     else:
         study = optuna.create_study(
             direction="maximize", sampler=sampler,
-            storage=storage, study_name=study_name, load_if_exists=True,
+            # load_if_exists=False — 같은 study_name 충돌 시 즉시 에러로 차단.
+            # storage는 시즌 임시 영역, hall_of_fame.md 흡수 후 db 폐기.
+            storage=storage, study_name=study_name, load_if_exists=False,
         )
 
     # 재개 시 추가 분만 실행 — nsga3.run_study와 동일 의미론.

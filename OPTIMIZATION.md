@@ -161,8 +161,9 @@ import optuna
 study = optuna.create_study(
     directions=["maximize"] * 5 + ["minimize"],
     sampler=optuna.samplers.NSGAIIISampler(seed=42),
-    storage="sqlite:///optuna_pocketquant.db",     # 중단/재개
-    study_name="nsga3_v1",
+    storage="sqlite:///optuna_v1x.db",   # 시즌 임시 영역 — hall_of_fame.md 흡수 후 폐기
+    study_name="nsga3_v1x_kis_s42",      # 매 시즌·시드마다 새 이름 (AGENTS.md §11)
+    load_if_exists=False,                # 같은 이름 충돌 시 DuplicatedStudyError로 즉시 차단
 )
 
 def objective(trial):

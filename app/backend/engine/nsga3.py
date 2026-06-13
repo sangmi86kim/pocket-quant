@@ -296,7 +296,10 @@ def run_study(n_trials: int, seed: int | None = 42, storage: str | None = None,
     study = optuna.create_study(
         directions=DIRECTIONS, sampler=sampler,
         storage=storage, study_name=study_name if storage else None,
-        load_if_exists=bool(storage),
+        # 2026-06-13 운영 규칙: load_if_exists=False 고정 — 같은 study_name이 이미
+        # 있으면 즉시 에러로 차단. storage는 시즌 임시 작업 영역, hall_of_fame.md에
+        # 결과 흡수 후 sqlite db 폐기. study_name은 매 시즌/실험마다 새로.
+        load_if_exists=False,
     )
     study.set_metric_names(OBJECTIVE_NAMES)
     if storage:
