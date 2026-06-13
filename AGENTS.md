@@ -10,7 +10,8 @@
 
 1. **퍼블릭 레포다.** 사용자의 개인 정보·직장/업무 맥락을 코드·문서·**커밋 메시지** 어디에도
    쓰지 않는다. 개인 맥락 기록은 gitignore 영역(`worklog/`)에만. (히스토리 재작성까지 간 전례 있음)
-2. **argparse/CLI 플래그 금지.** 실행 옵션은 전부 `config.json` (사용자 확정 결정).
+2. **argparse/CLI 플래그 금지.** 실행 옵션은 어댑터 모듈 상수(`SEED`, `TRIALS` 등)나
+   `service.run_nsga3(...)` 호출 인자로 직접 표현한다 (사용자 확정 결정).
 3. **골든 넘버 규약.** 엔진 계산을 건드리면 `python tools/test_engine_regression.py`가 어긋난다 —
    ① 의도한 설계 변경이면 골든 갱신 + worklog에 사유 기록 ② 아니면 버그, 커밋 금지.
 4. **룩어헤드(컨닝) 금지.** 시그널은 과거만 본다. 시그널 추가/수정 시 `tools/test_no_lookahead.py` 필수.
@@ -52,8 +53,6 @@
 
 ```text
 pocket_quant/
-├─ main.py                    # config.json 읽어 run_nsga3 호출 (모드 분기 없음 — NSGA-III만)
-├─ config.json                # 실행 옵션 (아래 표)
 ├─ OPTIMIZATION.md            # 최적화 정식화 + NSGA-III 설계 + 함정 3개 기록
 ├─ app/lab/egglab/README.md           # 새 시그널 부화 절차·알 후보 (다음 알파)
 ├─ character/                 # 캐릭터 이미지 (dr_oh.png, monsieur.png — 커밋됨)
@@ -121,7 +120,7 @@ pocket_quant/
 - **시그널 풀 (2026-06-13 v1.x)**: 13마리. 스타팅 6(가격 기반) + 야생 7(외부 정보원).
   외부 정보원은 yfinance로 받음 (`^VIX`, `^TNX`, `UUP`, `SPY`, `TLT`, `QQQ`, `DIA`).
   외부 데이터 없는 시기는 자동 NaN 기권 (UUP는 2007년~).
-- **옵티마이저 3종** (`app/backend/search/`):
+- **옵티마이저 3종** (`app/academy/study/`):
   - `nsga3.py` — **다목적**. 6목적 score_vs_dca (5국면 + turnover). Pareto 라인업.
   - `tpe.py` — **단일목적 Bayesian**. 잔고 합 max. v1 챔피언(TPE-s11)이 여기서 나옴.
   - `cma_es.py` — **단일목적 CMA-ES**. 연속 공간 강함. NSGA 계열 친숙 (사용자 본업).
@@ -163,20 +162,23 @@ pocket_quant/
 | battle_frontier_total.py | 관문 ② lineup JSON 재처리 — 토탈 수익 .md 출력 |
 | (예정) kis_client.py | KIS API 입력 — 외인기관/호가 잔량/체결 강도/거래량 급증 |
 
-## config.json (전체 키 — NSGA-III 전용)
+## `service.run_nsga3(...)` 인자 (NSGA-III 진입점)
 
-```jsonc
-{
-  "trials": 600,                  // 총 목표 trial 수 (재개 시 모자란 만큼만)
-  "seed": null,                   // 랜덤 시드 (null=매번 다름)
-  "storage": null,                // 예: "sqlite:///optuna_pocketquant.db" (중단/재개)
-  "study": "nsga3_v2_weights",    // 스터디 이름
-  "tune_params": false,           // true=파라미터도 탐색 (v1 과적합 — 고도화용)
-  "population_size": 50,          // NSGA-III 한 세대 크기
-  "early_stop_window": null,      // HV MA(N) 정체 시 self stop (예: 5). null=끔
-  "adaptive_mutation": false      // true=HV 신호로 mutation_prob 자동 조정
-}
+```python
+run_nsga3(
+  trials=600,                  # 총 목표 trial 수 (재개 시 모자란 만큼만)
+  seed=None,                   # 랜덤 시드 (None=매번 다름)
+  storage=None,                # 예: "sqlite:///optuna_pocketquant.db" (중단/재개)
+  study_name="nsga3_v2_weights",
+  tune_params=False,           # True=파라미터도 탐색 (v1 과적합 — 고도화용)
+  population_size=50,          # NSGA-III 한 세대 크기
+  early_stop_window=None,      # HV MA(N) 정체 시 self stop. None=끔
+  adaptive_mutation=False,     # True=HV 신호로 mutation_prob 자동 조정
+)
 ```
+
+진입점은 어댑터/도구가 옵션을 인자로 직접 주입한다(예: `tools/e2e.py`의 NSGA-III smoke).
+별도 config 파일·CLI 플래그는 없다.
 
 **도감 보기**: `python -m app.lab.dex` (모드 분기 없음 — 직접 호출).
 **오박사 단판 브리핑**: 단판 모드가 없어졌으므로 `professor_briefing(report)`은 챔피언로드

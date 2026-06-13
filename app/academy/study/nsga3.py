@@ -21,7 +21,7 @@ nsga3.py - Optuna NSGA-III 다목적 최적화 (설계: OPTIMIZATION.md 4절)
   거동이고, 배포 후보는 summarize_front의 하드 필터 3종(전 국면 ≥ -tol ·
   턴오버 cap · 최악 MDD ≤ DCA)으로 거른다.
 
-실행 진입점은 service.run_nsga3 (config.json: mode="nsga3").
+실행은 `app.service.run_nsga3(...)` 직접 호출 (tools/e2e.py가 한 예).
 """
 import numpy as np
 import optuna

@@ -210,23 +210,21 @@ score_vs_dca = 0.4×(수익 차이) + 0.4×(낙폭 개선) + 0.2×(샤프 차이
 > ⚠️ 반드시 **프로젝트 루트**에서 실행하세요. 한글 깨지면 (Windows): `$env:PYTHONIOENCODING="utf-8"`
 > 의존성: `pip install -r requirements.txt` (+ NSGA-III용 `optuna`). 첫 실행만 QQQ 데이터를 받아 `data_cache/`에 캐시 → 이후 오프라인 동작.
 
-실행 옵션은 전부 **config.json**으로 관리합니다 (CLI 플래그 없음 — 값 바꾸고 `python main.py`):
+CLI 플래그·중앙 config 파일은 없습니다. 진입점은 **어댑터 직접 실행**입니다 — 모듈 상수(`SEED`,
+`TRIALS` 등)를 그 자리에서 바꿔 호출합니다.
 
-```jsonc
-{
-    "trials": 600,                  // 총 목표 trial 수 — 재개 시 모자란 만큼만 추가
-    "seed": null,                   // 랜덤 시드 (숫자 넣으면 재현 가능)
-    "storage": null,                // 예: "sqlite:///optuna_pocketquant.db" (중단/재개)
-    "study": "nsga3_v2_weights",    // 스터디 이름 (storage 사용 시)
-    "tune_params": false,           // true=파라미터도 탐색 (v1 과적합 — 고도화용)
-    "population_size": 50,          // NSGA-III 한 세대 크기
-    "early_stop_window": null,      // HV MA(N) 정체 시 self stop (예: 5). null=끔
-    "adaptive_mutation": false      // true=HV 신호로 mutation_prob 자동 조정
-}
+```powershell
+python app/league/single_obj_search.py     # 단일목적 TPE (1시드)
+python app/league/single_obj_compare.py    # TPE ↔ CMA-ES 비교
+python app/league/victory_road.py          # 챔피언로드 관문 ① OOS 11년
+python -m app.lab.dex                      # 포켓퀀트 도감
 ```
 
-> **2026-06-13 정리**: `single`/`evolve` 모드는 제거됐고 NSGA-III만 운영합니다.
-> 도감은 `python -m app.lab.dex`로 직접 호출, 챔피언로드 풀라인업은 `app/league/`의 어댑터를 직접 실행하세요.
+NSGA-III는 `app.service.run_nsga3(...)`을 직접 호출합니다(인자 표는 `AGENTS.md` 참고).
+`tools/e2e.py`의 NSGA-III smoke 단계가 그 호출 패턴의 예시입니다.
+
+> **2026-06-13 정리**: `single`/`evolve` 모드 + `main.py` + `config.json`은 제거됐습니다.
+> 시즌별 탐색은 `app/league/<name>.py` 어댑터로, NSGA-III는 라이브러리식 호출로 운영합니다.
 
 #### 시즌 v1 결과 (2026-06-13 마감)
 
@@ -293,7 +291,7 @@ score_vs_dca = 0.4×(수익 차이) + 0.4×(낙폭 개선) + 0.2×(샤프 차이
 
 - **오박사 (Dr. Oh)** — 주식 시장 쌉고인물. 닷컴·리먼·브이를 전부 계좌로 맞아보고
   살아남아, 지금은 한강 둔치에서 소주 한잔 까며 후배 성적표를 봐준다.
-  `config.json`에 `"oak": true`면 리포트 끝에 등장 (로컬 LLM · 해설 전용, 판정 안 함).
+  관문 ③ 리포트(`app/league/elite_four.py`)에 등장 (로컬 LLM · 해설 전용, 판정 안 함).
   계좌가 개박살난 날엔 이렇게 말해준다: *"오늘 한강물 수온이 낮단다. 힘내렴."*
 - **No.001 무슈 (Monsieur)** — 견습 퀀트 포켓퀀트이자 **연구소 마스코트
   (연구소장의 실제 반려견)**. 작은 노트북을 항상 품고 다니며 레거시 코드
@@ -328,8 +326,6 @@ score_vs_dca = 0.4×(수익 차이) + 0.4×(낙폭 개선) + 0.2×(샤프 차이
 
 ```
 pocket_quant/
-├─ main.py                 # config.json 읽어 service 호출 (CLI 플래그 없음)
-├─ config.json             # 실행 옵션
 ├─ OPTIMIZATION.md         # 최적화 정식화 + NSGA-III 설계서
 ├─ app/
 │  ├─ service.py           # 실행 흐름 조립 (단판/진화/도감 + 시드 + 출력)
@@ -361,7 +357,7 @@ pocket_quant/
 - 🏫 **아카데미 (팔데아 지방 개척)** — **나스닥 데이터로 cGAN을 학습시켜 "다른 지방"의 시장을 합성**하는 생성기. 부트스트랩(기존 역사 재배열)을 넘어, 국면 라벨을 조건(condition)으로 나스닥의 통계적 질감을 가진 **새로운 가격 경로**를 생성 → 새 지방의 체육관을 개설해 트레이더를 유학 보낸다. 본 적 없는 지방에서도 통하는 트레이더 = 진짜 robust.
   **학습 데이터 = 리그가 이미 만들어 둔 것**: ① 체육관 = 국면 라벨이 붙은 나스닥 구간들(cGAN의 조건-샘플 쌍 그 자체) ② 리그 DB(`optuna_pocketquant.db`) = 트레이더 5000명의 국면별 전적 기록. (학습 재료도 hold-out 봉인 규칙 적용 — 2020-07 이후 데이터로는 학습하지 않는다)
 - ✅ **사천왕전** — 2026-06-11 개봉(1회용 소진). 판정: 벽. 이후 최종 판정은 미래 데이터로만
-- ✅ **오박사(LLM)** — LM Studio 로컬 모델(gemma)이 성적표를 읽고 성과 귀인 해설. `config.json`에 `"oak": true` (해설 전용 — 판정 안 함)
+- ✅ **오박사(LLM)** — LM Studio 로컬 모델(gemma)이 성적표를 읽고 성과 귀인 해설. 관문 ③ 리포트에 등장(해설 전용 — 판정 안 함)
 - 🗂️ **전략 도감 DB** → 🧭 **시장 판독기** (regime detector, 70% robust + 30% tilt 오버레이 — Defensive 틸트 1호 후보 #1918 대기 중)
 
 ---

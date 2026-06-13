@@ -26,7 +26,7 @@ ROOT = Path(__file__).resolve().parent.parent
 # (이름, 명령, 타임아웃 초)
 STAGES = [
     ("compileall",
-     [sys.executable, "-m", "compileall", "-q", "main.py", "app", "tools"], 60),
+     [sys.executable, "-m", "compileall", "-q", "app", "tools"], 60),
     ("도감 출력 (app.lab.dex)",
      [sys.executable, "-m", "app.lab.dex"], 30),
     ("게이트: 가중결합 불변식",
@@ -46,7 +46,8 @@ STAGES = [
     # 평가 폭증 + AGENTS.md §6 "클램프 스탯 금지"와도 안 맞아 e2e에서 제외.
     # 별도 도구로 유지 — 자산/기간 민감도 실험 시 직접 호출.
     # NSGA-III는 storage=None + trials 작게로 종속 없이 스모크.
-    # config.json을 안 건드리려고 service.run_nsga3 직접 호출.
+    # service.run_nsga3에 인자 직접 주입 — 진입점은 어댑터·도구 호출 패턴이라
+    # 별도 config 파일 없이 옵션은 호출 측이 그때그때 넘긴다.
     ("NSGA-III smoke (trials 30, pop 10)",
      [sys.executable, "-c",
       "from app.service import run_nsga3; "

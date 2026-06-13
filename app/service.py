@@ -1,13 +1,13 @@
 """
-service.py - 실행 흐름 조립 (NSGA-III 전용)
+service.py - NSGA-III 실행 흐름 조립
 
-3층 구조:
-  main.py    = config.json 읽어 service에 넘김
-  service.py = NSGA-III 실행 순서를 조립 (← 이 파일)
-  backend/*  = 실제 기능(데이터 로딩·전략·백테스트·NSGA-III)
+호출 측이 옵션을 인자로 직접 넘기는 라이브러리식 진입점이다:
+  - tools/e2e.py (NSGA-III smoke 스모크 단계)
+  - 그 외 어댑터/REPL에서 `run_nsga3(...)` 직접 호출
 
-[2026-06-13 정리] 단판/진화/도감은 제거됐다 — nsga3만 운영한다.
-  도감을 보고 싶으면: python -m app.lab.dex
+[2026-06-13 정리] main.py + config.json은 제거됐다 — NSGA-III가 시즌의 본선이
+아니라 백엔드 한 갈래로 남았고, 시즌별 탐색 진입점은 `app/league/<name>.py`
+어댑터 직접 실행 패턴(예: `python app/league/single_obj_search.py`)으로 통일됐다.
 """
 import json
 import random
@@ -80,7 +80,7 @@ def run_nsga3(trials: int, seed: int | None = None,
     early_stop_window: HV MA(window) 정체 시 self stop (None=끔).
     adaptive_mutation: True면 HV 정체/개선 신호로 mutation_prob 자동 조정."""
     _apply_seed(seed)
-    from app.backend.search import nsga3   # optuna는 이 모드에서만 필요 — 지연 import
+    from app.academy.study import nsga3   # optuna는 이 모드에서만 필요 — 지연 import
 
     space = "가중치 6 + 파라미터 7" if tune_params else "가중치 6 (파라미터 기본값 고정)"
     notes = []
