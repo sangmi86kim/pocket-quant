@@ -4,7 +4,7 @@ dex.py - 포켓퀀트 도감 (각 유전자/시그널의 사람 친화적 설명
 판정·계산엔 안 쓰는 '플레이버' 데이터다. 단, 카드 키는 반드시 실제 시그널
 명단(signals.GENE_SIGNALS)과 일치해야 한다 (모듈 로드 시 assert로 검증).
 """
-from app.backend.genes.signals import ALL_GENES, GENE_SIGNALS
+from app.backend.genes.signals import GENE_SIGNALS
 
 SIGNAL_CARDS = {
     "DD": {
@@ -60,6 +60,70 @@ SIGNAL_CARDS = {
         "effect": "최근 수익률이 좋으면 공격, 나쁘면 방어한다.",
         "strength": "강한 상승장",
         "weakness": "반전장에서 늦게 얻어맞을 수 있음",
+    },
+    # ── 야생 6마리 (v1.x 시즌, 2026-06-13 잡힘) — 외부 정보원 ──
+    "VOL_SPIKE": {
+        "name": "스파이크몬",
+        "type": "역발상 / 자산-내부",
+        "role": "거래량 폭증 매수 (수급 이벤트형)",
+        "personality": "평소엔 거래소 바닥에 누워 있다가 사람들이 비명 지르며 던지는 날만 일어남",
+        "effect": "거래량이 20일 평균 대비 2.5배 + 가격 음봉이면 매수 의견. 평소 기권.",
+        "strength": "패닉 매도 바닥 잡기 (코로나/리먼 같은 폭락 첫날)",
+        "weakness": "추세적 약세장에선 가짜 신호 연타",
+    },
+    "FEAR": {
+        "name": "피어몬",
+        "type": "역발상 / 글로벌",
+        "role": "VIX 공포 게이지 매수 (이벤트형)",
+        "personality": "남들이 다 도망갈 때 한강 둔치에서 ‘이제 들어갈 때야’ 하고 일어나는 박사 친구",
+        "effect": "VIX > 30이면 역발상 매수 의견. 평소 기권.",
+        "strength": "공포 바닥에서 정확하게 매수 신호 — 시장 심리를 가격 외에서 정량화",
+        "weakness": "VIX는 미국 한정 — 한국 시장엔 VKOSPI 별도 필요",
+    },
+    "US10Y": {
+        "name": "텐와이몬",
+        "type": "매크로 / 글로벌",
+        "role": "10년 금리 급락 매수 (이벤트형)",
+        "personality": "채권 시장 출신, 금리 표만 본다. 금리 떨어지면 성장주가 비싸 보인다고 흥분",
+        "effect": "^TNX가 60일 평균 대비 -0.5%p 이상 하락하면 매수 의견. 평소 기권.",
+        "strength": "금리 인하 사이클 진입 신호 (성장주 우호장)",
+        "weakness": "인플레/금리 레짐 변화에 의존, 역사 데이터 일관성 약함",
+    },
+    "DXY": {
+        "name": "달러몬",
+        "type": "매크로 / 글로벌 / 방어형",
+        "role": "달러 강세 → 위험회피 (이벤트형)",
+        "personality": "달러가 강해질 때 안전자산으로 도망가는 모범생. 평소엔 안 보임",
+        "effect": "UUP(Invesco DXY ETF)가 60일 평균 대비 +1.5% 상승하면 방어 의견(0). 평소 기권. UUP는 2007년부터, 그 이전은 기권.",
+        "strength": "달러 강세 사이클(위험자산 동시 약세) 방어",
+        "weakness": "달러-주식 상관이 항상 음(-)은 아님 — 인플레 시기엔 둘 다 상승",
+    },
+    "SPY_TLT": {
+        "name": "본드몬",
+        "type": "매크로 / 글로벌 / 방어형",
+        "role": "채권-주식 상관 → 방어 (이벤트형)",
+        "personality": "주식과 채권의 줄다리기를 매일 관찰. 채권이 이기면 침대로 들어감",
+        "effect": "TLT/SPY 비율이 60일 평균 대비 +1% 상승하면 방어 의견(0). 평소 기권.",
+        "strength": "위기 초입에 채권 강세 → 주식 약세 신호 (자산-횡단)",
+        "weakness": "2022 같은 동반 하락장(채권/주식 같이 깨짐)에서 무력",
+    },
+    "QQQ_SPY": {
+        "name": "그로스몬",
+        "type": "자산-횡단 / 추세 보조",
+        "role": "성장주 우위 → 매수 (이벤트형)",
+        "personality": "테크가 가치주 위에 있을 때만 자신 있게 매수 의견",
+        "effect": "QQQ/SPY 비율이 60일 평균 위면 매수 의견. 아래면 기권.",
+        "strength": "성장주 강세장 식별 (자산-횡단 직접 신호)",
+        "weakness": "역시 미국 한정 — 한국은 KQ150/KS200 비율 같은 대응 필요",
+    },
+    "QQQ_DIA": {
+        "name": "테크다우몬",
+        "type": "자산-횡단 / 추세 보조",
+        "role": "테크 vs 다우 가치 → 매수 (이벤트형)",
+        "personality": "산업·전통주(다우 30)와의 줄다리기를 매일 본다. 나스닥이 우위면 활성화",
+        "effect": "QQQ/DIA 비율이 60일 평균 위면 매수 의견. 아래면 기권.",
+        "strength": "성장 우위 신호를 SPY(분산)보다 더 선명하게 — DIA는 30종목 집중",
+        "weakness": "QQQ_SPY와 상관 높음 (같이 발동하는 날 많음 — 진단으로 새 정보 양 확인 필요)",
     },
 }
 
@@ -151,8 +215,8 @@ def print_pokedex() -> None:
     """포켓퀀트(시그널) 카드 + 체육관 관장 + NPC를 콘솔에 출력."""
     print("=== PocketQuant 도감 ===\n")
 
-    print("─── 스타팅 6마리 (시그널) ───\n")
-    for gene in ALL_GENES:
+    print(f"─── 포켓퀀트 {len(SIGNAL_CARDS)}마리 (시그널) ───\n")
+    for gene in GENE_SIGNALS:        # source of truth — assert가 SIGNAL_CARDS와 일치 보장
         c = SIGNAL_CARDS[gene]
         print(f"[{gene:<3}] {c['name']}   ({c['type']} · {c['role']})")
         print(f"      성격: {c['personality']}")

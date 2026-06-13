@@ -38,27 +38,34 @@ def run_check() -> bool:
 
     print("=== 가중 결합 불변식 ===")
 
+    n = len(ALL_GENES)        # 시그널 풀 크기 — 풀 확장돼도 자동 반영
+    idx_vol = ALL_GENES.index("VOL")
+    idx_rsi = ALL_GENES.index("REV_RSI")
+    idx_bb = ALL_GENES.index("REV_BB")
+
     # ① 동일 가중치 == 기존 동일가중 평균 (골든 경로 보호)
-    check("동등성: weights=[1]*6 == weights=None",
-          _same(combine_positions(positions, [1.0] * 6),
+    check(f"동등성: weights=[1]*{n} == weights=None",
+          _same(combine_positions(positions, [1.0] * n),
                 combine_positions(positions)))
 
-    # ② 가중치 0 == 시그널 제외
-    sub = [positions[i] for i in (1, 4, 5)]              # VOL, REV_RSI, REV_BB만
-    w_zeroed = [0.0, 1.0, 0.0, 0.0, 1.0, 1.0]
+    # ② 가중치 0 == 시그널 제외 — VOL+REV_RSI+REV_BB만 살림
+    sub = [positions[idx_vol], positions[idx_rsi], positions[idx_bb]]
+    w_zeroed = [1.0 if i in (idx_vol, idx_rsi, idx_bb) else 0.0 for i in range(n)]
     check("배제성: w=0 시그널 == 명단 제외",
           _same(combine_positions(positions, w_zeroed),
                 combine_positions(sub)))
 
     # ③ 스케일 불변 (비율만 의미)
-    w = [0.3, 0.7, 0.1, 0.5, 0.9, 0.2]
+    rng = np.random.default_rng(42)
+    w = rng.uniform(0.1, 1.0, size=n).tolist()
     a = combine_positions(positions, w)
     b = combine_positions(positions, [x * 7.3 for x in w])
     check("스케일 불변: w == 7.3·w", bool(np.allclose(a, b, atol=1e-12)))
 
     # ④ 전원 기권한 날 = 0.0 (REV만 가중치를 주면 평소가 전원 기권)
-    rev_only = combine_positions(positions, [0, 0, 0, 0, 1.0, 1.0])
-    rev_union_abstain = positions[4].isna() & positions[5].isna()
+    w_rev = [1.0 if i in (idx_rsi, idx_bb) else 0.0 for i in range(n)]
+    rev_only = combine_positions(positions, w_rev)
+    rev_union_abstain = positions[idx_rsi].isna() & positions[idx_bb].isna()
     check("기권 보존: 전원 기권일은 0.0",
           bool((rev_only[rev_union_abstain] == 0.0).all()))
 

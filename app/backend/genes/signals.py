@@ -117,20 +117,146 @@ def signal_MOM(prices: pd.Series, lookback: int = MOM_LOOKBACK) -> pd.Series:
     return (momentum > 0).astype(float)              # 초기(데이터 부족) 구간은 0
 
 
+# ─────────────────────────────────────────────────────────────────────
+# 야생 포켓퀀트 (2026-06-13 v1.x 시즌 — 외부 정보원 6마리)
+# 모두 이벤트형 — 발동일만 의견, 평소 기권. 자산-횡단 알파 후보.
+# 외부 시계열은 data_io.data에서 yfinance 캐시로 받음 (캐시 hit이면 빠름).
+# ─────────────────────────────────────────────────────────────────────
+VOL_SPIKE_THRESHOLD = 2.5    # 거래량 평균 대비 폭증 배수
+FEAR_THRESHOLD = 30.0        # VIX 공포 임계
+US10Y_DROP_BP = 0.5          # ^TNX 60일 평균 대비 -0.5%p 하락 임계
+DXY_UP_PCT = 0.015           # DXY 60일 평균 대비 +1.5% 상승 임계
+SPY_TLT_THRESHOLD = 0.01     # TLT/SPY 비율 60일 평균 대비 +1% 임계 (채권 강세)
+QQQ_SPY_THRESHOLD = 0.0      # QQQ/SPY 60일 평균 대비 위 = 성장주 우위
+QQQ_DIA_THRESHOLD = 0.0      # QQQ/DIA 60일 평균 대비 위 = 테크 우위 (vs 다우 가치)
+
+
+def _fetch_external(ticker: str, prices: pd.Series) -> pd.Series:
+    """외부 시계열을 prices 인덱스에 정렬해 받아오는 헬퍼.
+    캐시 hit이면 yfinance 호출 없이 즉시. forward-fill로 holiday 차이 흡수.
+    데이터가 요청 기간을 cover 못 하면 (예: UUP는 2007년~) NaN 시리즈 반환 →
+    시그널은 자연스러운 기권 처리(이벤트형 패턴과 일관)."""
+    from app.backend.data_io.data import get_prices    # 지연 import (순환 회피)
+    start = prices.index[0].strftime("%Y-%m-%d")
+    end = prices.index[-1].strftime("%Y-%m-%d")
+    try:
+        series = get_prices(ticker, start, end)
+    except RuntimeError:
+        return pd.Series(np.nan, index=prices.index)
+    return series.reindex(prices.index, method="ffill")
+
+
+def signal_VOL_SPIKE(prices: pd.Series,
+                     threshold: float = VOL_SPIKE_THRESHOLD) -> pd.Series:
+    """거래량 폭증 + 가격 음봉 = 패닉 매도 → 역발상 매수 의견. 평소 기권."""
+    from app.backend.data_io.data import get_volume
+    ticker = prices.name or "QQQ"
+    start = prices.index[0].strftime("%Y-%m-%d")
+    end = prices.index[-1].strftime("%Y-%m-%d")
+    vol = get_volume(str(ticker), start, end).reindex(prices.index, method="ffill")
+    avg = vol.rolling(20, min_periods=10).mean()
+    spike = vol / avg
+    down = prices.pct_change() < 0
+    pos = pd.Series(np.nan, index=prices.index)
+    pos[(spike > threshold) & down] = 1.0
+    return pos
+
+
+def signal_FEAR(prices: pd.Series,
+                threshold: float = FEAR_THRESHOLD) -> pd.Series:
+    """VIX > threshold = 공포 → 역발상 매수 의견 (바닥 신호). 평소 기권."""
+    vix = _fetch_external("^VIX", prices)
+    pos = pd.Series(np.nan, index=prices.index)
+    pos[vix > threshold] = 1.0
+    return pos
+
+
+def signal_US10Y(prices: pd.Series,
+                 drop_bp: float = US10Y_DROP_BP) -> pd.Series:
+    """^TNX 60일 평균 대비 -drop_bp 이상 하락 = 성장주 우호 → 매수 의견. 평소 기권."""
+    tnx = _fetch_external("^TNX", prices)
+    ma = tnx.rolling(60, min_periods=20).mean()
+    diff = tnx - ma
+    pos = pd.Series(np.nan, index=prices.index)
+    pos[diff < -drop_bp] = 1.0
+    return pos
+
+
+def signal_DXY(prices: pd.Series,
+               up_pct: float = DXY_UP_PCT) -> pd.Series:
+    """달러 강세(UUP) 60일 평균 대비 +up_pct 상승 = 안전자산 선호 → 방어 의견 (0). 평소 기권.
+    UUP는 Invesco DXY 추종 ETF(2007년~). 그 이전 시기는 데이터 없음 = NaN 기권 처리."""
+    dxy = _fetch_external("UUP", prices)
+    ma = dxy.rolling(60, min_periods=20).mean()
+    pct = (dxy - ma) / ma
+    pos = pd.Series(np.nan, index=prices.index)
+    pos[pct > up_pct] = 0.0
+    return pos
+
+
+def signal_SPY_TLT(prices: pd.Series,
+                   threshold: float = SPY_TLT_THRESHOLD) -> pd.Series:
+    """TLT/SPY 비율 60일 평균 대비 +threshold = 채권 강세 → 방어 의견 (0). 평소 기권."""
+    spy = _fetch_external("SPY", prices)
+    tlt = _fetch_external("TLT", prices)
+    ratio = tlt / spy
+    ma = ratio.rolling(60, min_periods=20).mean()
+    pct = (ratio - ma) / ma
+    pos = pd.Series(np.nan, index=prices.index)
+    pos[pct > threshold] = 0.0
+    return pos
+
+
+def signal_QQQ_SPY(prices: pd.Series,
+                   threshold: float = QQQ_SPY_THRESHOLD) -> pd.Series:
+    """QQQ/SPY 비율 60일 평균 대비 위 = 성장주 우위 → 매수 의견. 평소 기권."""
+    qqq = _fetch_external("QQQ", prices)
+    spy = _fetch_external("SPY", prices)
+    ratio = qqq / spy
+    ma = ratio.rolling(60, min_periods=20).mean()
+    pct = (ratio - ma) / ma
+    pos = pd.Series(np.nan, index=prices.index)
+    pos[pct > threshold] = 1.0
+    return pos
+
+
+def signal_QQQ_DIA(prices: pd.Series,
+                   threshold: float = QQQ_DIA_THRESHOLD) -> pd.Series:
+    """QQQ/DIA 비율 60일 평균 대비 위 = 테크 우위(vs 다우 가치) → 매수 의견. 평소 기권."""
+    qqq = _fetch_external("QQQ", prices)
+    dia = _fetch_external("DIA", prices)
+    ratio = qqq / dia
+    ma = ratio.rolling(60, min_periods=20).mean()
+    pct = (ratio - ma) / ma
+    pos = pd.Series(np.nan, index=prices.index)
+    pos[pct > threshold] = 1.0
+    return pos
+
+
 # 유전자 이름 -> 시그널 함수.
 # 이 레지스트리가 '어떤 유전자가 존재하는가'의 단일 출처(source of truth)다.
 # [2026-06-10 재배치] 구 RSI(과열)·BB(상단)는 죽은 시그널이라 제외하고
 # 역발상 이벤트형 REV_RSI(과매도 매수)·REV_BB(하단 매수)로 교체. 3타입 × 2마리.
+# [2026-06-13 v1.x] 야생 6마리 추가 — 외부 정보원으로 자산-횡단 알파 후보.
 GENE_SIGNALS = {
-    "DD": signal_DD,            # 💧 위험회피
-    "VOL": signal_VOL,          # 💧 위험회피
-    "MA": signal_MA,            # 🔥 추세순응
-    "MOM": signal_MOM,          # 🔥 추세순응
-    "REV_RSI": signal_REV_RSI,  # 🌿 역발상 (이벤트형)
-    "REV_BB": signal_REV_BB,    # 🌿 역발상 (이벤트형)
+    # 옛 6마리 (가격 기반)
+    "DD": signal_DD,                # 💧 위험회피
+    "VOL": signal_VOL,              # 💧 위험회피
+    "MA": signal_MA,                # 🔥 추세순응
+    "MOM": signal_MOM,              # 🔥 추세순응
+    "REV_RSI": signal_REV_RSI,      # 🌿 역발상 (이벤트형)
+    "REV_BB": signal_REV_BB,        # 🌿 역발상 (이벤트형)
+    # v1.x 야생 6마리 (외부 정보원)
+    "VOL_SPIKE": signal_VOL_SPIKE,  # 📊 자산 내부 (거래량)
+    "FEAR": signal_FEAR,            # 😱 글로벌 (VIX 공포)
+    "US10Y": signal_US10Y,          # 💵 글로벌 (10년 금리)
+    "DXY": signal_DXY,              # 💰 글로벌 (달러 인덱스)
+    "SPY_TLT": signal_SPY_TLT,      # 🏦 글로벌 (채권-주식 상관)
+    "QQQ_SPY": signal_QQQ_SPY,      # 🚀 글로벌 (성장주 vs S&P500)
+    "QQQ_DIA": signal_QQQ_DIA,      # 🏭 글로벌 (테크 vs 다우 가치)
 }
 
-# 사용 가능한 모든 유전자 이름 -> ["DD", "VOL", "MA", "MOM", "REV_RSI", "REV_BB"]
+# 사용 가능한 모든 유전자 이름 (v1.x: 12마리).
 ALL_GENES = list(GENE_SIGNALS.keys())
 
 # 참고: 유전자 설명 카드(포켓퀀트 도감)는 dex.py(SIGNAL_CARDS)에 있다.
@@ -188,6 +314,14 @@ def positions_with_params(prices: pd.Series, params: dict | None = None) -> list
         signal_MOM(prices, lookback=p.get("MOM_LOOKBACK", MOM_LOOKBACK)),
         signal_REV_RSI(prices, oversold=p.get("RSI_OVERSOLD", RSI_OVERSOLD)),
         signal_REV_BB(prices, k=p.get("BB_K", BB_K)),
+        # v1.x 야생 6마리 — 파라미터 동결 (탐색공간 추가 시 정정)
+        signal_VOL_SPIKE(prices),
+        signal_FEAR(prices),
+        signal_US10Y(prices),
+        signal_DXY(prices),
+        signal_SPY_TLT(prices),
+        signal_QQQ_SPY(prices),
+        signal_QQQ_DIA(prices),
     ]
 
 

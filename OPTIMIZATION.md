@@ -5,7 +5,7 @@
 > 그리고 다음 단계(Optuna NSGA-III 다목적)를 어떻게 정식화할지 정리한다.
 >
 > v0.2(가짜 데이터·생존률) 시절 내용은 폐기.
-> 2026-06-11 v0.5 기준으로 갱신 → 2026-06-13 v1 마감 + 폴더 재구성 반영.
+> 2026-06-11 v0.5 → 2026-06-13 v1 마감 → 2026-06-13 v1.x 시즌 시작 (야생 7마리 + CMA-ES 추가).
 
 ---
 
@@ -273,3 +273,46 @@ gate3_holdout  : 봉인 6년 × 챔피언 잔고 + 국면 라벨     ← app/lea
 - 한계 (다음 시즌 화두): 유전자 풀 6개 제약(Top10이 같은 종 변주) → **알 깨기**로
   새 시그널 풀 확장 (외부: KIS API 호가/체결, 매크로 VIX/DXY, 가격 내부 RSI 다이버전스 등).
   KIS 데이터 파이프라인 자리는 `app/backend/data_io/`에 미리 잡아뒀다.
+
+---
+
+## 8. 시즌 v1.x 시작 (2026-06-13) — 야생 7마리 + CMA-ES
+
+### 시그널 풀 확장: 6 → 13
+
+v1의 자산-횡단 한계 = 가격 6마리만 보던 게 원인. 야생 7마리 추가 (외부 정보원):
+
+| 그룹 | 시그널 | 정보원 |
+|---|---|---|
+| 자산 내부 | VOL_SPIKE | 거래량 (yfinance OHLCV — `get_volume` 신설) |
+| 글로벌 | FEAR · US10Y · DXY | `^VIX` · `^TNX` · `UUP` |
+| 자산-횡단 | SPY_TLT · QQQ_SPY · QQQ_DIA | 비율 시계열 |
+
+모두 이벤트형. 데이터 없는 시기(UUP 2007년 이전)는 자동 NaN 기권.
+진단(`check_signals`): 5마리 PASS(상관 < 0.3), **2마리 WARN**(QQQ_SPY/QQQ_DIA가 MOM과
++0.47/+0.48, 자기들끼리 +0.81 = 중복 클러스터). GA/TPE/CMA-ES가 가중치로 자동 조정.
+
+### 옵티마이저 3종 (사용자 안: TPE에 CMA-ES도 추가)
+
+| 엔진 | 모듈 | 성격 |
+|---|---|---|
+| NSGA-III | `app/backend/engine/nsga3.py` | 다목적 (6목적 score_vs_dca + turnover) → Pareto front |
+| TPE | `app/backend/engine/tpe.py` | 단일목적 Bayesian (잔고 합 max). v1 챔피언 TPE-s11 출신 |
+| **CMA-ES** | `app/backend/engine/cma_es.py` (v1.x 신설) | 단일목적 진화전략. 연속 공간 강함 |
+
+셋 다 같은 인터페이스(`run_study(trials, seed, storage, study_name, on_progress,
+loaded_gyms, dca)`) → service에서 sampler만 갈아끼울 수 있다. `cmaes>=0.10` 의존성 추가.
+
+### 운영 규칙 (AGENTS.md §11 재확인)
+
+- 모든 엔진 `load_if_exists=False` 고정. `study_name`은 매 시즌·시드마다 새로.
+- sqlite db는 시즌 임시 작업 영역 → `hall_of_fame.md` 흡수 후 폐기 (`rm *.db`).
+- 다른 탐색공간(옛 풀 6 vs 새 풀 13) 절대 같은 db에 안 섞임 — `DuplicatedStudyError`로 즉시 차단.
+
+### 다음 단계 (v1.x 본탐색)
+
+- NSGA-III · TPE · CMA-ES 셋 다 13마리 풀로 5시드 sweep
+- 비교 기준: 잔고 합 안정성 + 챔피언 가중치 분포 (어느 sampler가 더 잘 수렴하나)
+- 자산-횡단 검증 (SPY 6체육관 + SPY OOS + SPY 사천왕)
+- 합격선: **SPY에서 어플삭제맨 이기는 챔피언** ([Issue #1](../../issues/1) Phase 3)
+- 워밍업: TPE-s11 가중치 6차원 → 새 13차원 변환 후 `enqueue_trial` 주입 (옛 6마리만 살리고 새 7마리는 0)
