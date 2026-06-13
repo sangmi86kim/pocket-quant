@@ -35,14 +35,16 @@ STAGES = [
      [sys.executable, "tools/test_no_lookahead.py"], 60),
     ("게이트: 골든 넘버 (엔진 불변)",
      [sys.executable, "tools/test_engine_regression.py"], 60),
+    # 풀 13마리 + 외부 데이터 fetch — 첫 캐시 미스 시 시간 더 듦. timeout 여유 늘림.
     ("게이트: 돼지저금통 퇴화 감시",
-     [sys.executable, "tools/test_baselines.py"], 120),
+     [sys.executable, "tools/test_baselines.py"], 600),
     ("진단: 시그널 노출/발동률",
-     [sys.executable, "tools/check_signals.py"], 60),
+     [sys.executable, "tools/check_signals.py"], 120),
     ("진단: DCA 기준선 + score_vs_dca",
-     [sys.executable, "tools/check_dca.py"], 120),
-    ("walk_forward (선발 OOS)",
-     [sys.executable, "tools/walk_forward.py"], 300),
+     [sys.executable, "tools/check_dca.py"], 600),
+    # walk_forward는 legacy 단일목적 GA(클램프 스탯) 기반 — 풀 13마리에선 2^13 조합
+    # 평가 폭증 + AGENTS.md §6 "클램프 스탯 금지"와도 안 맞아 e2e에서 제외.
+    # 별도 도구로 유지 — 자산/기간 민감도 실험 시 직접 호출.
     # NSGA-III는 storage=None + trials 작게로 종속 없이 스모크.
     # config.json을 안 건드리려고 service.run_nsga3 직접 호출.
     ("NSGA-III smoke (trials 30, pop 10)",

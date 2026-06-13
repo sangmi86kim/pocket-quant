@@ -126,6 +126,41 @@ def load_gyms(gyms: list[Gym]) -> list[LoadedGym]:
     return [load_gym(g) for g in gyms]
 
 
+# ── 거래량 — VOL_SPIKE 같은 거래량 의존 시그널용 (2026-06-13 신설) ────────
+# 일관성: get_prices()와 같은 캐시 디렉토리/파일명 규약, suffix _vol 만 추가.
+def get_volume(ticker: str, start: str, end: str) -> pd.Series:
+    """티커 일별 거래량 시계열. 캐시: data_cache/<ticker>/<기간>_vol.csv."""
+    safe = f"{start}_{end}_vol.csv".replace(":", "-")
+    path = os.path.join(CACHE_DIR, ticker, safe)
+
+    if os.path.exists(path):
+        series = pd.read_csv(path, index_col=0, parse_dates=True).iloc[:, 0]
+        series = pd.to_numeric(series, errors="coerce").dropna().sort_index()
+        if _covers_end(series, end):
+            series.name = ticker
+            return series
+
+    import yfinance as yf
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    yf.set_tz_cache_location(CACHE_DIR)
+    _register_yf_cleanup()
+
+    download_end = (pd.Timestamp(end) + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+    df = yf.download(ticker, start=start, end=download_end,
+                     auto_adjust=True, progress=False)
+    if df is None or df.empty or "Volume" not in df.columns:
+        raise RuntimeError(
+            f"[data] '{ticker}' {start}~{end} 거래량을 받지 못했습니다."
+        )
+    vol = df["Volume"]
+    if isinstance(vol, pd.DataFrame):
+        vol = vol.iloc[:, 0]
+    vol = pd.to_numeric(vol, errors="coerce").dropna().sort_index()
+    vol.name = ticker
+    vol.to_csv(path)
+    return vol
+
+
 # ── yfinance 메타 파일 자동 청소 ───────────────────────────────────────────
 # yfinance는 매 다운로드마다 data_cache/cookies.db · tkr-tz.db를 만들어 CSV와
 # 섞이게 한다 — 폴더가 지저분해지는 주범. 워크플로우 종료 시(atexit) 메타만
