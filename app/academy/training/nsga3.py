@@ -30,7 +30,7 @@ from app.academy.exam import all_gyms
 from app.academy.exam.grade import evaluate_candidate
 from app.pocket.battle import fight_dca
 from app.pocket.signals import ALL_GENES, positions_with_params
-from app.world.data import LoadedGym, load_gyms
+from app.world.data_loader import LoadedGym, load_gyms
 
 OBJECTIVE_NAMES = ["bear", "rebound", "crash_v", "bull", "chop", "turnover"]
 DIRECTIONS = ["maximize"] * 5 + ["minimize"]

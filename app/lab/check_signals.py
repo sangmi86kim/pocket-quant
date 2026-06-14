@@ -22,7 +22,7 @@ import pandas as pd
 
 from app.academy.exam import all_gyms
 from app.pocket.signals import ALL_GENES, GENE_SIGNALS
-from app.world.data import load_gyms
+from app.world.data_loader import load_gyms
 
 
 def is_event_signal(series: pd.Series) -> bool:

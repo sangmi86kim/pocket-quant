@@ -29,7 +29,7 @@ N개 평행세계 평균"에 fit하게 만든다 → 특정 path 의존 약화 =
 from app.academy.curriculum.textbook import make_world
 from app.pocket.battle import fight_dca
 from app.pocket.models import Gym
-from app.world.data import LoadedGym
+from app.world.data_loader import LoadedGym
 
 DATA_START = "1999-03-10"
 DATA_END = "2020-06-30"

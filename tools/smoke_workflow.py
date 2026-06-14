@@ -34,7 +34,7 @@ from app.academy.exam.grade import decode_params, evaluate_balances
 from app.academy.training import cma_es, gp, nsga3, tpe
 from app.pocket.battle import fight_dca
 from app.pocket.signals import ALL_GENES
-from app.world.data import load_gyms
+from app.world.data_loader import load_gyms
 
 SEED = 42
 ACADEMY_N_TRAIN = 2

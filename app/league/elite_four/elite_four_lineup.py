@@ -30,7 +30,7 @@ import pandas as pd
 from app.pocket.battle import (_score_position, fight_dca, fight_savings,
                                          terminal_balance)
 from app.pocket.signals import ALL_GENES, combine_positions, positions_with_params
-from app.world.data import LoadedGym, get_prices
+from app.world.data_loader import LoadedGym, get_prices
 from app.world.regime import REGIME_LABELS, dominant_regime
 from app.league.elite_four import DATA_END, HOLDOUT_START, ROUNDS, TICKER, _loaded_window
 

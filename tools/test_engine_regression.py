@@ -32,7 +32,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from app.academy.exam import all_gyms
 from app.pocket.battle import challenge, fight_dca, score_vs_dca
 from app.pocket.models import Strategy
-from app.world.data import load_gyms
+from app.world.data_loader import load_gyms
 
 # 부동소수 노이즈 + yfinance 자동 데이터 보정만 허용. 4번째 소수점 이상 차이는 회귀.
 # (2026-06-13 e2e 실증: yfinance가 캐시를 재실행마다 덮어쓰면서 5~7번째 소수점 변동.)

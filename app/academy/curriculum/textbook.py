@@ -15,7 +15,7 @@ N권을 묶어 학기 코스로 엮는 일은 패키지 상위(`curriculum.__ini
 import numpy as np
 import pandas as pd
 
-from app.world.data import LoadedGym, get_prices, get_volume
+from app.world.data_loader import LoadedGym, get_prices, get_volume
 from app.pocket.models import Gym
 
 

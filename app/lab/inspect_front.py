@@ -57,7 +57,7 @@ def main() -> None:
     # 기준점 (현 단일목적 챔피언)
     from app.academy.exam import all_gyms
     from app.pocket.battle import fight_dca
-    from app.world.data import load_gyms
+    from app.world.data_loader import load_gyms
     loaded = load_gyms(all_gyms())
     dca = {lg.gym.name: fight_dca(lg) for lg in loaded}
     ref = nsga3.reference_vector(loaded, dca)

@@ -18,7 +18,7 @@ import numpy as np
 
 from app.pocket.signals import (ALL_GENES, GENE_SIGNALS,
                                        combine_positions, positions_with_params)
-from app.world.data import get_prices
+from app.world.data_loader import get_prices
 
 
 def _same(a, b) -> bool:

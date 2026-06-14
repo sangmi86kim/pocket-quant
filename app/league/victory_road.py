@@ -55,7 +55,7 @@ from app.pocket.battle import (_score_position, fight_dca, score_vs_dca,
 from app.academy.exam.grade import decode_params
 from app.academy.training import nsga3
 from app.pocket.signals import ALL_GENES, combine_positions, positions_with_params
-from app.world.data import LoadedGym, WARMUP_DAYS, get_prices
+from app.world.data_loader import LoadedGym, WARMUP_DAYS, get_prices
 from app.world.regime import REGIME_LABELS, dominant_regime
 from app.league.regime_picks import update_regime_picks as _update_regime_picks
 

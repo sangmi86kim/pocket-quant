@@ -20,7 +20,7 @@ battle.py - 전투(백테스트)를 '계산'하는 파일, 게임의 엔진
 import numpy as np
 import pandas as pd
 
-from app.world.data import LoadedGym
+from app.world.data_loader import LoadedGym
 from .models import BattleResult, Report, Stats, Strategy
 from .signals import combined_position
 

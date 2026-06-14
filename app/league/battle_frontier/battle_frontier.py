@@ -44,7 +44,7 @@ from app.pocket.models import Gym
 from app.pocket.battle import (_score_position, fight_dca, score_vs_dca,
                                          terminal_balance)
 from app.pocket.signals import combine_positions, positions_with_params
-from app.world.data import LoadedGym, get_prices
+from app.world.data_loader import LoadedGym, get_prices
 from app.league.regime_picks import update_regime_picks as _update_regime_picks
 from app.league.victory_road import load_graduates
 

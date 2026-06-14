@@ -24,7 +24,7 @@ from app.pocket import signals
 from app.pocket.battle import challenge, fight_dca, fight_savings, score_vs_dca
 from app.pocket.models import Strategy
 from app.pocket.signals import ALL_GENES
-from app.world.data import load_gyms
+from app.world.data_loader import load_gyms
 
 
 def main() -> None:

@@ -22,7 +22,7 @@ from app.academy.exam import all_gyms
 from app.academy.exam.grade import decode_params, evaluate_balances
 from app.pocket.battle import fight_dca
 from app.pocket.signals import ALL_GENES
-from app.world.data import LoadedGym, load_gyms
+from app.world.data_loader import LoadedGym, load_gyms
 
 # 100만원 시드 — sweep_seeds·hall_of_fame과 동일 단위(만원 환산은 표시 층에서).
 SEED_KRW = 1_000_000

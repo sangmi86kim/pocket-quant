@@ -31,7 +31,7 @@ import pandas as pd
 from app.pocket.battle import (_score_position, fight_dca, fight_savings,
                                          terminal_balance)
 from app.pocket.signals import ALL_GENES, combine_positions, positions_with_params
-from app.world.data import LoadedGym, get_prices
+from app.world.data_loader import LoadedGym, get_prices
 from app.league.battle_frontier import (DATA_START, DATA_END, N_WORLDS_ALL,
                                           N_WORLDS_REGIME, REGIME_SPANS, SEED,
                                           make_world)
