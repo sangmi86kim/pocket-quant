@@ -46,7 +46,6 @@ from app.pocket.battle import (_score_position, fight_dca, score_vs_dca,
 from app.pocket.signals import combine_positions, positions_with_params
 from app.world.data_loader import LoadedGym, get_prices
 from app.league.operations.regime_picks import update_regime_picks as _update_regime_picks
-from app.league.v1.champion_road_lineup import load_graduates_from_study as load_graduates
 
 SEED_KRW = 1_000_000   # 표시·판정용 시드 (06-13 — 한 세계당 100만원)
 
@@ -109,7 +108,16 @@ def make_world(full_returns: pd.Series, rng,
     return LoadedGym(gym=gym, prices=prices)
 
 
-def run_gate2() -> bool:
+def run_gate2(graduates: list) -> bool:
+    """챔피언로드 ② 평행세계 운빨 검사 — graduates는 시즌 어댑터가 준비해 주입한다.
+
+    graduate dict 형식:
+      - 시그널 후보: {"name","label","weights","params","mean5","specialist"}
+      - NPC 후보  : 위 키 + "evaluator"(loaded, seed_krw) -> (returns, terminal)
+                    (NPC도 평행세계 출전, 매년 1등 카운트에 자연 포함. 단 도전권
+                     판정에서는 제외 — battle_frontier 자체엔 NPC 전용 출력 분기
+                     아직 없음, 다음 단계.)
+    """
     prices = get_prices("QQQ", DATA_START, DATA_END)
     full_returns = prices.pct_change().dropna()
     regime_returns = {
@@ -118,7 +126,6 @@ def run_gate2() -> bool:
     }
 
     # 입장 명단: 도전권 보유자(현챔피언) + 스페셜리스트 + 벤치 1위(참고)
-    graduates = load_graduates()
     champion = graduates[0]
     specialists = [g for g in graduates if g["specialist"]]
     # 하드 필터 통과자가 0명이면 벤치 1위가 없다 — 없이 진행 (크래시 방지)
@@ -221,4 +228,10 @@ def run_gate2() -> bool:
 
 
 if __name__ == "__main__":
-    sys.exit(0 if run_gate2() else 1)
+    # 단독 실행 금지 — graduates는 시즌 어댑터가 준비한다.
+    # v1 시즌:   python app/league/v1/battle_frontier_lineup.py (자체 평가 경로)
+    # v1.x 시즌: python app/league/v1x/battle_frontier.py       (자체 main)
+    raise SystemExit(
+        "[battle_frontier] 본 코어는 graduates 인자가 필요합니다. "
+        "시즌 어댑터로 진입하세요 (예: app/league/v1/battle_frontier_lineup.py)."
+    )
