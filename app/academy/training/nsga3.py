@@ -26,45 +26,14 @@ nsga3.py - Optuna NSGA-III 다목적 최적화 (설계: OPTIMIZATION.md 4절)
 import numpy as np
 import optuna
 
-from app.backend.genes.signals import ALL_GENES, combine_positions, positions_with_params
-from app.backend.data_io.data import LoadedGym, load_gyms
-from app.backend.market.gym import all_gyms
-from app.backend.engine.battle import _score_position, fight_dca, score_vs_dca, terminal_balance
+from app.academy.exam import all_gyms
+from app.academy.exam.grade import evaluate_candidate
+from app.pocket.battle import fight_dca
+from app.pocket.signals import ALL_GENES, positions_with_params
+from app.world.data import LoadedGym, load_gyms
 
-# 체육관 이름 → 목적함수 키 (이름이 바뀌면 여기만 맞추면 됨)
-GYM_KEYS = {
-    "닷컴": "dotcom", "금융위기": "gfc", "회복장": "rebound",
-    "코로나": "crash_v", "상승장": "bull", "횡보장": "chop",
-}
 OBJECTIVE_NAMES = ["bear", "rebound", "crash_v", "bull", "chop", "turnover"]
 DIRECTIONS = ["maximize"] * 5 + ["minimize"]
-
-
-def _gym_key(gym_name: str) -> str:
-    for token, key in GYM_KEYS.items():
-        if token in gym_name:
-            return key
-    raise KeyError(f"[nsga3] 목적 키를 모르는 체육관: {gym_name!r} — GYM_KEYS에 추가 필요")
-
-
-def evaluate_candidate(weights: list[float], params: dict,
-                       loaded_gyms: list[LoadedGym], dca: dict,
-                       base_positions: dict | None = None) -> dict:
-    """후보 1개(가중치+파라미터)를 전 체육관에서 채점해
-    {체육관키: score_vs_dca, "turnover": 일평균} 을 돌려준다.
-
-    base_positions: {체육관이름: 포지션목록} — 가중치 전용 리그(v2)에선 시그널이
-    트라이얼마다 동일하므로 미리 계산해 넘기면 가중 결합+채점만 남는다(대폭 가속)."""
-    out, turnovers = {}, []
-    for lg in loaded_gyms:
-        positions = (base_positions[lg.gym.name] if base_positions is not None
-                     else positions_with_params(lg.prices, params))
-        position = combine_positions(positions, weights)
-        result = _score_position(position, lg)          # 전략과 동일 실행 모델(0.1% 과금)
-        out[_gym_key(lg.gym.name)] = score_vs_dca(result, dca[lg.gym.name])
-        turnovers.append(result.turnover)
-    out["turnover"] = sum(turnovers) / len(turnovers)
-    return out
 
 
 def suggest_candidate(trial: optuna.Trial,
@@ -92,35 +61,6 @@ def suggest_candidate(trial: optuna.Trial,
         "VOL_STRESSED": vol_calm + trial.suggest_float("VOL_SPREAD", 0.003, 0.020),
     }
     return weights, params
-
-
-def evaluate_balances(weights: list[float], params: dict,
-                      loaded_gyms: list[LoadedGym], dca: dict,
-                      seed_krw: int = 1_000_000) -> dict:
-    """후보의 체육관별 (전략 잔고, 성실이 잔고) — 표시·판정용 (옵티마이저 아님).
-
-    같은 _score_position을 거치므로 score_vs_dca와 동일 실행 모델 (0.1% 과금 등).
-    내부 결과는 단순 dict {체육관이름: {"strat": 원, "dca": 원}}."""
-    out = {}
-    for lg in loaded_gyms:
-        positions = positions_with_params(lg.prices, params)
-        position = combine_positions(positions, weights)
-        result = _score_position(position, lg)
-        out[lg.gym.name] = {"strat": terminal_balance(result, seed_krw),
-                            "dca": terminal_balance(dca[lg.gym.name], seed_krw)}
-    return out
-
-
-def decode_params(params: dict) -> tuple[list[float], dict]:
-    """Optuna trial.params → (가중치, 시그널 파라미터). suggest_candidate의 역함수.
-    가중치 전용 리그(v2) 트라이얼엔 w_* 만 있다 → 시그널 파라미터는 기본값."""
-    weights = [params[f"w_{g}"] for g in ALL_GENES]
-    if "VOL_CALM" not in params:
-        return weights, {}
-    sig = {k: params[k] for k in
-           ("DD_LIMIT", "MA_WINDOW", "MOM_LOOKBACK", "RSI_OVERSOLD", "BB_K", "VOL_CALM")}
-    sig["VOL_STRESSED"] = params["VOL_CALM"] + params["VOL_SPREAD"]
-    return weights, sig
 
 
 def make_objective(loaded_gyms: list[LoadedGym], dca: dict, tune_params: bool = False):

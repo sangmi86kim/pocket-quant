@@ -25,9 +25,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import pandas as pd
 
-from app.backend.genes.signals import ALL_GENES, GENE_SIGNALS
-from app.backend.data_io.data import load_gyms
-from app.backend.market.gym import all_gyms
+from app.academy.exam import all_gyms
+from app.pocket.signals import ALL_GENES, GENE_SIGNALS
+from app.world.data import load_gyms
 
 
 def is_event_signal(series: pd.Series) -> bool:

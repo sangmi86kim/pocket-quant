@@ -18,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import optuna
 
 import app.academy.training.nsga3 as nsga3
-from app.academy.genes.signals import ALL_GENES
+from app.pocket.signals import ALL_GENES
 
 # 경로는 전부 프로젝트 루트 기준 절대 경로 - 어디서 실행해도(IDE 포함) 같은 DB를 연다.
 # 상대 경로면 PyCharm처럼 작업 디렉토리가 다른 실행에서 빈 DB를 새로 만들어 버린다.
@@ -55,9 +55,9 @@ def main() -> None:
     print(f"=== 스터디 {STUDY}: 트라이얼 {done}개 · Pareto front {len(front)}개 ===")
 
     # 기준점 (현 단일목적 챔피언)
+    from app.academy.exam import all_gyms
+    from app.pocket.battle import fight_dca
     from app.world.data import load_gyms
-    from app.academy.gym import all_gyms
-    from app.academy.engine.battle import fight_dca
     loaded = load_gyms(all_gyms())
     dca = {lg.gym.name: fight_dca(lg) for lg in loaded}
     ref = nsga3.reference_vector(loaded, dca)

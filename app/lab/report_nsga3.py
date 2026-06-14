@@ -16,9 +16,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import optuna
 
 import app.academy.training.nsga3 as nsga3
-from app.academy.engine.battle import fight_dca
-from app.academy.genes.signals import ALL_GENES
-from app.academy.gym import all_gyms
+from app.academy.exam import all_gyms
+from app.pocket.battle import fight_dca
+from app.pocket.signals import ALL_GENES
 from app.world.data import load_gyms
 
 _ROOT = Path(__file__).resolve().parents[2]

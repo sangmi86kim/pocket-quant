@@ -26,8 +26,9 @@ for _s in (sys.stdout, sys.stderr):
     except Exception:
         pass
 
-from app.academy.study import tpe, cma_es, gp, nsga3
-from app.backend.genes.signals import ALL_GENES
+from app.academy.exam.grade import decode_params
+from app.academy.training import tpe, cma_es, gp, nsga3
+from app.pocket.signals import ALL_GENES
 from app.league.single_obj_compare_gp import PlateauStopCallback, PATIENCE, MIN_DELTA_PCT
 from app.league.victory_road import run_gate1
 
@@ -109,7 +110,7 @@ def sweep_nsga3(loaded_gyms, dca) -> list[dict]:
 
         # 올라운더 (필터 통과)
         for r in summary["passed"]:
-            w, sig = nsga3.decode_params(r["params"])
+            w, sig = decode_params(r["params"])
             label = label_of.get(r["number"], "통과")
             out.append({
                 "name": f"NSGA3-s{seed}-#{r['number']}",
@@ -128,7 +129,7 @@ def sweep_nsga3(loaded_gyms, dca) -> list[dict]:
             if name in seen:
                 continue
             seen.add(name)
-            w, sig = nsga3.decode_params(spec["params"])
+            w, sig = decode_params(spec["params"])
             out.append({
                 "name": name,
                 "label": f"★{nsga3.OBJECTIVE_NAMES[i]}",

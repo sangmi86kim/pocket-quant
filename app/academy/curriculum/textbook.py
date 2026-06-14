@@ -1,32 +1,22 @@
-"""세계 공장 (world_factory) — 평행세계 1개 만드는 공장.
+"""교과서 (textbook) — 평행세계 1권 만들기.
 
-[왜 이 공장이 필요한가]
-지금 학교(`academy.academy.bootstrap_gyms`)는 QQQ 하나만 재료로 써서 평행세계를
-만든다. 그러면 야생 시그널(VIX·금리·달러 같은 외부 정보원 7마리)이 합성 세계에선
-잠만 자버린다. 시그널 13마리 중 야생 7마리가 학습에 참여하지 못한다.
+[책임]
+`make_world()`가 호출 1번에 합성 QQQ + 야생 정보원(VIX·금리·달러 등)을 **같은 블록
+인덱스로 동시에 잘라** 평행세계 1권을 반환한다. 닷컴 패닉 블록에는 VIX 폭증·금리
+하락이 같이 들어감 → 야생 시그널이 합성 세계에서도 정상 작동.
 
-이 공장은 **QQQ + 야생 시그널 재료를 같은 블록(같은 시점)으로 동시에 잘라**
-이어붙인다. 닷컴 패닉 블록에는 VIX 폭증·금리 하락이 같이 들어감 → 야생 시그널도
-합성 세계에서 정상 작동.
+N권을 묶어 학기 코스로 엮는 일은 패키지 상위(`curriculum.__init__`)의 책임이다.
 
-[v1.1 단계 (코덱스 5.5 권장 8단계 중 1번)]
-- ✅ 1. 이 파일 신설 — 다중 시계열 같은 블록 셔플 + `prices.attrs`로 외부 부착
-  - QQQ 상대강도 leg와 QQQ 거래량까지 attrs에 부착
-  - 스트림별 데이터 부재 구간은 NaN으로 보존 (상장 전 역사 발명 금지)
-- ⬜ 2. `signals._fetch_external`이 `prices.attrs["external_streams"]` 우선 참조
-- ⬜ 3. 학교(`academy.bootstrap_gyms`)가 이 공장 쓰게 (옵션)
-- ⬜ 4. objective `sum` → `score_vs_dca` 즉시 교체
-- ⬜ 5. 숨은 검증 세계 분리 (train/validation synthetic split)
-- ⬜ 6~8. 가변 블록·국면 풀·robust objective는 나중
-
-[한 단계씩 — 사용자 운전]
-이 파일 하나만 만들고 멈춤. 다음 단계는 사용자 검토 후 명시 지시.
+[규칙]
+- 스트림별 데이터 부재 구간은 NaN 유지 (UUP 2007년 이전 등 — 상장 전 역사 발명 금지)
+- `prices.attrs["synthetic"]=True` + `prices.attrs["external_streams"]=dict`로 부착
+  → `signals._fetch_external`이 우선 참조
 """
 import numpy as np
 import pandas as pd
 
-from app.backend.data_io.data import LoadedGym, get_prices, get_volume
-from app.backend.core.models import Gym
+from app.world.data import LoadedGym, get_prices, get_volume
+from app.pocket.models import Gym
 
 
 # 학습 자료 범위 — battle_frontier와 동일 (사천왕 봉인 2020-07 이후 사용 금지)

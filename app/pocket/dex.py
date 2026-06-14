@@ -6,7 +6,7 @@ dex.py - 포켓퀀트 도감 (각 유전자/시그널의 사람 친화적 설명
 """
 import sys
 
-from app.backend.genes.signals import GENE_SIGNALS
+from app.pocket.signals import GENE_SIGNALS
 
 for _stream in (sys.stdout, sys.stderr):
     try:

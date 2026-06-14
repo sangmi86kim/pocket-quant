@@ -151,7 +151,7 @@ def _fetch_external(ticker: str, prices: pd.Series) -> pd.Series:
         return streams[ticker].reindex(prices.index)
     if _is_synthetic(prices):
         return pd.Series(np.nan, index=prices.index)
-    from app.backend.data_io.data import get_prices    # 지연 import (순환 회피)
+    from app.world.data import get_prices    # 지연 import (순환 회피)
     start = prices.index[0].strftime("%Y-%m-%d")
     end = prices.index[-1].strftime("%Y-%m-%d")
     try:
@@ -170,7 +170,7 @@ def signal_VOL_SPIKE(prices: pd.Series,
     elif _is_synthetic(prices):
         return pd.Series(np.nan, index=prices.index)
     else:
-        from app.backend.data_io.data import get_volume
+        from app.world.data import get_volume
         ticker = prices.name or "QQQ"
         start = prices.index[0].strftime("%Y-%m-%d")
         end = prices.index[-1].strftime("%Y-%m-%d")

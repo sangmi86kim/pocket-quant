@@ -23,13 +23,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import pandas as pd
 
-from app.backend.core.models import Strategy
-from app.backend.engine.battle import (challenge, fight_dca, fight_savings,
-                                       score_vs_dca)
-from app.backend.genes import signals
-from app.backend.genes.signals import ALL_GENES
-from app.backend.data_io.data import load_gyms
-from app.backend.market.gym import all_gyms
+from app.academy.exam import all_gyms
+from app.pocket import signals
+from app.pocket.battle import challenge, fight_dca, fight_savings, score_vs_dca
+from app.pocket.models import Strategy
+from app.pocket.signals import ALL_GENES
+from app.world.data import load_gyms
 
 
 def main() -> None:

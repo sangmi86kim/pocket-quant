@@ -16,9 +16,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import numpy as np
 
-from app.backend.genes.signals import (ALL_GENES, GENE_SIGNALS,
+from app.pocket.signals import (ALL_GENES, GENE_SIGNALS,
                                        combine_positions, positions_with_params)
-from app.backend.data_io.data import get_prices
+from app.world.data import get_prices
 
 
 def _same(a, b) -> bool:

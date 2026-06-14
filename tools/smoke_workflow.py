@@ -28,14 +28,13 @@ for _stream in (sys.stdout, sys.stderr):
     except Exception:
         pass
 
-from app.academy.academy import prepare_academy_split
-from app.academy.study import cma_es, gp, nsga3, tpe
-from app.academy.study.nsga3 import evaluate_balances
-from app.backend.data_io.data import load_gyms
-from app.backend.engine.battle import fight_dca
-from app.backend.genes.signals import ALL_GENES
-from app.backend.market.gym import all_gyms
-
+from app.academy.curriculum import prepare_academy_split
+from app.academy.exam import all_gyms
+from app.academy.exam.grade import decode_params, evaluate_balances
+from app.academy.training import cma_es, gp, nsga3, tpe
+from app.pocket.battle import fight_dca
+from app.pocket.signals import ALL_GENES
+from app.world.data import load_gyms
 
 SEED = 42
 ACADEMY_N_TRAIN = 2
@@ -111,7 +110,7 @@ def _check_academy() -> float:
         if study is None:
             continue
         # 같은 best trial을 validation에 다시 평가할 수 있어야 한다.
-        weights, _params = nsga3.decode_params(study.best_trial.params)
+        weights, _params = decode_params(study.best_trial.params)
         val_bals = evaluate_balances(weights, {}, val_gyms, val_dca)
         if _balance_sum(val_bals) <= 0:
             raise RuntimeError(f"{name} validation 평가 실패")

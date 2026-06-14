@@ -18,7 +18,7 @@ for s in (sys.stdout, sys.stderr):
     except Exception:
         pass
 
-from app.backend.genes.signals import ALL_GENES
+from app.pocket.signals import ALL_GENES
 from app.league.victory_road import run_gate1
 
 TOP10_JSON = _ROOT / "reports" / "league_v1" / "top10_champions.json"

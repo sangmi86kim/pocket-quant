@@ -26,8 +26,9 @@ for s in (sys.stdout, sys.stderr):
 
 import optuna
 
-from app.academy.study import nsga3
-from app.backend.engine.battle import terminal_balance
+from app.academy.exam.grade import decode_params, evaluate_balances
+from app.academy.training import nsga3
+from app.pocket.battle import terminal_balance
 
 SEEDS = [42, 7, 11, 19, 23]
 TRIALS = 2000
@@ -54,8 +55,8 @@ def run_one(seed: int) -> dict:
     # 회수 양수면 OK. 챔피언 후보 = 6체육관 잔고 합 최대.
     front_balances = []
     for t in study.best_trials:
-        w, sig = nsga3.decode_params(t.params)
-        b = nsga3.evaluate_balances(w, sig, lg, dca, SEED_KRW)
+        w, sig = decode_params(t.params)
+        b = evaluate_balances(w, sig, lg, dca, SEED_KRW)
         sumv = sum(v["strat"] for v in b.values())
         sumdca = sum(v["dca"] for v in b.values())
         front_balances.append({

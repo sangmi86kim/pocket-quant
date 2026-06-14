@@ -20,9 +20,9 @@ battle.py - 전투(백테스트)를 '계산'하는 파일, 게임의 엔진
 import numpy as np
 import pandas as pd
 
-from ..core.models import BattleResult, Report, Stats, Strategy
-from ..genes.signals import combined_position
-from ..data_io.data import LoadedGym
+from app.world.data import LoadedGym
+from .models import BattleResult, Report, Stats, Strategy
+from .signals import combined_position
 
 TRADING_DAYS = 252          # 연율화 기준 거래일 수
 

@@ -18,7 +18,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-from app.academy.core.models import Gym
+from app.pocket.models import Gym
 
 # 罹먯떆 ?대뜑: ?꾨줈?앺듃 猷⑦듃??data_cache/  (???뚯씪? app/backend/data_io/ ?덉뿉 ?덉쓬)
 # 2026-06-13遺???곗빱蹂??쒕툕?대뜑 援ъ“ ??KIS ??異붽? ticker媛 ?욎씪 ?먮━ 誘몃━ ?뺣━.

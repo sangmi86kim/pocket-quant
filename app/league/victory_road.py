@@ -48,15 +48,16 @@ import numpy as np
 import optuna
 import pandas as pd
 
-from app.backend.core.models import Gym
-from app.backend.engine import battle
-from app.backend.engine.battle import (_score_position, fight_dca, score_vs_dca,
+from app.pocket.models import Gym
+from app.pocket import battle
+from app.pocket.battle import (_score_position, fight_dca, score_vs_dca,
                                          terminal_balance)
-from app.academy.study import nsga3
-from app.backend.genes.signals import ALL_GENES, combine_positions, positions_with_params
-from app.backend.data_io.data import LoadedGym, WARMUP_DAYS, get_prices
-from app.backend.market.regime import REGIME_LABELS, dominant_regime
-from app.service import _update_regime_picks
+from app.academy.exam.grade import decode_params
+from app.academy.training import nsga3
+from app.pocket.signals import ALL_GENES, combine_positions, positions_with_params
+from app.world.data import LoadedGym, WARMUP_DAYS, get_prices
+from app.world.regime import REGIME_LABELS, dominant_regime
+from app.league.regime_picks import update_regime_picks as _update_regime_picks
 
 SEED_KRW = 1_000_000   # 표시·판정용 시드 (06-13 — 매년 새로 들고 들어감)
 
@@ -94,7 +95,7 @@ def load_graduates() -> list[dict]:
         "params": {}, "mean5": None, "specialist": False,
     }]
     for r in sorted(summary["passed"], key=lambda r: -r["mean5"]):
-        w, sig = nsga3.decode_params(r["params"])
+        w, sig = decode_params(r["params"])
         graduates.append({
             "name": f"#{r['number']}", "label": label_of.get(r["number"], ""),
             "weights": w, "params": sig, "mean5": r["mean5"], "specialist": False,
@@ -115,7 +116,7 @@ def load_graduates() -> list[dict]:
         if f"#{r['number']}" in seen:
             continue
         seen.add(f"#{r['number']}")
-        w, sig = nsga3.decode_params(r["params"])
+        w, sig = decode_params(r["params"])
         graduates.append({
             "name": f"#{r['number']}", "label": f"★{title}",
             "weights": w, "params": sig,

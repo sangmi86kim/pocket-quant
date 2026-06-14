@@ -35,14 +35,14 @@ for _s in (sys.stdout, sys.stderr):
 import numpy as np
 import pandas as pd
 
-from app.backend.core.models import Gym, Report, Strategy
-from app.backend.engine import battle
-from app.backend.engine.battle import (_dca_position, _score_position, fight_dca,
+from app.pocket.models import Gym, Report, Strategy
+from app.pocket import battle
+from app.pocket.battle import (_dca_position, _score_position, fight_dca,
                                        score_vs_dca, terminal_balance)
-from app.backend.genes.signals import ALL_GENES, combine_positions, positions_with_params
-from app.backend.data_io.data import LoadedGym, WARMUP_DAYS, get_prices
-from app.backend.market.regime import REGIME_LABELS, dominant_regime
-from app.service import _update_regime_picks
+from app.pocket.signals import ALL_GENES, combine_positions, positions_with_params
+from app.world.data import LoadedGym, WARMUP_DAYS, get_prices
+from app.world.regime import REGIME_LABELS, dominant_regime
+from app.league.regime_picks import update_regime_picks as _update_regime_picks
 
 _ROOT = Path(__file__).resolve().parent.parent
 OUT = _ROOT / "reports" / "elite_four_report.html"

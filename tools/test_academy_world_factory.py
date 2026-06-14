@@ -28,16 +28,20 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-import pandas as pd
 import optuna
+import pandas as pd
 
-from app.academy.academy import bootstrap_gyms, prepare_academy_split
-from app.academy.world_factory import DATA_END, make_world
-from app.academy.study.nsga3 import evaluate_balances
-from app.academy.study import cma_es, gp, tpe
-from app.backend.genes.signals import (ALL_GENES, _fetch_external, signal_QQQ_DIA,
-                                       signal_QQQ_SPY, signal_VOL_SPIKE)
-
+from app.academy.curriculum import bootstrap_gyms, prepare_academy_split
+from app.academy.curriculum.textbook import DATA_END, make_world
+from app.academy.exam.grade import evaluate_balances
+from app.academy.training import cma_es, gp, tpe
+from app.pocket.signals import (
+    ALL_GENES,
+    _fetch_external,
+    signal_QQQ_DIA,
+    signal_QQQ_SPY,
+    signal_VOL_SPIKE,
+)
 
 EXPECTED_STREAMS = ["DIA", "QQQ", "QQQ_volume", "SPY", "TLT", "UUP", "^TNX", "^VIX"]
 

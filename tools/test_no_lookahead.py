@@ -22,8 +22,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import numpy as np
 
-from app.backend.genes.signals import ALL_GENES, GENE_SIGNALS, combined_position
-from app.backend.data_io.data import get_prices
+from app.pocket.signals import ALL_GENES, GENE_SIGNALS, combined_position
+from app.world.data import get_prices
 
 # 잘라낼 날짜들 — 위기 한복판(리먼) / 코로나 V자 바닥 부근 / 평범한 평시
 CUT_DATES = ["2008-09-15", "2020-03-20", "2015-06-30"]

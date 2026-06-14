@@ -40,12 +40,12 @@ for _s in (sys.stdout, sys.stderr):
 import numpy as np
 import pandas as pd
 
-from app.backend.core.models import Gym
-from app.backend.engine.battle import (_score_position, fight_dca, score_vs_dca,
+from app.pocket.models import Gym
+from app.pocket.battle import (_score_position, fight_dca, score_vs_dca,
                                          terminal_balance)
-from app.backend.genes.signals import combine_positions, positions_with_params
-from app.backend.data_io.data import LoadedGym, get_prices
-from app.service import _update_regime_picks
+from app.pocket.signals import combine_positions, positions_with_params
+from app.world.data import LoadedGym, get_prices
+from app.league.regime_picks import update_regime_picks as _update_regime_picks
 from app.league.victory_road import load_graduates
 
 SEED_KRW = 1_000_000   # 표시·판정용 시드 (06-13 — 한 세계당 100만원)
