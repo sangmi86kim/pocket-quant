@@ -1,12 +1,10 @@
 """
-test_academy_world_factory.py - 아카데미 세계공장 산출물 검증
+check_academy_synth.py - 아카데미 합성세계(textbook + curriculum) 산출물 검증
 
 [검증 범위]
-아카데미 v1.1 1단계(`app/academy/world_factory.py`)는 아직 학습 워크플로우가 아니다.
-역할은 합성 QQQ 가격과 야생 정보원 스트림을 같은 블록 인덱스로 잘라
-`prices.attrs["external_streams"]`에 붙이는 것까지다.
+`app/academy/curriculum/textbook.py`(평행세계 1권)와 `curriculum/__init__.py`
+(N권 학기 코스 + train/validation split) 계약을 고정한다.
 
-이 테스트는 그 계약을 고정한다:
   ① LoadedGym 확장 없이 prices.attrs만 사용
   ② QQQ, QQQ_volume, 외부 6개 스트림이 모두 존재
   ③ 모든 스트림은 합성 prices와 같은 인덱스를 공유
@@ -14,20 +12,15 @@ test_academy_world_factory.py - 아카데미 세계공장 산출물 검증
   ⑤ UUP처럼 늦게 생긴 원천은 없는 구간을 NaN으로 보존
   ⑥ signals._fetch_external은 attrs를 우선 읽고, 없으면 synthetic NaN 기권
   ⑦ VOL_SPIKE는 QQQ_volume attrs를 읽는다
-  ⑧ academy.bootstrap_gyms도 world_factory 산출물을 사용한다
+  ⑧ academy.bootstrap_gyms도 textbook 산출물을 사용한다
   ⑨ train/validation synthetic split은 서로 다른 세계를 만든다
   ⑩ raw balance sum 목적식 계측은 그대로 가능하다
   ⑪ hold-out(2020-07~) 재료를 쓰지 않는다
   ⑫ QQQ_SPY/QQQ_DIA도 attrs 경로로 합성 외부 스트림을 읽는다
   ⑬ 단일목적 objective는 아직 raw balance sum 그대로다
 
-실행: 프로젝트 루트에서  python tools/test_academy_world_factory.py
+실행: 프로젝트 루트에서  python -m app.lab.check_academy_synth
 """
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
 import optuna
 import pandas as pd
 
@@ -152,4 +145,4 @@ def test_academy_world_factory():
 
 
 if __name__ == "__main__":
-    sys.exit(0 if run_check() else 1)
+    raise SystemExit(0 if run_check() else 1)

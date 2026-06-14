@@ -275,8 +275,9 @@ NSGA-III는 `app.service.run_nsga3(...)`을 직접 호출합니다(인자 표는
 - `python tools/e2e.py` — 🚀 전 파이프라인 스모크 (compileall + 게이트 + 진단 + NSGA-III)
 - `python tools/smoke_workflow.py` — 🧪 짧은 워크플로우 스모크 (아카데미 → 체육관 → 리그)
 - `python tools/test_baselines.py` — 🧟 돼지저금통 감시 (퇴화 게이트)
-- `python tools/check_signals.py` — 🩺 시그널 노출/발동률/상관 진단
-- `python tools/check_dca.py` — 🤖 성실이 라이벌전 전적 계측
+- `python -m app.lab.check_signals` — 🩺 시그널 노출/발동률/상관 진단 (연구 도구)
+- `python -m app.lab.check_dca` — 🤖 성실이 라이벌전 전적 계측 (연구 도구)
+- `python -m app.lab.check_academy_synth` — 🏫 아카데미 합성세계 계약 검증 (연구 도구)
 - `python tools/test_engine_regression.py` — 🔬 골든 넘버 16개 (REL_TOL 1e-4 — yfinance 노이즈 흡수)
 - `python tools/test_no_lookahead.py` — 🕵️ 컨닝 검사 (미래를 잘라도 과거 포지션 불변)
 

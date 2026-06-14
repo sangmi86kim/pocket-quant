@@ -13,13 +13,9 @@ check_dca.py - DCA 기준선 진단 (NSGA-III 목적함수 재료의 첫 계측)
 체육관별 점수를 평균으로 뭉개면 또 "최약 국면 은폐"가 생기므로, 여기서는
 평균과 최약을 둘 다 표시만 하고 결합은 NSGA-III(벡터 그대로)에 맡긴다.
 
-실행: 프로젝트 루트에서  python tests/check_dca.py
+실행: 프로젝트 루트에서  python -m app.lab.check_dca
 """
-import sys
 from itertools import combinations
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import pandas as pd
 
