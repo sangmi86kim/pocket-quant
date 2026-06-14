@@ -300,15 +300,15 @@ def summarize_front(study, loaded_gyms: list[LoadedGym] | None = None,
         row = {"number": t.number, "values": list(t.values),
                "params": dict(t.params)}
         row["academy"] = academy_metrics(row["values"], seed_krw)
+        row["graduated"] = (
+            row["academy"]["mean_balance"] > baselines["dca_mean"]
+            and row["academy"]["worst_balance"] > seed_krw
+            and row["academy"]["mean_balance"] >= baselines["bh_mean"] * bh_mean_floor
+            and row["academy"]["turnover"] <= turnover_cap
+        )
         front.append(row)
 
-    passed = [
-        r for r in front
-        if r["academy"]["mean_balance"] > baselines["dca_mean"]
-        and r["academy"]["worst_balance"] > seed_krw
-        and r["academy"]["mean_balance"] >= baselines["bh_mean"] * bh_mean_floor
-        and r["academy"]["turnover"] <= turnover_cap
-    ]
+    passed = [r for r in front if r["graduated"]]
 
     labels = {}
     if passed:
@@ -318,6 +318,7 @@ def summarize_front(study, loaded_gyms: list[LoadedGym] | None = None,
 
     return {
         "front_size": len(front),
+        "front": front,
         "passed": passed,
         "labels": labels,
         "baselines": baselines,
