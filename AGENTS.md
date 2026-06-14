@@ -75,7 +75,7 @@ pocket_quant/
 │  │  └─ sweep_seeds.py · top10_champions.py                   # 5 시드 탐색 + Top10 추출
 │  └─ backend/
 │     ├─ core/models.py       # Stats/Strategy/Gym/BattleResult/Report + 적합도
-│     ├─ market/gym.py        # 체육관 6개 (전부 QQQ) — post-COVID 추가 금지 주석 참고
+│     ├─ gym.py               # 공식 체육관 6개 (졸업시험, 전부 QQQ) — post-COVID 추가 금지
 │     ├─ market/regime.py     # Regime Scanner (50/200 MA + 60일 수익률 + 20일 RV 백분위)
 │     ├─ genes/signals.py     # 시그널 → 포지션(0~1)/기권(NaN), 기권 제외 (가중)평균 결합
 │     ├─ engine/
@@ -109,7 +109,7 @@ pocket_quant/
 
 ## 핵심 설계 (현재 값)
 
-- **체육관 6개, 전부 QQQ** (훈련 자산 = 실투자 자산): 닷컴(2000-03~02-12) · 금융위기(2008-01~09-06) ·
+- **공식 체육관 6개, 전부 QQQ** (아카데미 졸업시험. 훈련 자산 = 실투자 자산): 닷컴(2000-03~02-12) · 금융위기(2008-01~09-06) ·
   회복장(2009-03~10-12) · 코로나V(2020-02~06) · 상승장(2017) · 횡보장(2015~16).
   **post-COVID(2020-07~)는 훈련 체육관 추가 금지** (사천왕 — 소진됐어도 훈련 오염 금지는 유지).
 - **스탯(0~100, 표시용)**: HP=평균현금(적합도 가중 0) · ATK=CAGR(0~25%) · DEF=Calmar(-1~3) ·
@@ -122,7 +122,7 @@ pocket_quant/
 - **시그널 풀 (2026-06-13 v1.x)**: 13마리. 스타팅 6(가격 기반) + 야생 7(외부 정보원).
   외부 정보원은 yfinance로 받음 (`^VIX`, `^TNX`, `UUP`, `SPY`, `TLT`, `QQQ`, `DIA`).
   외부 데이터 없는 시기는 자동 NaN 기권 (UUP는 2007년~).
-- **옵티마이저 4종** (`app/academy/study/`):
+- **옵티마이저 4종** (`app/backend/academy/study/`):
   - `nsga3.py` — **다목적**. 6목적 score_vs_dca (5국면 + turnover). Pareto 라인업.
   - `tpe.py` — **단일목적 Bayesian**. 잔고 합 max. v1 챔피언(TPE-s11)이 여기서 나옴.
   - `cma_es.py` — **단일목적 CMA-ES**. 연속 공간 강함. NSGA 계열 친숙 (사용자 본업).
@@ -211,3 +211,22 @@ run_nsga3(
 2. **웜스타트 시드 제너레이터** — 다음 리그 전 필수 (`study.enqueue_trial`, v2에서 필요성 실증)
 3. **Regime Scanner + 70/30 오버레이** — #1918 틸트 후보 대기
 4. **아카데미(cGAN)** — 장기. 나스닥 학습, 국면 라벨 조건 합성. 학습 재료도 hold-out 규칙 적용
+# Encoding absolute rules
+
+- 모든 파일은 UTF-8 유지.
+- 한글 주석 수정 금지.
+- 한글 문자열 수정 금지.
+- 인코딩 변경 금지.
+- 파일 저장 시 UTF-8 사용.
+- 한글이 깨져 보이면 추측해서 복구하거나 재작성하지 말고, 먼저 사용자에게 확인한다.
+- 대량 치환/저장 도구로 한글 포함 파일 전체를 다시 쓰지 않는다. 필요한 변경은 `apply_patch`로 최소 범위만 수행한다.
+# IMPORTANT
+
+This project contains Korean domain terminology.
+
+Do not:
+- translate Korean
+- rewrite Korean comments
+- normalize Korean strings
+
+Preserve all Korean text exactly.

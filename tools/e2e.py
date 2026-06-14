@@ -35,11 +35,9 @@ STAGES = [
     # Keep this dependency-free: storage=None, fixed seed, and tiny trials.
     ("NSGA-III smoke (trials 30, pop 10)",
      [sys.executable, "-c",
-      "from app.service import run_nsga3; "
-      "run_nsga3(trials=30, seed=42, storage=None, "
-      "study_name='e2e_smoke', tune_params=False, "
-      "population_size=10, early_stop_window=None, "
-      "adaptive_mutation=False)"], 180),
+      "import app.academy.training.nsga3 as nsga3; "
+      "nsga3.run_study(30, seed=42, storage=None, "
+      "study_name='e2e_smoke', tune_params=False, population_size=10)"], 180),
 ]
 
 

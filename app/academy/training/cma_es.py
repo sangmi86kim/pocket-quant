@@ -1,4 +1,4 @@
-﻿"""CMA-ES 단일목적 엔진 — TPE와 같은 인터페이스, sampler만 다름.
+"""CMA-ES 단일목적 엔진 — TPE와 같은 인터페이스, sampler만 다름.
 
 [tpe.py와의 관계]
 - `tpe`    : Bayesian 베이지안 (Tree-structured Parzen). 시드 안정성 좋음, 빠른 수렴.

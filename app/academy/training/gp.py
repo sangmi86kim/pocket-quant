@@ -1,4 +1,4 @@
-﻿"""GP(Gaussian Process) 단일목적 엔진 — TPE/CMA-ES와 같은 인터페이스.
+"""GP(Gaussian Process) 단일목적 엔진 — TPE/CMA-ES와 같은 인터페이스.
 
 [샘플러 3종 정리]
 - `tpe`    : Tree-structured Parzen Estimator (Bayesian, 시드 안정성·빠른 수렴)

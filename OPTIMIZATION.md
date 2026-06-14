@@ -161,7 +161,7 @@ import optuna
 study = optuna.create_study(
     directions=["maximize"] * 5 + ["minimize"],
     sampler=optuna.samplers.NSGAIIISampler(seed=42),
-    storage="sqlite:///optuna_v1x.db",   # 시즌 임시 영역 — hall_of_fame.md 흡수 후 폐기
+    storage="sqlite:///optuna_v1x.db",   # 시즌 임시 영역 — battle_frontier.md 흡수 후 폐기
     study_name="nsga3_v1x_kis_s42",      # 매 시즌·시드마다 새 이름 (AGENTS.md §11)
     load_if_exists=False,                # 같은 이름 충돌 시 DuplicatedStudyError로 즉시 차단
 )
@@ -296,9 +296,9 @@ v1의 자산-횡단 한계 = 가격 6마리만 보던 게 원인. 야생 7마리
 
 | 엔진 | 모듈 | 성격 |
 |---|---|---|
-| NSGA-III | `app/academy/study/nsga3.py` | 다목적 (6목적 score_vs_dca + turnover) → Pareto front |
-| TPE | `app/academy/study/tpe.py` | 단일목적 Bayesian (잔고 합 max). v1 챔피언 TPE-s11 출신 |
-| **CMA-ES** | `app/academy/study/cma_es.py` (v1.x 신설) | 단일목적 진화전략. 연속 공간 강함 |
+| NSGA-III | `app/backend/academy/study/nsga3.py` | 다목적 (6목적 score_vs_dca + turnover) → Pareto front |
+| TPE | `app/backend/academy/study/tpe.py` | 단일목적 Bayesian (잔고 합 max). v1 챔피언 TPE-s11 출신 |
+| **CMA-ES** | `app/backend/academy/study/cma_es.py` (v1.x 신설) | 단일목적 진화전략. 연속 공간 강함 |
 
 셋 다 같은 인터페이스(`run_study(trials, seed, storage, study_name, on_progress,
 loaded_gyms, dca)`) → service에서 sampler만 갈아끼울 수 있다. `cmaes>=0.10` 의존성 추가.

@@ -5,25 +5,25 @@ report_nsga3.py - NSGA-III 스터디 결과를 HTML 리포트로 내보내기
   요약 카드 · 필터 스윕 · 라벨 후보 · Pareto 산점도(SVG) · 통과 후보 전체 표 · 관찰/경고
 
 출력: reports/nsga3_report.html  (reports/는 gitignore — 로컬 열람용)
-실행: 프로젝트 루트에서  python -m app.backend.data_io.report_nsga3
+실행: 프로젝트 루트에서  python -m app.lab.report_nsga3
 """
 import sys
 from datetime import datetime
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import optuna
 
-from app.academy.study import nsga3
-from app.backend.engine.battle import fight_dca
-from app.backend.genes.signals import ALL_GENES
-from app.backend.data_io.data import load_gyms
-from app.backend.market.gym import all_gyms
+import app.academy.training.nsga3 as nsga3
+from app.academy.engine.battle import fight_dca
+from app.academy.genes.signals import ALL_GENES
+from app.academy.gym import all_gyms
+from app.world.data import load_gyms
 
-_ROOT = Path(__file__).resolve().parent.parent
+_ROOT = Path(__file__).resolve().parents[2]
 STORAGE = f"sqlite:///{(_ROOT / 'optuna_pocketquant.db').as_posix()}"
-STUDY = "nsga3_v2_weights"      # v1(가중치+파라미터, 관문① 전멸)도 DB에 남아 있음
+STUDY = "nsga3_v2_weights"
 OUT = _ROOT / "reports" / "nsga3_report.html"
 
 OBJ_LABELS = {"bear": "하락장", "rebound": "회복장", "crash_v": "급락V",
@@ -38,7 +38,7 @@ def _weights_str(params: dict) -> str:
 
 
 def _params_str(p: dict) -> str:
-    if "DD_LIMIT" not in p:                      # 가중치 전용 리그 (v2)
+    if "DD_LIMIT" not in p:
         return "파라미터 기본값 고정"
     return (f"DD {p['DD_LIMIT']:.2f} / MA {p['MA_WINDOW']} / MOM {p['MOM_LOOKBACK']} / "
             f"RSI&lt;{p['RSI_OVERSOLD']} / BB k{p['BB_K']:.2f} / "
@@ -57,17 +57,17 @@ def _vec_cells(values: list[float]) -> str:
 def _scatter_svg(points, ref, labeled, x_idx, y_idx, x_name, y_name,
                  x_scale=100.0, y_scale=100.0) -> str:
     """front 산점도 SVG. points=[(values, passed?)], ref=기준점 values, labeled={이름:row}."""
-    W, H, PAD = 460, 340, 46
+    width, height, pad = 460, 340, 46
     xs = [p[0][x_idx] * x_scale for p in points] + [ref[x_idx] * x_scale]
     ys = [p[0][y_idx] * y_scale for p in points] + [ref[y_idx] * y_scale]
     x_lo, x_hi = min(xs), max(xs)
     y_lo, y_hi = min(ys), max(ys)
 
     def sx(v):
-        return PAD + (v - x_lo) / (x_hi - x_lo or 1) * (W - 2 * PAD)
+        return pad + (v - x_lo) / (x_hi - x_lo or 1) * (width - 2 * pad)
 
     def sy(v):
-        return H - PAD - (v - y_lo) / (y_hi - y_lo or 1) * (H - 2 * PAD)
+        return height - pad - (v - y_lo) / (y_hi - y_lo or 1) * (height - 2 * pad)
 
     dots = []
     for values, passed in points:
@@ -76,7 +76,7 @@ def _scatter_svg(points, ref, labeled, x_idx, y_idx, x_name, y_name,
             dots.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="3.5" fill="#2b6fb3" opacity="0.9"/>')
         else:
             dots.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="2" fill="#b9c4cf" opacity="0.45"/>')
-    # 라벨 후보 강조
+
     colors = {"Defensive": "#1d8a4f", "Balanced": "#d4720c",
               "Aggressive": "#b3372b", "Low-turnover": "#6b4fb3"}
     for name, row in labeled.items():
@@ -84,28 +84,28 @@ def _scatter_svg(points, ref, labeled, x_idx, y_idx, x_name, y_name,
         c = colors.get(name, "#333")
         dots.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="6" fill="{c}" stroke="#fff" stroke-width="1.5"/>'
                     f'<text x="{x + 8:.1f}" y="{y + 4:.1f}" font-size="11" fill="{c}">{name}</text>')
-    # 기준점 (현 챔피언) = 별
+
     rx, ry = sx(ref[x_idx] * x_scale), sy(ref[y_idx] * y_scale)
     dots.append(f'<text x="{rx - 8:.1f}" y="{ry + 6:.1f}" font-size="18" fill="#c0392b">★</text>'
                 f'<text x="{rx + 8:.1f}" y="{ry + 4:.1f}" font-size="11" fill="#c0392b">현 챔피언</text>')
 
     grid_zero = ""
     if x_lo < 0 < x_hi:
-        grid_zero += f'<line x1="{sx(0):.1f}" y1="{PAD}" x2="{sx(0):.1f}" y2="{H - PAD}" stroke="#ddd" stroke-dasharray="4"/>'
+        grid_zero += f'<line x1="{sx(0):.1f}" y1="{pad}" x2="{sx(0):.1f}" y2="{height - pad}" stroke="#ddd" stroke-dasharray="4"/>'
     if y_lo < 0 < y_hi:
-        grid_zero += f'<line x1="{PAD}" y1="{sy(0):.1f}" x2="{W - PAD}" y2="{sy(0):.1f}" stroke="#ddd" stroke-dasharray="4"/>'
+        grid_zero += f'<line x1="{pad}" y1="{sy(0):.1f}" x2="{width - pad}" y2="{sy(0):.1f}" stroke="#ddd" stroke-dasharray="4"/>'
 
-    return f"""<svg viewBox="0 0 {W} {H}" xmlns="http://www.w3.org/2000/svg">
-<rect width="{W}" height="{H}" fill="#fbfcfe" rx="8"/>
-<line x1="{PAD}" y1="{H - PAD}" x2="{W - PAD}" y2="{H - PAD}" stroke="#888"/>
-<line x1="{PAD}" y1="{PAD}" x2="{PAD}" y2="{H - PAD}" stroke="#888"/>
+    return f"""<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg">
+<rect width="{width}" height="{height}" fill="#fbfcfe" rx="8"/>
+<line x1="{pad}" y1="{height - pad}" x2="{width - pad}" y2="{height - pad}" stroke="#888"/>
+<line x1="{pad}" y1="{pad}" x2="{pad}" y2="{height - pad}" stroke="#888"/>
 {grid_zero}{''.join(dots)}
-<text x="{W / 2}" y="{H - 10}" text-anchor="middle" font-size="12" fill="#444">{x_name}</text>
-<text x="14" y="{H / 2}" text-anchor="middle" font-size="12" fill="#444" transform="rotate(-90 14 {H / 2})">{y_name}</text>
-<text x="{PAD}" y="{H - PAD + 16}" font-size="10" fill="#888">{x_lo:.1f}</text>
-<text x="{W - PAD}" y="{H - PAD + 16}" text-anchor="end" font-size="10" fill="#888">{x_hi:.1f}</text>
-<text x="{PAD - 4}" y="{H - PAD}" text-anchor="end" font-size="10" fill="#888">{y_lo:.1f}</text>
-<text x="{PAD - 4}" y="{PAD + 4}" text-anchor="end" font-size="10" fill="#888">{y_hi:.1f}</text>
+<text x="{width / 2}" y="{height - 10}" text-anchor="middle" font-size="12" fill="#444">{x_name}</text>
+<text x="14" y="{height / 2}" text-anchor="middle" font-size="12" fill="#444" transform="rotate(-90 14 {height / 2})">{y_name}</text>
+<text x="{pad}" y="{height - pad + 16}" font-size="10" fill="#888">{x_lo:.1f}</text>
+<text x="{width - pad}" y="{height - pad + 16}" text-anchor="end" font-size="10" fill="#888">{x_hi:.1f}</text>
+<text x="{pad - 4}" y="{height - pad}" text-anchor="end" font-size="10" fill="#888">{y_lo:.1f}</text>
+<text x="{pad - 4}" y="{pad + 4}" text-anchor="end" font-size="10" fill="#888">{y_hi:.1f}</text>
 </svg>"""
 
 
@@ -130,10 +130,10 @@ def main() -> None:
                        f"<td>{len(s['passed'])}개</td></tr>")
 
     label_rows = ""
-    descr = {"Defensive": "하락장 최강 — 보험 전문",
-             "Balanced": "5국면 평균 최고 — 올라운더",
-             "Aggressive": "회복+상승 최강 — 공격수",
-             "Low-turnover": "매매 최소 — 수수료 절약형"}
+    descr = {"Defensive": "하락장 최강 - 보험 전문",
+             "Balanced": "5국면 평균 최고 - 올라운더",
+             "Aggressive": "회복+상승 최강 - 공격수",
+             "Low-turnover": "매매 최소 - 수수료 절약형"}
     for name, row in summary["labels"].items():
         label_rows += (f'<tr><td><b>{name}</b><br><span class="dim">{descr[name]}</span></td>'
                        f'<td>#{row["number"]}</td>{_vec_cells(row["values"])}'
@@ -150,8 +150,8 @@ def main() -> None:
 
     points = [(list(t.values), t.number in passed_numbers) for t in front]
     chart1 = _scatter_svg(points, ref, summary["labels"], 0, 3,
-                          "하락장(bear) 점수 ×100 — 보험 성능 →",
-                          "상승장(bull) 점수 ×100 — 보험료 ↑")
+                          "하락장(bear) 점수 ×100 - 보험 성능 →",
+                          "상승장(bull) 점수 ×100 - 보험료 ↑")
     mean_points = [([sum(v[:5]) / 5] + v[1:], p) for v, p in points]
     ref_mean_vec = [ref_mean] + ref[1:]
     chart2 = _scatter_svg(mean_points, ref_mean_vec, {
@@ -161,7 +161,7 @@ def main() -> None:
     stamp = datetime.now().strftime("%Y-%m-%d %H:%M")
     html_doc = f"""<!DOCTYPE html>
 <html lang="ko"><head><meta charset="utf-8">
-<title>PocketQuant — NSGA-III 리그 결과</title>
+<title>PocketQuant - NSGA-III 리그 결과</title>
 <style>
  body {{ font-family: 'Segoe UI', 'Malgun Gothic', sans-serif; max-width: 1080px;
         margin: 24px auto; padding: 0 16px; color: #222; background: #fff; }}
@@ -184,7 +184,7 @@ def main() -> None:
  footer {{ color: #999; font-size: 12px; margin: 40px 0 16px; }}
 </style></head><body>
 
-<h1>🎮 PocketQuant — NSGA-III 리그 결과</h1>
+<h1>PocketQuant - NSGA-III 리그 결과</h1>
 <p class="dim">스터디 <b>{STUDY}</b> · 가상 트레이더 {len(study.trials)}명 참가
 (트라이얼 1개 = 포켓퀀트 6마리를 어떤 비중·세팅으로 굴릴지 정한 트레이더 1명) ·
 시드 42 · 체육관 6개(QQQ) · 라이벌 = 성실이(일별 DCA, 수수료 0원) · 생성 {stamp}</p>
@@ -200,48 +200,39 @@ def main() -> None:
    <br><span class="dim">5국면 중 4개에서 챔피언 역전</span></div>
 </div>
 
-<h2>⭐ 기준점: 현 단일목적 챔피언</h2>
+<h2>기준점: 현 단일목적 챔피언</h2>
 <table><tr><th>전략</th><th>하락장</th><th>회복장</th><th>급락V</th><th>상승장</th><th>횡보장</th><th>턴오버</th><th>평균</th></tr>
 <tr><td>VOL+REV_RSI+REV_BB (동일가중·기본 파라미터)</td>{_vec_cells(ref)}<td>{ref_mean * 100:+.1f}</td></tr></table>
 <p class="dim">점수 = 그 국면에서 라이벌 성실이(DCA) 대비 얼마나 나았나 ×100. 양수 = 성실이보다 강함.</p>
 
-<h2>🏅 라벨 트레이더 4명 (배포 후보 라인업)</h2>
+<h2>라벨 트레이더 4명 (배포 후보 라인업)</h2>
 <table><tr><th>라벨</th><th>trial</th><th>하락장</th><th>회복장</th><th>급락V</th><th>상승장</th><th>횡보장</th><th>턴오버</th><th>평균</th><th>구성 (가중치/파라미터)</th></tr>
 {label_rows}</table>
 
-<h2>📈 Pareto 지도</h2>
+<h2>Pareto 지도</h2>
 <div class="charts">
  <div>{chart1}<p class="dim">보험 성능(하락장) ↔ 보험료(상승장) 트레이드오프.
-   오른쪽 위가 이상향이지만 — 거기엔 아무도 없다(만능 없음).</p></div>
+   오른쪽 위가 이상향이지만 거기엔 아무도 없다(만능 없음).</p></div>
  <div>{chart2}<p class="dim">매매 많이 할수록(오른쪽) 평균 점수가 좋아지는가?
    파란 점 = 필터 통과 후보.</p></div>
 </div>
 
-<h2>🔍 하드 필터 스윕 (턴오버 ≤ 0.10 고정)</h2>
+<h2>하드 필터 스윕 (턴오버 ≤ 0.10 고정)</h2>
 <table><tr><th>조건</th><th>통과</th></tr>{sweep_rows}</table>
-<p class="dim">"전 국면 ≥ 0"(모든 체육관에서 성실이 승) = 0명 — 트레이더 3000명 중에도 성실이를 전 국면에서 이기는 만능은 없다.</p>
+<p class="dim">"전 국면 ≥ 0"(모든 체육관에서 성실이 승) = 0명 - 트레이더 3000명 중에도 성실이를 전 국면에서 이기는 만능은 없다.</p>
 
-<h2>📋 필터 통과 트레이더 {len(summary['passed'])}명 전체 (평균 점수 순)</h2>
+<h2>필터 통과 트레이더 {len(summary['passed'])}명 전체 (평균 점수 순)</h2>
 <table><tr><th>trial</th><th>하락장</th><th>회복장</th><th>급락V</th><th>상승장</th><th>횡보장</th><th>턴오버</th><th>평균</th><th>가중치</th></tr>
 {passed_rows}</table>
 
-<h2>⚠️ 읽을 때 주의</h2>
+<h2>읽을 때 주의</h2>
 <div class="warn">
 <b>전부 인샘플 점수다.</b> 훈련 체육관(이미 본 시험지) 성적이므로 "우승 후보"가 아니라
 "본선 진출자"로 읽을 것. 다음 검증: ① OOS 리그 본선(처음 보는 미래) ② 합성 스트레스
-③ 봉인 hold-out(post-COVID, 최후 1회).<br><br>
-<b>의심 포인트:</b> 전 라벨이 MOM=24일로 똑같이 수렴 — 진짜 신호일 수도, 특정 구간
-과적합일 수도. / DD 가중치는 전 라벨에서 ≈0 (VOL과 상관 0.8 중복 — 옵티마이저가
-합리적으로 버림). / Balanced #1707은 REV_RSI 79% = 사실상 역발상 단독에 가까움.
+③ 봉인 hold-out(post-COVID, 최후 1회).
 </div>
 
-<div style="display:flex; gap:16px; align-items:center; margin-top:36px;">
-  <img src="../character/dr_oh.png" alt="오박사" width="180" style="border-radius:10px;">
-  <div class="dim" style="font-size:14px;">"강한 놈이 살아남는 게 아니라,
-  살아남은 놈이 강한 거다."<br>— 오박사, 한강 둔치에서</div>
-</div>
-
-<footer>PocketQuant · python -m app.backend.data_io.report_nsga3 로 재생성 ·
+<footer>PocketQuant · python -m app.lab.report_nsga3 로 재생성 ·
 데이터: optuna_pocketquant.db (sqlite)</footer>
 </body></html>"""
 

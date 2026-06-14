@@ -1,4 +1,4 @@
-﻿"""TPE 단일목적 엔진 — 6체육관 × 시드 100만원 → 종료 잔고 합 max.
+"""TPE 단일목적 엔진 — 6체육관 × 시드 100만원 → 종료 잔고 합 max.
 
 [nsga3.py와의 관계]
 - `nsga3` : 다목적(6목적 score_vs_dca + turnover) → Pareto front 라인업
