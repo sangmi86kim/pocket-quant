@@ -74,7 +74,7 @@ def run_study(n_trials: int, seed: int | None = None,
     if early_stop_window or adaptive_mutation:
         hv_cb = hv_early_stop_callback(
             population_size, window=early_stop_window or 3,
-            seed=seed or 0, stop=bool(early_stop_window))
+            stop=bool(early_stop_window))
         callbacks.append(hv_cb)
 
     mut_cb = None

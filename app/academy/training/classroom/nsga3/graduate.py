@@ -44,11 +44,14 @@ def summarize_front(study, loaded_gyms: list[LoadedGym] | None = None,
                     seed_krw: int = SEED_KRW) -> dict:
     """학교 front 졸업 후보 요약.
 
-    졸업 필터:
+    졸업 필터 (전부 기준선 상대 — "성실이/어플삭제맨을 이겼나"):
       ① 평균 잔고가 성실이 평균보다 큼
-      ② 최악 잔고가 돼지저금통보다 큼
+      ② 최악 잔고가 성실이 최악보다 큼 (최악 평행세계에서도 성실이보다 덜 잃음)
       ③ 평균 잔고가 어플삭제맨 평균의 bh_mean_floor 이상
       ④ turnover cap 이하
+
+    ②는 옛 "최악 > 시드(절대 흑자)"에서 바뀜 — 성실이도 -21% 잃는 학살 평행세계에서
+    흑자를 요구하던 불가능 게이트라 front 전원 탈락. 기준을 성실이 최악으로 맞춰 ①③과 일관.
     """
     if loaded_gyms is None or dca is None:
         loaded_gyms, dca = prepare_data(
@@ -61,7 +64,7 @@ def summarize_front(study, loaded_gyms: list[LoadedGym] | None = None,
         row["academy"] = academy_metrics(row["values"], seed_krw)
         row["graduated"] = (
             row["academy"]["mean_balance"] > baselines["dca_mean"]
-            and row["academy"]["worst_balance"] > seed_krw
+            and row["academy"]["worst_balance"] > baselines["dca_worst"]
             and row["academy"]["mean_balance"] >= baselines["bh_mean"] * bh_mean_floor
             and row["academy"]["turnover"] <= turnover_cap
         )
