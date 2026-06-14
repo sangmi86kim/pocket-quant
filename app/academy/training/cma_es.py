@@ -17,16 +17,23 @@ from app.academy.training._single_obj import (
 __all__ = ["SEED_KRW", "champion_balances", "prepare_data", "run_study"]
 
 
-def _make_sampler(seed: int | None) -> optuna.samplers.BaseSampler:
-    return optuna.samplers.CmaEsSampler(seed=seed, warn_independent_sampling=False)
+def _make_sampler(seed: int | None,
+                  lr_adapt: bool = True) -> optuna.samplers.BaseSampler:
+    return optuna.samplers.CmaEsSampler(
+        seed=seed, warn_independent_sampling=False, lr_adapt=lr_adapt)
 
 
 def run_study(trials, seed=None, storage=None, study_name="cma_es_single_obj",
               on_progress=None, loaded_gyms=None, dca=None,
-              extra_callbacks=None):
+              extra_callbacks=None, early_stop=True,
+              patience=None, min_delta_pct=None, lr_adapt=True):
     """CMA-ES 단일목적 탐색. _single_obj.run_single_obj_study에 위임."""
+    def make_sampler(seed_):
+        return _make_sampler(seed_, lr_adapt=lr_adapt)
+
     return run_single_obj_study(
-        _make_sampler, trials, seed=seed, storage=storage, study_name=study_name,
+        make_sampler, trials, seed=seed, storage=storage, study_name=study_name,
         on_progress=on_progress, loaded_gyms=loaded_gyms, dca=dca,
-        extra_callbacks=extra_callbacks,
+        extra_callbacks=extra_callbacks, early_stop=early_stop,
+        patience=patience, min_delta_pct=min_delta_pct,
     )

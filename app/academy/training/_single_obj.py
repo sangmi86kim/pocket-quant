@@ -26,6 +26,39 @@ from app.world.data_loader import LoadedGym, load_gyms
 
 # 100만원 시드 — sweep_seeds·hall_of_fame과 동일 단위(만원 환산은 표시 층에서).
 SEED_KRW = 1_000_000
+PATIENCE = 300
+MIN_DELTA_PCT = 0.0005
+
+
+class PlateauStopCallback:
+    def __init__(self, patience: int, min_delta_pct: float):
+        self.patience = patience
+        self.min_delta_pct = min_delta_pct
+        self.last_best: float | None = None
+        self.last_improve_trial: int = 0
+        self.stopped_at: int | None = None
+        self.saturate_trial: int | None = None
+
+    def __call__(self, study: optuna.Study,
+                 trial: optuna.trial.FrozenTrial) -> None:
+        try:
+            best = study.best_value
+        except ValueError:
+            return
+        n = trial.number
+        if self.last_best is None:
+            self.last_best = best
+            self.last_improve_trial = n
+            self.saturate_trial = n
+            return
+        rel = (best - self.last_best) / max(abs(self.last_best), 1.0)
+        if rel > self.min_delta_pct:
+            self.last_best = best
+            self.last_improve_trial = n
+            self.saturate_trial = n
+        elif n - self.last_improve_trial >= self.patience:
+            self.stopped_at = n
+            study.stop()
 
 
 def _objective(trial: optuna.Trial, loaded_gyms: list[LoadedGym], dca: dict) -> float:
@@ -54,6 +87,9 @@ def run_single_obj_study(
     loaded_gyms: list[LoadedGym] | None = None,
     dca: dict | None = None,
     extra_callbacks: list | None = None,
+    early_stop: bool = True,
+    patience: int | None = None,
+    min_delta_pct: float | None = None,
 ) -> tuple[optuna.Study, list[LoadedGym], dict]:
     """단일목적 탐색 공통 경로.
 
@@ -87,6 +123,13 @@ def run_single_obj_study(
         def _cb(study_: optuna.Study, trial: optuna.trial.FrozenTrial) -> None:
             on_progress(trial.number + 1, trials, study_.best_value)
         callbacks.append(_cb)
+    stop_cb = None
+    if early_stop:
+        stop_cb = PlateauStopCallback(
+            patience if patience is not None else PATIENCE,
+            min_delta_pct if min_delta_pct is not None else MIN_DELTA_PCT,
+        )
+        callbacks.append(stop_cb)
     if extra_callbacks:
         callbacks.extend(extra_callbacks)
 
@@ -94,6 +137,14 @@ def run_single_obj_study(
         lambda t: _objective(t, loaded_gyms, dca),
         n_trials=remaining, callbacks=callbacks or None,
     )
+    if stop_cb is not None:
+        study.set_user_attr("early_stop", {
+            "enabled": True,
+            "patience": stop_cb.patience,
+            "min_delta_pct": stop_cb.min_delta_pct,
+            "stopped_at": stop_cb.stopped_at,
+            "saturate_trial": stop_cb.saturate_trial,
+        })
     return study, loaded_gyms, dca
 
 

@@ -65,7 +65,7 @@ def sweep_single_obj(engine, name: str, cap: int,
         t0 = time.perf_counter()
         study, _, _ = engine.run_study(
             trials=cap, seed=seed, loaded_gyms=loaded_gyms, dca=dca,
-            extra_callbacks=[stop_cb],
+            extra_callbacks=[stop_cb], early_stop=False,
         )
         weights, _, summary = engine.champion_balances(study, loaded_gyms, dca)
         elapsed = time.perf_counter() - t0
