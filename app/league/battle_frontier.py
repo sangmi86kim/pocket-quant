@@ -109,7 +109,7 @@ def run_gate2(graduates: list) -> bool:
     """챔피언로드 ② 평행세계 운빨 검사 — graduates는 시즌 어댑터가 준비해 주입한다.
 
     graduate dict 형식:
-      - 시그널 후보: {"name","label","weights","params","mean5","specialist"}
+      - 시그널 후보: {"name","label","weights","params","academy","specialist"}
       - NPC 후보  : 위 키 + "evaluator"(loaded, seed_krw) -> (returns, terminal)
                     NPC도 평행세계 출전, 매년 1등 카운트에 자연 포함. 도전권
                     판정에서는 제외.

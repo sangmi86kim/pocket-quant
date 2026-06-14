@@ -50,6 +50,11 @@ def _genes_str(weights: list[float], thr: float = 0.10) -> str:
     return " · ".join(f"{g} {p*100:.0f}%" for g, p in main) or "분산"
 
 
+def _academy_from_balance_sum(balance_sum: float, n_gyms: int) -> dict:
+    mean_balance = balance_sum / n_gyms
+    return {"mean_balance": mean_balance, "score": mean_balance / nsga3.SEED_KRW - 1.0}
+
+
 def sweep_single_obj(engine, name: str, cap: int,
                      loaded_gyms, dca) -> list[dict]:
     """단일목적 sampler 5시드 saturation sweep → graduates 5명."""
@@ -74,7 +79,7 @@ def sweep_single_obj(engine, name: str, cap: int,
             "label": "단일목적",
             "weights": weights,
             "params": {},
-            "mean5": None,
+            "academy": _academy_from_balance_sum(summary["balance_sum"], len(loaded_gyms)),
             "specialist": False,
         })
     return out
@@ -115,14 +120,16 @@ def sweep_nsga3(loaded_gyms, dca) -> list[dict]:
                 "name": f"NSGA3-s{seed}-#{r['number']}",
                 "label": f"{label}",
                 "weights": w, "params": sig,
-                "mean5": r["mean5"], "specialist": False,
+                "academy": r["academy"], "specialist": False,
             })
 
         # 스페셜리스트 (목적별 1위 5명, 필터 무시 — 이미 있으면 생략)
         seen = {f"NSGA3-s{seed}-#{r['number']}" for r in summary["passed"]}
         front = [{"number": t.number, "values": list(t.values),
-                  "params": dict(t.params)} for t in study.best_trials]
-        for i in range(5):
+                  "params": dict(t.params),
+                  "academy": nsga3.academy_metrics(list(t.values))}
+                 for t in study.best_trials]
+        for i in range(len(nsga3.OBJECTIVE_NAMES) - 1):
             spec = max(front, key=lambda r: r["values"][i])
             name = f"NSGA3-s{seed}-#{spec['number']}"
             if name in seen:
@@ -133,7 +140,7 @@ def sweep_nsga3(loaded_gyms, dca) -> list[dict]:
                 "name": name,
                 "label": f"★{nsga3.OBJECTIVE_NAMES[i]}",
                 "weights": w, "params": sig,
-                "mean5": sum(spec["values"][:5]) / 5, "specialist": True,
+                "academy": spec["academy"], "specialist": True,
             })
         print(f"        → 입장 {sum(1 for g in out if g['name'].startswith(f'NSGA3-s{seed}'))}명 "
               f"(올라운더 {len(summary['passed'])} + 스페셜리스트 누적)")
@@ -148,7 +155,7 @@ def build_lineup(loaded_gyms, dca) -> list[dict]:
     graduates.append({
         "name": "현챔피언(동일가중)", "label": "기준",
         "weights": [1.0 if g in ("VOL", "REV_RSI", "REV_BB") else 0.0 for g in ALL_GENES],
-        "params": {}, "mean5": None, "specialist": False,
+        "params": {}, "academy": None, "specialist": False,
     })
 
     # 단일목적 3종

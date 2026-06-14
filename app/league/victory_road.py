@@ -96,7 +96,7 @@ def run_gate1(graduates: list) -> bool:
     """챔피언로드 ① 시험장 — graduates는 시즌 어댑터가 준비해 주입한다 (필수 인자).
 
     graduate dict 형식:
-      - 시그널 후보: {"name","label","weights","params","mean5","specialist"}
+      - 시그널 후보: {"name","label","weights","params","academy","specialist"}
       - NPC 후보  : 위 키 + "evaluator"(loaded, seed_krw) -> (returns, terminal)
                     NPC는 도전권 판정에서 제외, 표시·연도별 1등 매트릭스에만 참여.
     """
@@ -148,10 +148,15 @@ def run_gate1(graduates: list) -> bool:
             survivors.append(g["name"])
         rows.append((g, avg, wins, worst, sc, sm, ss, ticket, is_npc))
 
+    def _academy_score(g: dict):
+        academy = g.get("academy") or {}
+        return academy.get("score")
+
     print(f"{'트레이더':<14} {'라벨':<12} {'평균':>6} {'승':>5} {'최악':>7}"
-          f" {'CAGR':>7} {'MDD':>7} {'샤프':>5} {'인샘플':>7}  판정")
+          f" {'CAGR':>7} {'MDD':>7} {'샤프':>5} {'학교':>7}  판정")
     for g, avg, wins, worst, sc, sm, ss, ticket, is_npc in rows:
-        mean5 = f"{g['mean5'] * 100:+.1f}" if g["mean5"] is not None else "-"
+        academy_score = _academy_score(g)
+        academy_str = f"{academy_score * 100:+.1f}" if academy_score is not None else "-"
         if is_npc:
             mark = "🤖 NPC (참고)"
             avg_str = "  -  "
@@ -166,7 +171,7 @@ def run_gate1(graduates: list) -> bool:
             wins_str = f"{wins:>3}/{len(OOS_YEARS)}"
             worst_str = f"{worst * 100:>+7.1f}"
         print(f"{g['name']:<14} {g['label']:<12} {avg_str} {wins_str}"
-              f" {worst_str} {sc:>+7.1%} {sm:>7.1%} {ss:>5.2f} {mean5:>7}  {mark}")
+              f" {worst_str} {sc:>+7.1%} {sm:>7.1%} {ss:>5.2f} {academy_str:>7}  {mark}")
 
     print(f"\nB&H 기준선: CAGR {bc:+.1%}  MDD {bm:.1%}  샤프 {bs:.2f}")
     print(f"도전권 조건: ①OOS 평균 score_vs_dca > 0  ②이어붙임 MDD가 B&H({bm:.1%})보다 얕음")
@@ -211,11 +216,12 @@ def run_gate1(graduates: list) -> bool:
     print(f"\nsaved: {out}")
 
     # 과적합 갭: 인샘플 점수가 OOS를 예측하는가
-    pairs = [(g["mean5"], avg) for g, avg, *_ in rows if g["mean5"] is not None]
+    pairs = [(_academy_score(g), avg) for g, avg, *_ in rows
+             if _academy_score(g) is not None]
     if len(pairs) >= 3:
         ins, oos = zip(*pairs)
         corr = float(np.corrcoef(ins, oos)[0, 1])
-        print(f"\n과적합 진단: 인샘플 mean5 ↔ OOS 평균 상관 = {corr:+.2f} "
+        print(f"\n과적합 진단: 학교 점수 ↔ OOS 평균 상관 = {corr:+.2f} "
               f"({'인샘플 순위가 OOS에서도 유지됨' if corr > 0.3 else '인샘플 성적은 OOS를 거의 예측 못함 — 과적합 신호'})")
 
     print(f"\n=== 관문 ① 결과: 사천왕 도전권 {len(survivors)}/{len(graduates)}명 ===")

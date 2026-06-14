@@ -44,6 +44,12 @@ STUDY = "nsga3_v2_weights"      # v1 가중치+파라미터 스터디는 관문 
 GRAD_TOLERANCE = 0.10
 
 
+def _academy_from_values(values: list[float]) -> dict | None:
+    if len(values) != len(nsga3.OBJECTIVE_NAMES):
+        return None
+    return nsga3.academy_metrics(values)
+
+
 def load_graduates_from_study() -> list[dict]:
     """v1 NSGA-III sqlite 스터디 → 챔피언로드 입장 명단(가중치 후보만).
 
@@ -62,13 +68,16 @@ def load_graduates_from_study() -> list[dict]:
     graduates: list[dict] = [{
         "name": "현챔피언(동일가중)", "label": "기준",
         "weights": [1.0 if g in ("VOL", "REV_RSI", "REV_BB") else 0.0 for g in ALL_GENES],
-        "params": {}, "mean5": None, "specialist": False,
+        "params": {}, "academy": None, "specialist": False,
     }]
-    for r in sorted(summary["passed"], key=lambda r: -r["mean5"]):
+    for r in sorted(summary["passed"],
+                    key=lambda r: (r.get("academy") or {}).get("score", 0.0),
+                    reverse=True):
         w, sig = decode_params(r["params"])
         graduates.append({
             "name": f"#{r['number']}", "label": label_of.get(r["number"], ""),
-            "weights": w, "params": sig, "mean5": r["mean5"], "specialist": False,
+            "weights": w, "params": sig,
+            "academy": r.get("academy"), "specialist": False,
         })
 
     # 목적별 1등 스페셜리스트 (front 전체에서, 필터 무시. 이미 명단에 있으면 생략)
@@ -80,7 +89,8 @@ def load_graduates_from_study() -> list[dict]:
     front = [{"number": t.number, "values": list(t.values), "params": dict(t.params)}
              for t in study.best_trials]
     spec_picks = [(f"{nsga3.OBJECTIVE_NAMES[i]} 1위",
-                   max(front, key=lambda r: r["values"][i])) for i in range(5)]
+                   max(front, key=lambda r: r["values"][i]))
+                  for i in range(len(nsga3.OBJECTIVE_NAMES) - 1)]
     for title, r in spec_picks:
         if f"#{r['number']}" in seen:
             continue
@@ -89,7 +99,7 @@ def load_graduates_from_study() -> list[dict]:
         graduates.append({
             "name": f"#{r['number']}", "label": f"★{title}",
             "weights": w, "params": sig,
-            "mean5": sum(r["values"][:5]) / 5, "specialist": True,
+            "academy": _academy_from_values(r["values"]), "specialist": True,
         })
     return graduates
 
@@ -101,16 +111,15 @@ def main() -> None:
         "name": "현챔피언", "label": "기준(동일가중)",
         "weights": [1.0 if g in ("VOL", "REV_RSI", "REV_BB") else 0.0
                      for g in ALL_GENES],
-        "params": {}, "mean5": None, "specialist": False,
+        "params": {}, "academy": None, "specialist": False,
     }]
     for i, t in enumerate(top10, 1):
         weights = [t["params"][f"w_{g}"] for g in ALL_GENES]
-        mean5 = sum(t["values"][:5]) / 5
         graduates.append({
             "name": f"TOP{i:02d}",
             "label": f"#{t['trial_number']}(s{t['seed']})",
             "weights": weights, "params": {},   # 시그널 파라미터 = 기본값(가중치 전용 v2)
-            "mean5": mean5, "specialist": False,
+            "academy": _academy_from_values(t["values"]), "specialist": False,
         })
 
     # NPC 4인방 정식 선수로 입장 (사용자 안 2026-06-14)
@@ -120,8 +129,10 @@ def main() -> None:
     print(f"  현챔피언 (동일가중 VOL+REV_RSI+REV_BB)")
     for g in graduates[1:]:
         suffix = "" if "evaluator" not in g else "  🤖 NPC"
-        mean5 = f"인샘플 mean5 {g['mean5'] * 100:+.1f}" if g['mean5'] is not None else ""
-        print(f"  {g['name']:<14} {g['label']:<14} {mean5}{suffix}")
+        academy = g.get("academy") or {}
+        score = academy.get("score")
+        academy_text = f"학교 {score * 100:+.1f}" if score is not None else ""
+        print(f"  {g['name']:<14} {g['label']:<14} {academy_text}{suffix}")
     print()
 
     run_gate1(graduates)

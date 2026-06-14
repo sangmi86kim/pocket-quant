@@ -62,7 +62,7 @@ def run_one(seed: int) -> dict:
             "trial_number": int(t.number),
             "per_gym": {k: v["strat"] for k, v in b.items()},
             "합": sumv, "성실이_합": sumdca, "차": sumv - sumdca,
-            "values": list(t.values),                          # 5국면 score + turnover
+            "values": list(t.values),                          # 학교 3목적
             "params": dict(t.params),
         })
     front_balances.sort(key=lambda r: -r["합"])

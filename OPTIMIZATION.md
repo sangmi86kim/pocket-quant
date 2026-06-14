@@ -296,7 +296,7 @@ v1의 자산-횡단 한계 = 가격 6마리만 보던 게 원인. 야생 7마리
 
 | 엔진 | 모듈 | 성격 |
 |---|---|---|
-| NSGA-III | `app/backend/academy/study/nsga3.py` | 다목적 (6목적 score_vs_dca + turnover) → Pareto front |
+| NSGA-III | `app/academy/training/nsga3.py` | 학교 다목적 (평균 누적자산 + 최악 누적자산 + turnover) → Pareto front |
 | TPE | `app/backend/academy/study/tpe.py` | 단일목적 Bayesian (잔고 합 max). v1 챔피언 TPE-s11 출신 |
 | **CMA-ES** | `app/backend/academy/study/cma_es.py` (v1.x 신설) | 단일목적 진화전략. 연속 공간 강함 |
 

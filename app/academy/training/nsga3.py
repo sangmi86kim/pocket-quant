@@ -1,234 +1,149 @@
+"""NSGA-III 학교 엔진 — 합성장 3목적 최적화.
+
+[왜 학교 전용인가]
+학교 밖에서 따로 NSGA-III를 돌리지 않는다. 6체육관/5국면 NSGA는 폐기했고,
+이 파일이 학교 2차 교육의 다목적 엔진이다.
+
+[학교 목적]
+  maximize  평균 누적자산
+  maximize  최악 누적자산
+  minimize  turnover
+
+단일목적(TPE/CMA-ES/GP)은 누적자산 합 1등을 찾고, 이 모듈은 평균도 좋고 최악장도
+버티며 매매도 덜 하는 트레이더를 찾는다. 성실이/어플삭제맨 비교는 objective가
+아니라 졸업 필터에서 본다.
 """
-nsga3.py - Optuna NSGA-III 다목적 최적화 (설계: OPTIMIZATION.md 4절)
+import secrets
 
-[문제 정식화]
-  maximize  [ bear, rebound, crash_v, bull, chop ]   # 국면별 라이벌(DCA)전 점수
-  minimize  turnover                                  # 일평균 매매 비율
-     over   X = 시그널 가중치 len(ALL_GENES)개 + 시그널 파라미터 7개
-
-  bear = min(닷컴, 금융위기) — 하락 2체육관을 min으로 압축해 6목적 유지
-  (7목적은 front가 너무 넓어짐 — 코덱스 제안 채택)
-
-[결정변수 X]
-  가중치 w_i ∈ [0,1]: 결합은 '기권 제외 가중평균'(combine_positions weights).
-    분모에 Σw가 있어 비율만 의미 = 예산 제약 내장, "전부 최대" 퇴화 없음.
-  파라미터: DD_LIMIT / MA_WINDOW / MOM_LOOKBACK / RSI_OVERSOLD / BB_K /
-    VOL_CALM / VOL_SPREAD(STRESSED = CALM + SPREAD, 순서 보장).
-
-[주의 — 돼지저금통와 front의 극단점]
-  turnover minimize 목적이 있으므로 "아무것도 안 하기"(전 가중치≈0)가
-  front의 한쪽 극단(턴오버 0)으로 반드시 살아남는다. 이건 다목적의 정상
-  거동이고, 배포 후보는 summarize_front의 하드 필터 3종(전 국면 ≥ -tol ·
-  턴오버 cap · 최악 MDD ≤ DCA)으로 거른다.
-
-실행은 `nsga3.run_study(...)` 직접 호출 (tools/e2e.py가 한 예).
-"""
-import numpy as np
 import optuna
 
-from app.academy.exam import all_gyms
-from app.academy.exam.grade import evaluate_candidate
-from app.pocket.battle import fight_dca
-from app.pocket.signals import ALL_GENES, positions_with_params
-from app.world.data_loader import LoadedGym, load_gyms
+from app.academy.curriculum import prepare_academy_data
+from app.academy.exam.grade import decode_params
+from app.pocket.battle import _score_position, fight_dca, terminal_balance
+from app.pocket.signals import ALL_GENES, combine_positions, positions_with_params
+from app.world.data_loader import LoadedGym
 
-OBJECTIVE_NAMES = ["bear", "rebound", "crash_v", "bull", "chop", "turnover"]
-DIRECTIONS = ["maximize"] * 5 + ["minimize"]
+OBJECTIVE_NAMES = ["mean_balance", "worst_balance", "turnover"]
+DIRECTIONS = ["maximize", "maximize", "minimize"]
+SEED_KRW = 1_000_000
 
 
-def suggest_candidate(trial: optuna.Trial,
-                      tune_params: bool = False) -> tuple[list[float], dict]:
-    """탐색공간 정의.
+def roll_seed() -> int:
+    """학교 주사위 1개. 결과는 study.user_attrs에 기록해 재현한다."""
+    return secrets.randbelow(1_000_000_000)
 
-    [v2 리그 = 가중치 전용이 기본 (A안, 2026-06-11 사용자 결정)]
-    v1 리그(가중치+파라미터 13차원)는 챔피언로드 관문 ①에서 전멸했다 —
-    인샘플↔OOS 상관 -0.21, 유일 생존자는 무튜닝 기본값. 과적합 벡터가
-    파라미터 탐색이었으므로 v2는 파라미터를 기본값에 고정하고 시그널 가중치만
-    탐색한다. tune_params=True는 나중에 고도화할 때를 위해 보존.
-    """
-    weights = [trial.suggest_float(f"w_{g}", 0.0, 1.0) for g in ALL_GENES]
-    if not tune_params:
-        return weights, {}                       # 시그널 파라미터 = 모듈 기본값
-    vol_calm = trial.suggest_float("VOL_CALM", 0.005, 0.015)
-    params = {
-        "DD_LIMIT": trial.suggest_float("DD_LIMIT", 0.05, 0.25),
-        "MA_WINDOW": trial.suggest_int("MA_WINDOW", 50, 250),
-        "MOM_LOOKBACK": trial.suggest_int("MOM_LOOKBACK", 20, 120),
-        "RSI_OVERSOLD": trial.suggest_int("RSI_OVERSOLD", 20, 40),
-        "BB_K": trial.suggest_float("BB_K", 1.5, 2.5),
-        "VOL_CALM": vol_calm,
-        # STRESSED = CALM + SPREAD 로 샘플링해 calm < stressed 를 항상 보장
-        "VOL_STRESSED": vol_calm + trial.suggest_float("VOL_SPREAD", 0.003, 0.020),
+
+def suggest_candidate(trial: optuna.Trial) -> tuple[list[float], dict]:
+    """학교 NSGA-III는 v2 기본처럼 가중치만 탐색한다."""
+    params = {f"w_{g}": trial.suggest_float(f"w_{g}", 0.0, 1.0)
+              for g in ALL_GENES}
+    return decode_params(params)
+
+
+def _candidate_results(weights: list[float], params: dict,
+                       loaded_gyms: list[LoadedGym],
+                       base_positions: dict | None = None) -> list:
+    results = []
+    for lg in loaded_gyms:
+        positions = (base_positions[lg.gym.name] if base_positions is not None
+                     else positions_with_params(lg.prices, params))
+        pos = combine_positions(positions, weights)
+        results.append(_score_position(pos, lg))
+    return results
+
+
+def evaluate_objectives(weights: list[float], params: dict,
+                        loaded_gyms: list[LoadedGym],
+                        base_positions: dict | None = None,
+                        seed_krw: int = SEED_KRW) -> dict:
+    """학교용 3목적 raw 지표. 체육관 이름/국면 키에 의존하지 않는다."""
+    results = _candidate_results(weights, params, loaded_gyms, base_positions)
+    balances = [terminal_balance(r, seed_krw) for r in results]
+    return {
+        "mean_balance": sum(balances) / len(balances),
+        "worst_balance": min(balances),
+        "turnover": sum(r.turnover for r in results) / len(results),
+        "balances": balances,
     }
-    return weights, params
 
 
-def make_objective(loaded_gyms: list[LoadedGym], dca: dict, tune_params: bool = False):
-    # 가중치 전용 리그: 시그널 포지션은 전 트라이얼 공통 → 체육관당 1번만 계산
-    base_positions = (None if tune_params else
-                      {lg.gym.name: positions_with_params(lg.prices) for lg in loaded_gyms})
+def academy_metrics(values: list[float], seed_krw: int = SEED_KRW) -> dict:
+    """OBJECTIVE_NAMES와 values를 묶어 졸업생 메타데이터로 변환한다."""
+    obj = dict(zip(OBJECTIVE_NAMES, values))
+    return {
+        "mean_balance": obj["mean_balance"],
+        "worst_balance": obj["worst_balance"],
+        "turnover": obj["turnover"],
+        "score": obj["mean_balance"] / seed_krw - 1.0,
+    }
+
+
+def _buy_hold_balance(loaded: LoadedGym, seed_krw: int = SEED_KRW) -> int:
+    prices = loaded.prices.loc[loaded.gym.start:loaded.gym.end]
+    rets = prices.pct_change().dropna()
+    if len(rets) == 0:
+        return seed_krw
+    return int(seed_krw * float((1 + rets).cumprod().iloc[-1]))
+
+
+def _baseline_summary(loaded_gyms: list[LoadedGym], dca: dict,
+                      seed_krw: int = SEED_KRW) -> dict:
+    dca_balances = [terminal_balance(dca[lg.gym.name], seed_krw)
+                    for lg in loaded_gyms]
+    bh_balances = [_buy_hold_balance(lg, seed_krw) for lg in loaded_gyms]
+    return {
+        "dca_mean": sum(dca_balances) / len(dca_balances),
+        "dca_worst": min(dca_balances),
+        "bh_mean": sum(bh_balances) / len(bh_balances),
+        "bh_worst": min(bh_balances),
+    }
+
+
+def make_objective(loaded_gyms: list[LoadedGym]):
+    base_positions = {lg.gym.name: positions_with_params(lg.prices)
+                      for lg in loaded_gyms}
 
     def objective(trial: optuna.Trial):
-        weights, params = suggest_candidate(trial, tune_params)
-        s = evaluate_candidate(weights, params, loaded_gyms, dca, base_positions)
-        return (min(s["dotcom"], s["gfc"]),     # bear (압축)
-                s["rebound"], s["crash_v"], s["bull"], s["chop"],
-                s["turnover"])
+        weights, params = suggest_candidate(trial)
+        obj = evaluate_objectives(weights, params, loaded_gyms, base_positions)
+        return obj["mean_balance"], obj["worst_balance"], obj["turnover"]
     return objective
 
 
-# ── 수렴 모니터링: 하이퍼볼륨 MA 얼리스탑 (TunePilotAI에서 이식, 06-13) ──
-def hv_early_stop_callback(population_size: int, window: int = 5,
-                           n_mc: int = 4096, seed: int = 0):
-    """하이퍼볼륨 MA 기반 얼리스탑 콜백 — Optuna study에 붙이면 정체 시 self stop.
-
-    스펙 (TunePilotAI/flicker에서 이식, 부호 처리만 추가):
-      ① 1세대(첫 population) = 목적별 스케일 캘리브레이션 — min~max로 [0,1] 정규화.
-      ② 세대 경계마다 파레토 프론트의 HV를 MC 추정 (고정 샘플 = 세대 간 비교 일관).
-      ③ HV는 측정 노이즈로 들쭉날쭉 → window MA로 평활, 신고점 미갱신 시 study.stop().
-
-    부호 처리: PocketQuant는 5목적 maximize + turnover minimize → maximize는 -1배해
-    "낮을수록 좋다" 표준형으로 통일 (TunePilot 원본은 전부 minimize였음).
-
-    리포트용으로 cb.hv 리스트(세대별 HV)와 cb.stopped 플래그를 노출한다.
-    """
-    sign = np.array([-1.0 if d == "maximize" else 1.0 for d in DIRECTIONS])
-    rng = np.random.default_rng(seed)
-    n_obj = len(DIRECTIONS)
-    st = {"lo": None, "hi": None, "mc": rng.random((n_mc, n_obj)),
-          "hv": [], "best_ma": -1.0, "n": 0, "stopped": False}
-
-    def cb(study: optuna.Study, _trial) -> None:
-        st["n"] += 1
-        if st["n"] % population_size:           # 세대 경계에서만 평가
-            return
-        raw = np.array([t.values for t in study.trials if t.values])
-        if len(raw) == 0:
-            return
-        vals = raw * sign                       # minimize 표준형
-        if st["lo"] is None:                    # 1세대 = 스케일 캘리브레이션
-            st["lo"], hi = vals.min(0), vals.max(0)
-            st["hi"] = np.where(hi > st["lo"], hi, st["lo"] + 1e-9)
-            return
-        norm = np.clip((vals - st["lo"]) / (st["hi"] - st["lo"]), 0.0, 1.0)
-        keep = []                               # 비지배 점 (파레토)
-        for i in range(len(norm)):
-            dom = (norm <= norm[i]).all(1) & (norm < norm[i]).any(1)
-            dom[i] = False
-            if not dom.any():
-                keep.append(i)
-        dominated = np.zeros(len(st["mc"]), dtype=bool)
-        for p in norm[keep]:                    # MC 추정: 프론트가 지배하는 부피
-            dominated |= (st["mc"] >= p).all(1)
-        st["hv"].append(float(dominated.mean()))
-        cb.hv = list(st["hv"])
-        if len(st["hv"]) < window:
-            return
-        ma = float(np.mean(st["hv"][-window:]))
-        if ma > st["best_ma"] + 1e-12:
-            st["best_ma"] = ma
-        else:
-            print(f"  [early-stop] HV MA({window}) 정체 — "
-                  f"{st['n']} trial에서 중단 (HV {st['hv'][-1]:.4f})")
-            st["stopped"] = True
-            cb.stopped = True
-            study.stop()
-
-    cb.hv = []
-    cb.stopped = False
-    return cb
+def prepare_data(n_gyms: int = 20, seed: int | None = None
+                 ) -> tuple[list[LoadedGym], dict]:
+    """학교 합성장 + 성실이 기준선. seed=None이면 매번 다른 학기."""
+    loaded_gyms = prepare_academy_data(n_gyms=n_gyms, seed=seed)[0]
+    dca = {lg.gym.name: fight_dca(lg) for lg in loaded_gyms}
+    return loaded_gyms, dca
 
 
-def adaptive_mutation_callback(sampler, hv_cb, n_params: int,
-                                population_size: int, window: int = 3,
-                                up: float = 1.5, down: float = 0.85,
-                                hi: float = 0.5):
-    """HV MA 신호를 받아 NSGA-III의 mutation_prob을 자동 조정하는 콜백 (06-13).
-
-    설계 (사용자 안: "적응형 mutation은 옵튜나 콜백으로 구현"):
-      - 매 세대(population_size 단위) 경계마다 hv_cb의 HV 곡선을 본다.
-      - HV MA(window)가 신고점이면 잘 가고 있음 → mutation 좁혀 수렴 가속 (× down).
-      - 정체면 다양성 부족 → mutation 넓혀 탐색 강화 (× up).
-      - 클램프: [1/n_params (Optuna 자동 기본값), hi] — hi 위는 무작위에 가까움.
-
-    sampler._child_generation_strategy._mutation_prob 직접 갱신 (Optuna 4.x 경로).
-    의존: hv_cb (hv_early_stop_callback의 인스턴스) — callbacks 리스트에서 hv_cb를
-    먼저 등록해 cb.hv가 갱신된 상태로 이 콜백이 본다.
-    리포트용 cb.history 노출 — (세대, HV, MA, 신고점 여부, mutation_prob)."""
-    lo = 1.0 / n_params
-    state = {"best_ma": -1.0, "current": lo * 2, "n": 0}    # 초기값 = 자동의 2배
-    try:
-        sampler._child_generation_strategy._mutation_prob = state["current"]
-    except AttributeError:
-        print("  [adaptive-mut] sampler 내부 경로 변경 — 적응형 mutation 비활성")
-        cb_noop = lambda *args, **kwargs: None
-        cb_noop.history = []
-        return cb_noop
-
-    def cb(study, _trial):
-        state["n"] += 1
-        if state["n"] % population_size:
-            return
-        hv = list(hv_cb.hv)
-        if len(hv) < window:
-            return
-        ma = sum(hv[-window:]) / window
-        improved = ma > state["best_ma"] + 1e-9
-        factor = down if improved else up
-        new_val = max(lo, min(hi, state["current"] * factor))
-        state["current"] = new_val
-        if improved:
-            state["best_ma"] = ma
-        sampler._child_generation_strategy._mutation_prob = new_val
-        cb.history.append({"gen": len(hv), "hv": round(hv[-1], 4),
-                            "ma": round(ma, 4), "improved": improved,
-                            "mut_prob": round(new_val, 4)})
-
-    cb.history = []
-    return cb
-
-
-def _guard_search_space(study, tune_params: bool) -> None:
-    """같은 study_name에 다른 탐색공간이 섞이는 사고 방지 (코덱스 리뷰 P2, 06-11).
-
-    config.json에서 tune_params만 바꿔 같은 스터디를 재개하면 v1/v2 후보가
-    한 front에 섞인다 — v1 과적합 전멸 전례가 있어 운영상 치명적. 새 스터디면
-    현재 탐색공간을 user_attrs로 도장 찍고, 기존 스터디면 대조해 다르면 중단.
-    도장 없는 구버전 스터디는 trial 파라미터 키로 공간을 추정한다."""
-    expected = {"tune_params": tune_params, "genes": list(ALL_GENES),
-                "objectives": OBJECTIVE_NAMES}
-    stamped = study.user_attrs.get("search_space")
-    if stamped is None and study.trials:
-        stamped = {**expected,
-                   "tune_params": "VOL_CALM" in study.trials[0].params}
-    if stamped is not None and stamped != expected:
-        raise RuntimeError(
-            f"[nsga3] 스터디 {study.study_name!r}의 탐색공간이 현재 설정과 다름 — "
-            f"섞이면 front가 오염된다.\n  스터디: {stamped}\n  현재  : {expected}\n"
-            "  → config의 study_name을 새로 짓거나 tune_params를 스터디와 맞출 것.")
-    if study.user_attrs.get("search_space") != expected:
-        study.set_user_attr("search_space", expected)
-
-
-def run_study(n_trials: int, seed: int | None = 42, storage: str | None = None,
-              study_name: str = "nsga3_v2_weights", tune_params: bool = False,
-              on_progress=None, population_size: int = 50,
+def run_study(n_trials: int, seed: int | None = None,
+              storage: str | None = None,
+              study_name: str = "academy_nsga3",
+              loaded_gyms: list[LoadedGym] | None = None,
+              dca: dict | None = None,
+              n_gyms: int = 20,
+              academy_seed: int | None = None,
+              population_size: int = 50,
+              on_progress=None,
+              tune_params: bool = False,
               early_stop_window: int | None = None,
               adaptive_mutation: bool = False):
-    """스터디 1회 실행. storage(sqlite URL)를 주면 중단/재개 가능.
-    n_trials = '총 목표 trial 수' — 재개 시 모자란 만큼만 추가 실행한다
-    (Optuna 원래 의미는 '추가 실행 수'라 예산 관리가 흔들렸음. 코덱스 리뷰 P2).
-    on_progress(완료수, 목표수, front크기) — 진행 콜백 훅.
-    population_size: NSGA-III 한 세대 크기 — 6목적엔 50~100 권장 (das-dennis
-      ref point 수 대비). 기본 50 = 사용자 본업(5목적) 검증치.
-    early_stop_window: None=끔, 정수면 HV MA(window) 정체 시 self stop
-      (hv_early_stop_callback).
-    adaptive_mutation: True면 HV 정체/개선 신호로 mutation_prob 자동 조정.
-      hv_cb 필요 → early_stop_window=None이면 자동 생성(window=3).
-    같은 study_name에 다른 탐색공간을 섞으면 _guard_search_space가 중단시킨다.
-    반환: (study, loaded_gyms, dca, hv_cb, mut_cb) — 마지막 둘은 None 가능."""
-    loaded_gyms = load_gyms(all_gyms())
-    dca = {lg.gym.name: fight_dca(lg) for lg in loaded_gyms}
+    """학교 NSGA-III 실행.
+
+    seed는 sampler 주사위, academy_seed는 합성장 주사위다. 둘 다 None이면 매번
+    새로 던진다. 결과를 재현하려면 호출자가 두 seed를 기록해야 한다.
+    tune_params/early_stop_window/adaptive_mutation은 구 6체육관 NSGA 호출 호환용으로
+    받기만 하고 학교 엔진에서는 쓰지 않는다.
+    """
+    if seed is None:
+        seed = roll_seed()
+    if academy_seed is None:
+        academy_seed = roll_seed()
+
+    if loaded_gyms is None or dca is None:
+        loaded_gyms, dca = prepare_data(n_gyms=n_gyms, seed=academy_seed)
 
     optuna.logging.set_verbosity(optuna.logging.WARNING)
     sampler = optuna.samplers.NSGAIIISampler(
@@ -236,19 +151,12 @@ def run_study(n_trials: int, seed: int | None = 42, storage: str | None = None,
     study = optuna.create_study(
         directions=DIRECTIONS, sampler=sampler,
         storage=storage, study_name=study_name if storage else None,
-        # 2026-06-13 운영 규칙: load_if_exists=False 고정 — 같은 study_name이 이미
-        # 있으면 즉시 에러로 차단. storage는 시즌 임시 작업 영역, hall_of_fame.md에
-        # 결과 흡수 후 sqlite db 폐기. study_name은 매 시즌/실험마다 새로.
         load_if_exists=False,
     )
     study.set_metric_names(OBJECTIVE_NAMES)
-    if storage:
-        _guard_search_space(study, tune_params)
-
-    done = len(study.trials)
-    remaining = max(0, n_trials - done)
-    if done:
-        print(f"  스터디 재개: 기존 {done} trial → 목표 {n_trials}까지 {remaining}개 추가")
+    study.set_user_attr("academy_seed", academy_seed)
+    study.set_user_attr("sampler_seed", seed)
+    study.set_user_attr("objectives", OBJECTIVE_NAMES)
 
     callbacks = []
     if on_progress:
@@ -258,94 +166,57 @@ def run_study(n_trials: int, seed: int | None = 42, storage: str | None = None,
                 on_progress(n, n_trials, len(st.best_trials))
         callbacks.append(_cb)
 
-    # 적응형 mutation은 hv_cb 신호가 필요 → 미설정 시 내부용 hv_cb 자동 생성
-    hv_cb = None
-    if early_stop_window or adaptive_mutation:
-        w = early_stop_window or 3
-        hv_cb = hv_early_stop_callback(population_size, window=w, seed=seed or 0)
-        # early_stop이 꺼져 있으면 stop은 무력화 (HV 곡선만 수집)
-        if not early_stop_window:
-            hv_cb._stop_disabled = True
-            # 콜백 안의 study.stop 호출을 방어 — wrap
-            inner = hv_cb
-            def _hv_silent(study, trial, _orig=inner):
-                # study.stop을 일시 차단
-                _real_stop = study.stop
-                study.stop = lambda: None
-                try:
-                    _orig(study, trial)
-                finally:
-                    study.stop = _real_stop
-            _hv_silent.hv = inner.hv
-            _hv_silent.stopped = inner.stopped
-            callbacks.append(_hv_silent)
-            # mut_cb는 inner의 cb.hv를 직접 참조해야 → wrap의 hv가 실시간 갱신되게 함
-            class _Proxy:
-                @property
-                def hv(self_): return inner.hv
-            hv_cb = _Proxy()
-        else:
-            callbacks.append(hv_cb)
-
-    mut_cb = None
-    if adaptive_mutation:
-        n_params = len(ALL_GENES) + (7 if tune_params else 0)
-        mut_cb = adaptive_mutation_callback(sampler, hv_cb, n_params,
-                                             population_size, window=3)
-        callbacks.append(mut_cb)
-
-    if remaining:
-        study.optimize(make_objective(loaded_gyms, dca, tune_params),
-                       n_trials=remaining, callbacks=callbacks)
-    return study, loaded_gyms, dca, hv_cb, mut_cb
+    study.optimize(make_objective(loaded_gyms), n_trials=n_trials,
+                   callbacks=callbacks or None)
+    return study, loaded_gyms, dca, None, None
 
 
-# ── Pareto 후처리: 하드 필터 + 라벨 (OPTIMIZATION.md 4-5) ──────────
-def reference_vector(loaded_gyms: list[LoadedGym], dca: dict) -> dict:
-    """비교 기준: 현 단일목적 챔피언(VOL+REV_RSI+REV_BB, 동일가중, 기본 파라미터)."""
-    weights = [1.0 if g in ("VOL", "REV_RSI", "REV_BB") else 0.0 for g in ALL_GENES]
-    return evaluate_candidate(weights, {}, loaded_gyms, dca)
+def summarize_front(study, loaded_gyms: list[LoadedGym] | None = None,
+                    dca: dict | None = None,
+                    tolerance: float | None = None,
+                    turnover_cap: float = 0.10,
+                    bh_mean_floor: float = 0.90,
+                    seed_krw: int = SEED_KRW) -> dict:
+    """학교 front 졸업 후보 요약.
 
+    tolerance는 구 6체육관 NSGA 호출 호환용으로 받기만 한다.
 
-def summarize_front(study, tolerance: float = 0.05, turnover_cap: float = 0.10,
-                    loaded_gyms: list[LoadedGym] | None = None,
-                    dca: dict | None = None) -> dict:
-    """front를 배포 후보로 거른다.
-
-    하드 필터 2종:
-      ① 전 국면 score ≥ -tolerance (실측: 전 국면 양수 후보는 0개라 tolerance 필수)
-      ② 턴오버 ≤ cap (비용 민감도 0.2% FAIL 실측 근거)
-
-    ※ MDD 하드필터는 06-13 사용자 결정으로 제거:
-      "어차피 깨져도 안 팔면 그만이야". B&H 정신 — 낙폭 그 자체가 페널티
-      되는 건 score_vs_dca의 0.4×낙폭개선 항에 이미 들어가 있고,
-      체육관 6개 다목적이 위험을 자연 분담한다.
-
-    라벨: Defensive(bear 최고) / Balanced(5국면 평균 최고) /
-          Aggressive(rebound+bull 최고) / Low-turnover(필터 내 턴오버 최소).
-
-    loaded_gyms/dca: 호출처가 이미 로드했으면 전달(재로드 방지), 없으면 여기서.
+    졸업 필터:
+      ① 평균 잔고가 성실이 평균보다 큼
+      ② 최악 잔고가 돼지저금통보다 큼
+      ③ 평균 잔고가 어플삭제맨 평균의 bh_mean_floor 이상
+      ④ turnover cap 이하
     """
-    if loaded_gyms is None:
-        loaded_gyms = load_gyms(all_gyms())
-    if dca is None:
-        dca = {lg.gym.name: fight_dca(lg) for lg in loaded_gyms}
+    if loaded_gyms is None or dca is None:
+        loaded_gyms, dca = prepare_data(
+            seed=study.user_attrs.get("academy_seed"))
+    baselines = _baseline_summary(loaded_gyms, dca, seed_krw)
+    front = []
+    for t in study.best_trials:
+        row = {"number": t.number, "values": list(t.values),
+               "params": dict(t.params)}
+        row["academy"] = academy_metrics(row["values"], seed_krw)
+        front.append(row)
 
-    front = [{"number": t.number, "values": list(t.values), "params": dict(t.params)}
-             for t in study.best_trials]
-    for row in front:
-        row["mean5"] = sum(row["values"][:5]) / 5
-        row["min5"] = min(row["values"][:5])
-
-    passed = [r for r in front
-              if r["min5"] >= -tolerance and r["values"][5] <= turnover_cap]
+    passed = [
+        r for r in front
+        if r["academy"]["mean_balance"] > baselines["dca_mean"]
+        and r["academy"]["worst_balance"] > seed_krw
+        and r["academy"]["mean_balance"] >= baselines["bh_mean"] * bh_mean_floor
+        and r["academy"]["turnover"] <= turnover_cap
+    ]
 
     labels = {}
     if passed:
-        labels["Defensive"] = max(passed, key=lambda r: r["values"][0])
-        labels["Balanced"] = max(passed, key=lambda r: r["mean5"])
-        labels["Aggressive"] = max(passed, key=lambda r: r["values"][1] + r["values"][3])
-        labels["Low-turnover"] = min(passed, key=lambda r: r["values"][5])
+        labels["Rich"] = max(passed, key=lambda r: r["academy"]["mean_balance"])
+        labels["Sturdy"] = max(passed, key=lambda r: r["academy"]["worst_balance"])
+        labels["Low-turnover"] = min(passed, key=lambda r: r["academy"]["turnover"])
 
-    return {"front_size": len(front), "passed": passed, "labels": labels,
-            "tolerance": tolerance, "turnover_cap": turnover_cap}
+    return {
+        "front_size": len(front),
+        "passed": passed,
+        "labels": labels,
+        "baselines": baselines,
+        "turnover_cap": turnover_cap,
+        "bh_mean_floor": bh_mean_floor,
+    }

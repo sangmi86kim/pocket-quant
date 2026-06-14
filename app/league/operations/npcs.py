@@ -81,16 +81,16 @@ def _dca(loaded: LoadedGym, seed_krw: int) -> tuple[pd.Series, int]:
 # graduate dict 템플릿 (run_gate1이 그대로 처리)
 _NPC_GRADUATES: list[dict] = [
     {"name": "어플삭제맨", "label": "B&H",
-     "weights": [], "params": {}, "mean5": None, "specialist": False,
+     "weights": [], "params": {}, "academy": None, "specialist": False,
      "evaluator": _buy_hold},
     {"name": "저축왕", "label": "연3%",
-     "weights": [], "params": {}, "mean5": None, "specialist": False,
+     "weights": [], "params": {}, "academy": None, "specialist": False,
      "evaluator": _savings},
     {"name": "성실이", "label": "DCA",
-     "weights": [], "params": {}, "mean5": None, "specialist": False,
+     "weights": [], "params": {}, "academy": None, "specialist": False,
      "evaluator": _dca},
     {"name": "돼지저금통", "label": "현금0%",
-     "weights": [], "params": {}, "mean5": None, "specialist": False,
+     "weights": [], "params": {}, "academy": None, "specialist": False,
      "evaluator": _piggy_bank},
 ]
 
