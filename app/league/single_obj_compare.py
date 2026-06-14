@@ -1,11 +1,10 @@
-"""단일목적 TPE ↔ CMA-ES 비교 — 같은 시드/같은 데이터로 답이 모이는지.
+﻿"""단일목적 TPE ↔ CMA-ES 비교 — 같은 시드/같은 데이터로 답이 모이는지.
 
 v1.x 시즌(야생 7마리 합류 = 13마리)에서 cma_es 주석이 약속한 "TPE vs CMA-ES
 답이 모이는지 비교 후 채택"을 실측. prepare_data를 1번만 호출해 양쪽에 주입
 (yfinance/fight_dca 중복 차단). 가중치 비율이 거의 같고 1등 잔고가 ±0.5%
 이내면 = 단일목적 답이 둘 다 수렴 = 둘 중 아무거나 채택 가능.
 """
-from __future__ import annotations
 
 import sys
 import time

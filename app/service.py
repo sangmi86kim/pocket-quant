@@ -82,7 +82,9 @@ def run_nsga3(trials: int, seed: int | None = None,
     _apply_seed(seed)
     from app.academy.study import nsga3   # optuna는 이 모드에서만 필요 — 지연 import
 
-    space = "가중치 6 + 파라미터 7" if tune_params else "가중치 6 (파라미터 기본값 고정)"
+    n_weights = len(ALL_GENES)
+    space = (f"가중치 {n_weights} + 파라미터 7"
+             if tune_params else f"가중치 {n_weights} (파라미터 기본값 고정)")
     notes = []
     if early_stop_window:
         notes.append(f"HV-MA({early_stop_window}) 얼리스탑")

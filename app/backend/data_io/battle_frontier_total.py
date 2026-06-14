@@ -1,4 +1,4 @@
-"""배틀 프론티어 토탈 수익 분석 — 매 세계마다 100만원 판돈, 누적 합 비교 (06-13).
+﻿"""배틀 프론티어 토탈 수익 분석 — 매 세계마다 100만원 판돈, 누적 합 비교 (06-13).
 
 기존 battle_frontier_lineup.json 재처리만 (재실행 X).
 사용자 안: 배틀별 점수가 아니라 "토탈 수익" — 400세계 누적 합 + arena별 분해.
@@ -6,7 +6,6 @@
 산출: reports/league_v1/battle_frontier_total.md (+ .json)
 실행: python -m app.backend.data_io.battle_frontier_total
 """
-from __future__ import annotations
 
 import json
 import sys

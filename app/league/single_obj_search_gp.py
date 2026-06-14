@@ -1,11 +1,10 @@
-"""GP 단독 saturation 탐색 — `search.gp.run_study` + plateau 얼리스토핑.
+﻿"""GP 단독 saturation 탐색 — `search.gp.run_study` + plateau 얼리스토핑.
 
 `compare_gp.py`의 3-way 중 GP만 떼어낸 단독 진입점. scipy/torch가 빠지면 GP 한
 부분이 죽는데 3-way 어댑터는 거기서 통째 crash하므로, GP만 다시 돌릴 때 쓴다.
 TPE/CMA-ES 결과는 `compare_gp.py`/ `single_obj_compare.py`에서 이미 굳혀졌고,
 이 어댑터는 GP saturation 단독 보고용.
 """
-from __future__ import annotations
 
 import sys
 import time

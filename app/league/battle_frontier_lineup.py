@@ -1,4 +1,4 @@
-"""챔피언로드 ② 배틀 프론티어 — top10 + 챔피언 + 기준선 4인방 풀라인업 (06-13).
+﻿"""챔피언로드 ② 배틀 프론티어 — top10 + 챔피언 + 기준선 4인방 풀라인업 (06-13).
 
 같은 시드의 평행세계에 15명 다 입장:
   - 전천후 200세계 (블록 부트스트랩, 1999~2020.06 재배열)
@@ -13,7 +13,6 @@
 산출: reports/league_v1/battle_frontier_lineup.md (+ .json)
 실행: python tools/battle_frontier_lineup.py
 """
-from __future__ import annotations
 
 import json
 import sys

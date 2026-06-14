@@ -1,4 +1,4 @@
-"""SPY 리그 — 다목적 Top5 + 단일목적 Top5 vs NPC 4명 (자산-횡단 검증).
+﻿"""SPY 리그 — 다목적 Top5 + 단일목적 Top5 vs NPC 4명 (자산-횡단 검증).
 
 [가설] QQQ에서 만든 챔피언 가중치가 SPY에서도 통할까?
        다목적·단일목적 어느 쪽이 자산 바꿔도 더 robust한가?
@@ -11,7 +11,6 @@
 
 [실행] python app/league/spy_robustness.py
 """
-from __future__ import annotations
 
 import sys
 import time

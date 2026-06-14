@@ -1,9 +1,8 @@
-"""단일목적 1시드 — `search.tpe.run_study` 결과 콘솔 표시.
+﻿"""단일목적 1시드 — `search.tpe.run_study` 결과 콘솔 표시.
 
 엔진(`app/academy/study/tpe.py`)이 탐색·1등 추출까지 다 한다 — 본 어댑터는
 인쇄·비교만. 5시드 안정성 검증은 `single_obj_sweep.py`.
 """
-from __future__ import annotations
 
 import sys
 import time

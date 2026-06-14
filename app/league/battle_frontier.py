@@ -98,6 +98,10 @@ def make_world(full_returns: pd.Series, rng,
     rets = np.concatenate([warm, evald])
     prices = pd.Series(100.0 * np.cumprod(1.0 + rets),
                        index=pd.bdate_range("2001-01-01", periods=len(rets)))
+    # 합성 세계의 날짜는 실제 달력이 아니라 순서 라벨이다. 외부 정보원(VIX/TNX 등)을
+    # 이 날짜로 다시 붙이면 합성 QQQ 경로와 다른 역사 조각이 섞이므로, 외부 의존
+    # 시그널은 signals.py에서 이 표식을 보고 기권한다.
+    prices.attrs["synthetic"] = True
     start = prices.index[WARMUP_TDAYS]
     gym = Gym("평행세계", difficulty=0, volatility=0, ticker="SYNTH",
               start=start.strftime("%Y-%m-%d"),

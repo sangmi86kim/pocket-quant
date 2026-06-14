@@ -1,4 +1,4 @@
-"""v1.x 챔피언로드 라인업 — 4 sampler × 5시드 → 챔피언로드 관문 ① OOS 출전.
+﻿"""v1.x 챔피언로드 라인업 — 4 sampler × 5시드 → 챔피언로드 관문 ① OOS 출전.
 
 [라인업 구성]
   단일목적 sampler 3종 (TPE/CMA-ES/GP) × 5시드 = 15명 (시드당 1등 1명씩)
@@ -12,7 +12,6 @@
 
   ⚠️ 시간 약 60~90분 백그라운드. 시드별 1등 잔고는 즉시 출력 → 끊겨도 진척 보임.
 """
-from __future__ import annotations
 
 import sys
 import time

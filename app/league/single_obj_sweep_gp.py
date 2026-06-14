@@ -1,4 +1,4 @@
-"""GP 단일목적 5시드 분산 — `search.gp.run_study` + plateau saturation × 5.
+﻿"""GP 단일목적 5시드 분산 — `search.gp.run_study` + plateau saturation × 5.
 
 `single_obj_sweep_cma.py`(CMA-ES 5시드 ±0.53%)의 GP·saturation판. GP 단독 1시드(시드 42)
 가 834.9만(saturate @ #248)으로 CMA-ES를 +25만 앞섰지만 한 점이라 우연일 수 있다.
@@ -7,7 +7,6 @@
 
 각 시드는 자기 saturate 점까지만 도는 plateau 정지 — 따라서 시드별 trial 수가 다름.
 """
-from __future__ import annotations
 
 import math
 import sys

@@ -1,4 +1,4 @@
-"""챔피언로드 ①②③ — 다목적(NSGA-III TOP10) vs 단일목적(TPE 5시드) 동시 출전.
+﻿"""챔피언로드 ①②③ — 다목적(NSGA-III TOP10) vs 단일목적(TPE 5시드) 동시 출전.
 
 [가설] 평행세계 ②에서 단일목적 TPE 답이 다목적 NSGA-III 라인업을 이길까?
        OOS 11년·사천왕 7라운드에선 어떻게 나뉠까?
@@ -17,7 +17,6 @@
 [산출] reports/single_vs_multi_road.md + 콘솔 종합 순위.
 [실행] python app/league/single_vs_multi_road.py
 """
-from __future__ import annotations
 
 import sys
 import time

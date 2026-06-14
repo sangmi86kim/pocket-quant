@@ -1,4 +1,4 @@
-"""챔피언로드 ③ 사천왕 — top10 + 챔피언 + 기준선 4인방 풀라인업 (06-13).
+﻿"""챔피언로드 ③ 사천왕 — top10 + 챔피언 + 기준선 4인방 풀라인업 (06-13).
 
 hold-out(2020-07~2026-06)은 06-11에 이미 1회 봉인 해제됐다 — 추가 평가는
 오염 우려 없음. 단 이 결과를 보고 적합도/가중치/파라미터를 고치면 반칙이고
@@ -12,7 +12,6 @@ hold-out(2020-07~2026-06)은 06-11에 이미 1회 봉인 해제됐다 — 추가
 산출: reports/league_v1/elite_four_lineup.md (+ .json)
 실행: python tools/elite_four_lineup.py
 """
-from __future__ import annotations
 
 import json
 import sys
