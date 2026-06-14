@@ -70,7 +70,7 @@ def _score_position(position, loaded: LoadedGym,
     """일별 포지션(0~1) 시계열 하나를 채점한다 — fight와 DCA 기준선이 공유하는 엔진.
     실행 모델(하루 lag, 턴오버 과금, 워밍업 컷)이 모든 참가자에게 동일해야 공정 비교다.
 
-    trade_cost: None이면 모듈 전역 TRADE_COST(워크포워드가 몽키패치하는 그 값).
+    trade_cost: None이면 모듈 전역 TRADE_COST를 쓴다.
     DCA 기준선만 0.0을 넘긴다 — 토스 '주식 자동 모으기'는 매수 수수료 0원이라
     실제 비용 구조가 비대칭이기 때문(전략의 타이밍 매매는 0.1% 그대로)."""
     gym = loaded.gym
