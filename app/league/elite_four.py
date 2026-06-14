@@ -35,14 +35,14 @@ for _s in (sys.stdout, sys.stderr):
 import numpy as np
 import pandas as pd
 
-from app.pocket.models import Gym, Report, Strategy
+from app.pocket.models import Gym
 from app.pocket import battle
 from app.pocket.battle import (_dca_position, _score_position, fight_dca,
                                        score_vs_dca, terminal_balance)
 from app.pocket.signals import ALL_GENES, combine_positions, positions_with_params
 from app.world.data_loader import LoadedGym, WARMUP_DAYS, get_prices
 from app.world.regime import REGIME_LABELS, dominant_regime
-from app.league.regime_picks import update_regime_picks as _update_regime_picks
+from app.league.operations.regime_picks import update_regime_picks as _update_regime_picks
 
 _ROOT = Path(__file__).resolve().parent.parent
 OUT = _ROOT / "reports" / "elite_four_report.html"
@@ -203,14 +203,10 @@ def run_gate3() -> bool:
     out = _update_regime_picks("gate3_holdout", gate3)
     print(f"saved: {out}")
 
-    # 오박사 코너 — LM Studio가 켜져 있으면 hold-out 성적표를 직접 브리핑.
-    # 부재 시엔 둔치 고정 대사 (리포트 생성은 오박사 없이도 항상 성공해야 한다).
-    from app.lab.oak import professor_briefing
-    oak_report = Report(
-        strategy=Strategy(genes=["VOL", "REV_RSI", "REV_BB"], name="현챔피언"),
-        results=[r[1] for r in rows])
-    oak_text = professor_briefing(oak_report) \
-        or "그래. 그럴 수 있어. 시장이 원래 그래. (소주 한 모금)"
+    # 오박사 코너 — 옛 LM Studio 본체는 2026-06-14 폐기 (AGENTS.md 절대 규칙 #8).
+    # 코딩 에이전트가 페르소나를 인계받았으므로 hold-out 결과는 reports/연구일지/에서
+    # 직접 서술한다. 자동 호출은 제거하고 둔치 고정 대사로 고정.
+    oak_text = "그래. 그럴 수 있어. 시장이 원래 그래. (소주 한 모금)"
 
     _write_html(rows, (cc, cm, cs), (dc, dm, ds), (bc, bm, bs),
                 avg_score, rival_ok, defense_ok, passed,

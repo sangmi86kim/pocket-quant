@@ -1,23 +1,20 @@
-"""배틀 프론티어 토탈 수익 분석 — 매 세계마다 100만원 판돈, 누적 합 비교 (06-13).
+"""배틀 프론티어 토탈 수익 분석 — 매 세계마다 100만원 판돈, 누적 합 비교 (v1 시즌, 06-13).
 
 기존 battle_frontier_lineup.json 재처리만 (재실행 X).
-사용자 안: 배틀별 점수가 아니라 "토탈 수익" — 400세계 누적 합 + arena별 분해.
+배틀별 점수가 아니라 "토탈 수익" — 400세계 누적 합 + arena별 분해.
+
+[lab 이주 — 2026-06-14]
+시즌 결과 사후 분석은 시즌 어댑터가 아니라 연구·진단(lab) 책임.
+v1 시즌 마감 산출물 분석이라 prefix `v1_`로 유지.
 
 산출: reports/league_v1/battle_frontier_total.md (+ .json)
-실행: python -m app.backend.data_io.battle_frontier_total
+실행: python -m app.lab.v1_battle_frontier_total
 """
 
 import json
-import sys
 from pathlib import Path
 
-_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_ROOT))
-for s in (sys.stdout, sys.stderr):
-    try:
-        s.reconfigure(encoding="utf-8")
-    except Exception:
-        pass
+_ROOT = Path(__file__).resolve().parents[2]   # app/lab/ → 프로젝트 루트
 
 IN_JSON = _ROOT / "reports" / "league_v1" / "battle_frontier_lineup.json"
 OUT_MD = _ROOT / "reports" / "league_v1" / "battle_frontier_total.md"

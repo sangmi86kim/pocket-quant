@@ -45,84 +45,26 @@ for _s in (sys.stdout, sys.stderr):
         pass
 
 import numpy as np
-import optuna
 import pandas as pd
 
 from app.pocket.models import Gym
 from app.pocket import battle
 from app.pocket.battle import (_score_position, fight_dca, score_vs_dca,
                                          terminal_balance)
-from app.academy.exam.grade import decode_params
-from app.academy.training import nsga3
-from app.pocket.signals import ALL_GENES, combine_positions, positions_with_params
+from app.pocket.signals import combine_positions, positions_with_params
 from app.world.data_loader import LoadedGym, WARMUP_DAYS, get_prices
 from app.world.regime import REGIME_LABELS, dominant_regime
-from app.league.regime_picks import update_regime_picks as _update_regime_picks
+from app.league.operations.regime_picks import update_regime_picks as _update_regime_picks
 
 SEED_KRW = 1_000_000   # 표시·판정용 시드 (06-13 — 매년 새로 들고 들어감)
-
-_ROOT = Path(__file__).resolve().parent.parent
-STORAGE = f"sqlite:///{(_ROOT / 'optuna_pocketquant.db').as_posix()}"
-STUDY = "nsga3_v2_weights"      # v1(가중치+파라미터)은 관문 ①에서 전멸 — DB에 보존
 
 TICKER = "QQQ"
 OOS_YEARS = [2003, 2004, 2005, 2006, 2007, 2011, 2012, 2013, 2014, 2018, 2019]
 
-# 졸업(선발) 필터 허용치. v1의 -5는 파라미터 튜닝으로 부풀린 인샘플 점수에서만
-# 가능했던 기준(그 31명은 전멸). 정직한 가중치 전용 공간(v2)에선 무튜닝 챔피언도
-# 최약 국면 -8.5라 -10이 현실적인 선발선이다. ※ 생존 판정 기준(심판)은 불변.
-GRAD_TOLERANCE = 0.10
 
-
-# ── 후보 로딩 ──────────────────────────────────────
-def load_graduates() -> list[dict]:
-    """챔피언로드 입장 명단 = 기준 트레이더 + 필터 통과자 + 목적별 1등 스페셜리스트.
-
-    [스페셜리스트 트랙 — 다양성 보장]
-    필터(최악 국면 ≥ -10)는 올라운더 선발 기준이라, "한 국면 몰빵형"(예: bear
-    1등인데 상승장 낙제)은 검증장에 입장도 못 했다. 하지만 걔들이 Regime Scanner
-    30% 틸트의 후보군이므로, front에서 목적별 1등 6명을 필터 무시하고 입장시킨다.
-    ⚠️ 단 관문 ①의 생존 기준은 올라운더용(평시 OOS 평균>0)이라 스페셜리스트에겐
-    참고 기록일 뿐 — 본판정은 관문 ②(배틀 프론티어)의 전문 국면 합성 세계에서."""
-    optuna.logging.set_verbosity(optuna.logging.WARNING)
-    study = optuna.load_study(study_name=STUDY, storage=STORAGE)
-    summary = nsga3.summarize_front(study, tolerance=GRAD_TOLERANCE)
-    label_of = {row["number"]: name for name, row in summary["labels"].items()}
-
-    graduates = [{
-        "name": "현챔피언(동일가중)", "label": "기준",
-        "weights": [1.0 if g in ("VOL", "REV_RSI", "REV_BB") else 0.0 for g in ALL_GENES],
-        "params": {}, "mean5": None, "specialist": False,
-    }]
-    for r in sorted(summary["passed"], key=lambda r: -r["mean5"]):
-        w, sig = decode_params(r["params"])
-        graduates.append({
-            "name": f"#{r['number']}", "label": label_of.get(r["number"], ""),
-            "weights": w, "params": sig, "mean5": r["mean5"], "specialist": False,
-        })
-
-    # 목적별 1등 스페셜리스트 (front 전체에서, 필터 무시. 이미 명단에 있으면 생략)
-    # ⚠️ score 목적 5개만 — turnover 최저는 스페셜리스트가 아니다. turnover를
-    # minimize하는 목적이 있어 front의 그 극단은 거의 확실히 "가중치≈0 =
-    # 돼지저금통"이고, 필터 무시 입장은 퇴화 후보를 관문에 되올리는 뒷문이 된다
-    # (코덱스 리뷰 P2, 06-11). Low-turnover는 summarize_front의 필터 통과자
-    # 안에서 라벨로만 뽑는다.
-    seen = {g["name"] for g in graduates}
-    front = [{"number": t.number, "values": list(t.values), "params": dict(t.params)}
-             for t in study.best_trials]
-    spec_picks = [(f"{nsga3.OBJECTIVE_NAMES[i]} 1위",
-                   max(front, key=lambda r: r["values"][i])) for i in range(5)]
-    for title, r in spec_picks:
-        if f"#{r['number']}" in seen:
-            continue
-        seen.add(f"#{r['number']}")
-        w, sig = decode_params(r["params"])
-        graduates.append({
-            "name": f"#{r['number']}", "label": f"★{title}",
-            "weights": w, "params": sig,
-            "mean5": sum(r["values"][:5]) / 5, "specialist": True,
-        })
-    return graduates
+# graduate 명단 만들기는 시즌 어댑터의 책임 — NSGA-III sqlite 로드 + summarize_front는
+# v1 시즌의 일이므로 `app/league/v1/champion_road_lineup.py`로 이주했다. 본 코어는
+# graduates를 받기만 하고, NPC 4인방은 graduate dict의 `"evaluator"` 키 분기로 처리.
 
 
 # ── 평가 ──────────────────────────────────────────
@@ -153,18 +95,21 @@ def _perf(returns: pd.Series) -> tuple[float, float, float]:
     return cagr, mdd, sharpe
 
 
-def run_gate1(graduates: list | None = None) -> bool:
-    """챔피언로드 ① 시험장 — graduates를 외부에서 주입할 수 있다 (06-13).
-    None이면 기존 sqlite 스터디(load_graduates)에서 자동 로드."""
+def run_gate1(graduates: list) -> bool:
+    """챔피언로드 ① 시험장 — graduates는 시즌 어댑터가 준비해 주입한다 (필수 인자).
+
+    graduate dict 형식:
+      - 시그널 후보: {"name","label","weights","params","mean5","specialist"}
+      - NPC 후보  : 위 키 + "evaluator"(loaded, seed_krw) -> (returns, terminal)
+                    NPC는 도전권 판정에서 제외, 표시·연도별 1등 매트릭스에만 참여.
+    """
     prices = get_prices(TICKER, "1999-03-10", "2026-06-09")
     loadeds = {y: _loaded_window(prices, y) for y in OOS_YEARS}
     dca = {y: fight_dca(lg) for y, lg in loadeds.items()}
 
-    if graduates is None:
-        graduates = load_graduates()
     print(f"=== 챔피언로드 관문 ① 리그 본선: OOS {len(OOS_YEARS)}개 연도 "
           f"({OOS_YEARS[0]}~{OOS_YEARS[-1]}, 훈련 체육관 미사용 해) ===")
-    print(f"도전자 {len(graduates)}명 (리그 통과 {len(graduates) - 1} + 기준 1)\n")
+    print(f"도전자 {len(graduates)}명 (NPC 포함)\n")
 
     # B&H 이어붙임 (모든 후보 공통 비교선)
     bh_all = pd.concat([loadeds[y].prices.pct_change()[
@@ -178,34 +123,53 @@ def run_gate1(graduates: list | None = None) -> bool:
     for g in graduates:
         scores, parts = [], []
         balances[g["name"]] = {}
+        is_npc = "evaluator" in g
         for y in OOS_YEARS:
-            res = _score_position(
-                combine_positions(positions_with_params(loadeds[y].prices, g["params"]),
-                                  g["weights"]), loadeds[y])
-            scores.append(score_vs_dca(res, dca[y]))
-            parts.append(_daily_returns(loadeds[y], g["weights"], g["params"]))
-            balances[g["name"]][y] = terminal_balance(res, SEED_KRW)
+            if is_npc:
+                # NPC 경로: evaluator가 직접 (returns, terminal) 반환
+                rets, term = g["evaluator"](loadeds[y], SEED_KRW)
+                parts.append(rets)
+                balances[g["name"]][y] = term
+                # NPC는 도전권 판정에서 제외 — score는 표시용 0 채움
+                scores.append(0.0)
+            else:
+                # 시그널 가중치 경로
+                res = _score_position(
+                    combine_positions(positions_with_params(loadeds[y].prices, g["params"]),
+                                      g["weights"]), loadeds[y])
+                scores.append(score_vs_dca(res, dca[y]))
+                parts.append(_daily_returns(loadeds[y], g["weights"], g["params"]))
+                balances[g["name"]][y] = terminal_balance(res, SEED_KRW)
         avg = float(np.mean(scores))
         wins = sum(s > 0 for s in scores)
         worst = float(min(scores))
         sc, sm, ss = _perf(pd.concat(parts))
         rival_ok = avg > 0
         defense_ok = sm > bm
-        ticket = rival_ok and defense_ok            # 사천왕 도전권 (탈락≠사망)
+        ticket = (not is_npc) and rival_ok and defense_ok   # NPC는 도전권 후보 아님
         if ticket and not g["specialist"]:
             survivors.append(g["name"])
-        rows.append((g, avg, wins, worst, sc, sm, ss, ticket))
+        rows.append((g, avg, wins, worst, sc, sm, ss, ticket, is_npc))
 
     print(f"{'트레이더':<14} {'라벨':<12} {'평균':>6} {'승':>5} {'최악':>7}"
           f" {'CAGR':>7} {'MDD':>7} {'샤프':>5} {'인샘플':>7}  판정")
-    for g, avg, wins, worst, sc, sm, ss, ticket in rows:
+    for g, avg, wins, worst, sc, sm, ss, ticket, is_npc in rows:
         mean5 = f"{g['mean5'] * 100:+.1f}" if g["mean5"] is not None else "-"
-        if g["specialist"]:
-            mark = "📋 참고 (본판정=관문②)" if not ticket else "📋 참고 (관문①도 통과)"
+        if is_npc:
+            mark = "🤖 NPC (참고)"
+            avg_str = "  -  "
+            wins_str = "   -"
+            worst_str = "    -  "
         else:
-            mark = "🎫 도전권" if ticket else "🪑 벤치"
-        print(f"{g['name']:<14} {g['label']:<12} {avg * 100:>+6.1f} {wins:>3}/{len(OOS_YEARS)}"
-              f" {worst * 100:>+7.1f} {sc:>+7.1%} {sm:>7.1%} {ss:>5.2f} {mean5:>7}  {mark}")
+            if g["specialist"]:
+                mark = "📋 참고 (본판정=관문②)" if not ticket else "📋 참고 (관문①도 통과)"
+            else:
+                mark = "🎫 도전권" if ticket else "🪑 벤치"
+            avg_str = f"{avg * 100:>+6.1f}"
+            wins_str = f"{wins:>3}/{len(OOS_YEARS)}"
+            worst_str = f"{worst * 100:>+7.1f}"
+        print(f"{g['name']:<14} {g['label']:<12} {avg_str} {wins_str}"
+              f" {worst_str} {sc:>+7.1%} {sm:>7.1%} {ss:>5.2f} {mean5:>7}  {mark}")
 
     print(f"\nB&H 기준선: CAGR {bc:+.1%}  MDD {bm:.1%}  샤프 {bs:.2f}")
     print(f"도전권 조건: ①OOS 평균 score_vs_dca > 0  ②이어붙임 MDD가 B&H({bm:.1%})보다 얕음")
@@ -266,4 +230,10 @@ def run_gate1(graduates: list | None = None) -> bool:
 
 
 if __name__ == "__main__":
-    sys.exit(0 if run_gate1() else 1)
+    # 단독 실행 금지 — graduates는 시즌 어댑터가 준비한다.
+    # v1 시즌:   python app/league/v1/champion_road_lineup.py
+    # v1.x 시즌: python app/league/v1x/champion_road_lineup.py
+    raise SystemExit(
+        "[victory_road] 본 코어는 graduates 인자가 필요합니다. "
+        "시즌 어댑터로 진입하세요 (예: app/league/v1/champion_road_lineup.py)."
+    )

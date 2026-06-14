@@ -29,7 +29,7 @@ for _s in (sys.stdout, sys.stderr):
 from app.academy.exam.grade import decode_params
 from app.academy.training import tpe, cma_es, gp, nsga3
 from app.pocket.signals import ALL_GENES
-from app.league.single_obj_compare_gp import PlateauStopCallback, PATIENCE, MIN_DELTA_PCT
+from app.league.operations.saturation import PlateauStopCallback, PATIENCE, MIN_DELTA_PCT
 from app.league.victory_road import run_gate1
 
 SEEDS = [42, 7, 11, 19, 23]
@@ -159,6 +159,10 @@ def build_lineup(loaded_gyms, dca) -> list[dict]:
 
     # 다목적 — 떼거지
     graduates += sweep_nsga3(loaded_gyms, dca)
+
+    # NPC 4인방 정식 선수 (2026-06-14, 사용자 안)
+    from app.league.operations.npcs import npc_graduates
+    graduates += npc_graduates()
     return graduates
 
 
@@ -185,7 +189,7 @@ def main() -> None:
     print("\n" + "=" * 70)
     print("관문 ② 배틀 프론티어 — battle_frontier_v1x.main(graduates)")
     print("=" * 70 + "\n")
-    from app.league.battle_frontier_v1x import main as run_gate2
+    from app.league.v1x.battle_frontier import main as run_gate2
     run_gate2(graduates)
 
 
