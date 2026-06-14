@@ -11,32 +11,24 @@
   - 어플삭제맨이 bear에서 무너지는 자리 확인
 
 산출: reports/league_v1/battle_frontier_lineup.md (+ .json)
-실행: python tools/battle_frontier_lineup.py
+실행: python -m app.league.v1.battle_frontier_lineup
 """
 
 import json
-import sys
 import time
 from pathlib import Path
 
-_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_ROOT))
-for s in (sys.stdout, sys.stderr):
-    try:
-        s.reconfigure(encoding="utf-8")
-    except Exception:
-        pass
+_ROOT = Path(__file__).resolve().parents[3]
 
 import numpy as np
-import pandas as pd
 
-from app.pocket.battle import (_score_position, fight_dca, fight_savings,
-                                         terminal_balance)
+from app.pocket.battle import _score_position, terminal_balance
 from app.pocket.signals import ALL_GENES, combine_positions, positions_with_params
 from app.world.data_loader import LoadedGym, get_prices
 from app.league.battle_frontier import (DATA_START, DATA_END, N_WORLDS_ALL,
                                      N_WORLDS_REGIME, REGIME_SPANS, SEED,
                                      make_world)
+from app.league.operations.npcs import npc_graduates
 
 SEED_KRW = 1_000_000
 TOP10_JSON = _ROOT / "reports" / "league_v1" / "top10_champions.json"
@@ -46,23 +38,6 @@ OUT_MD = _ROOT / "reports" / "league_v1" / "battle_frontier_lineup.md"
 def eval_weights(weights: list[float], world: LoadedGym) -> int:
     pos = combine_positions(positions_with_params(world.prices), weights)
     return terminal_balance(_score_position(pos, world), SEED_KRW)
-
-
-def eval_buy_hold(world: LoadedGym) -> int:
-    pos = pd.Series(1.0, index=world.prices.index)
-    return terminal_balance(_score_position(pos, world), SEED_KRW)
-
-
-def eval_piggy(world: LoadedGym) -> int:
-    return SEED_KRW
-
-
-def eval_savings(world: LoadedGym) -> int:
-    return terminal_balance(fight_savings(world), SEED_KRW)
-
-
-def eval_dca(world: LoadedGym) -> int:
-    return terminal_balance(fight_dca(world), SEED_KRW)
 
 
 def main() -> None:
@@ -81,11 +56,8 @@ def main() -> None:
     for i, t in enumerate(top10, 1):
         w = [t["params"][f"w_{g}"] for g in ALL_GENES]
         weight_candidates.append((f"TOP{i:02d}", w))
-    baselines = [("어플삭제맨", eval_buy_hold),
-                 ("저축왕", eval_savings),
-                 ("성실이", eval_dca),
-                 ("돼지저금통", eval_piggy)]
-    all_names = [n for n, _ in weight_candidates] + [n for n, _ in baselines]
+    npcs = npc_graduates()
+    all_names = [n for n, _ in weight_candidates] + [g["name"] for g in npcs]
 
     # arena 정의
     arenas = [("전천후", None, N_WORLDS_ALL),
@@ -102,8 +74,8 @@ def main() -> None:
             world = make_world(full_returns, rng, pool)
             for name, w in weight_candidates:
                 bals[name].append(eval_weights(w, world))
-            for name, fn in baselines:
-                bals[name].append(fn(world))
+            for g in npcs:
+                bals[g["name"]].append(g["evaluator"](world, SEED_KRW)[1])
             if (i + 1) % 50 == 0:
                 print(f"  {i+1}/{n_worlds}")
         arena_results[arena] = bals

@@ -1,6 +1,6 @@
 """챔피언로드 ② 배틀 프론티어 — v1.x 라인업 본판정.
 
-`champion_road_lineup_v1x.build_lineup()`이 만든 41명 + 기준선 4인방을 같은 시드의
+`champion_road_lineup_v1x.build_lineup()`이 만든 라인업(NPC 포함)을 같은 시드의
 평행세계 3 arena(전천후/bear/rebound)에 입장. 사용자 메모리 핵심: "스페셜리스트는
 전문 시험장에서 판정" — bear arena가 ★bear 본판정, rebound arena가 ★rebound 본판정.
 
@@ -12,25 +12,15 @@
 단독 실행은 안 한다 — `champion_road_lineup_v1x.py` 끝에서 `main(lineup)` 호출.
 """
 
-import sys
 import time
 from pathlib import Path
 
-_ROOT = Path(__file__).resolve().parent.parent.parent
-sys.path.insert(0, str(_ROOT))
-
-for s in (sys.stdout, sys.stderr):
-    try:
-        s.reconfigure(encoding="utf-8")    # type: ignore[union-attr]
-    except Exception:
-        pass
+_ROOT = Path(__file__).resolve().parents[3]
 
 import numpy as np
-import pandas as pd
 
-from app.pocket.battle import (_score_position, fight_dca, fight_savings,
-                                         terminal_balance)
-from app.pocket.signals import ALL_GENES, combine_positions, positions_with_params
+from app.pocket.battle import _score_position, terminal_balance
+from app.pocket.signals import combine_positions, positions_with_params
 from app.world.data_loader import LoadedGym, get_prices
 from app.league.battle_frontier import (DATA_START, DATA_END, N_WORLDS_ALL,
                                           N_WORLDS_REGIME, REGIME_SPANS, SEED,
@@ -45,27 +35,10 @@ def eval_weights(weights: list[float], params: dict, world: LoadedGym) -> int:
     return terminal_balance(_score_position(pos, world), SEED_KRW)
 
 
-def eval_buy_hold(world: LoadedGym) -> int:
-    pos = pd.Series(1.0, index=world.prices.index)
-    return terminal_balance(_score_position(pos, world), SEED_KRW)
-
-
-def eval_piggy(world: LoadedGym) -> int:
-    return SEED_KRW
-
-
-def eval_savings(world: LoadedGym) -> int:
-    return terminal_balance(fight_savings(world), SEED_KRW)
-
-
-def eval_dca(world: LoadedGym) -> int:
-    return terminal_balance(fight_dca(world), SEED_KRW)
-
-
 def main(lineup: list[dict]) -> None:
     """lineup = champion_road_lineup_v1x.build_lineup() 결과 (graduates dict 리스트)."""
     t0 = time.time()
-    print(f"=== v1.x 라인업 본판정 — {len(lineup)}명 + 기준선 4인방 ===")
+    print(f"=== v1.x 라인업 본판정 — {len(lineup)}명 (NPC 포함) ===")
 
     prices = get_prices("QQQ", DATA_START, DATA_END)
     full_returns = prices.pct_change().dropna()
@@ -76,12 +49,9 @@ def main(lineup: list[dict]) -> None:
 
     # 라인업 후보 (이름, weights, params) — 단일목적은 params={}
     weight_candidates = [(g["name"], g["weights"], g.get("params") or {}, g.get("label", ""),
-                          g.get("specialist", False)) for g in lineup]
-    baselines = [("어플삭제맨", eval_buy_hold),
-                 ("저축왕", eval_savings),
-                 ("성실이", eval_dca),
-                 ("돼지저금통", eval_piggy)]
-    all_names = [n for n, _, _, _, _ in weight_candidates] + [n for n, _ in baselines]
+                          g.get("specialist", False)) for g in lineup if "evaluator" not in g]
+    npcs = [g for g in lineup if "evaluator" in g]
+    all_names = [n for n, _, _, _, _ in weight_candidates] + [g["name"] for g in npcs]
 
     # arena 정의
     arenas = [("전천후", None, N_WORLDS_ALL),
@@ -97,8 +67,8 @@ def main(lineup: list[dict]) -> None:
             world = make_world(full_returns, rng, pool)
             for name, w, params, _, _ in weight_candidates:
                 bals[name].append(eval_weights(w, params, world))
-            for name, fn in baselines:
-                bals[name].append(fn(world))
+            for g in npcs:
+                bals[g["name"]].append(g["evaluator"](world, SEED_KRW)[1])
             if (i + 1) % 50 == 0:
                 print(f"  {i+1}/{n_worlds}")
         arena_results[arena] = bals
@@ -107,7 +77,7 @@ def main(lineup: list[dict]) -> None:
 
     # ── 리포트 ──
     md = ["# 챔피언로드 ② 배틀 프론티어 — v1.x 라인업 본판정 (4 sampler × 5시드)", ""]
-    md.append(f"- 라인업: {len(lineup)}명 + 기준선 4인방")
+    md.append(f"- 라인업: {len(lineup)}명 (NPC 포함)")
     md.append(f"- 시드 100만원 × 평가 2년 (504거래일) — arena별 평행세계")
     md.append(f"- 시드 {SEED}, 블록 21일 부트스트랩")
     md.append("")
@@ -123,7 +93,8 @@ def main(lineup: list[dict]) -> None:
             mean = int(np.mean(arena_results[arena][name]))
             cells.append(f"{mean // 10000:,}")
         md.append(f"| {name} | {label} | " + " | ".join(cells) + " |")
-    for name, _ in baselines:
+    for g in npcs:
+        name = g["name"]
         cells = []
         for arena, _, _ in arenas:
             mean = int(np.mean(arena_results[arena][name]))
@@ -219,4 +190,4 @@ def main(lineup: list[dict]) -> None:
 if __name__ == "__main__":
     print("이 모듈은 단독 실행 안 함 — champion_road_lineup_v1x.py가 build_lineup() "
           "결과를 인자로 넘겨 main(lineup) 호출합니다.")
-    sys.exit(2)
+    raise SystemExit(2)

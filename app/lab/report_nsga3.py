@@ -7,11 +7,8 @@ report_nsga3.py - NSGA-III 스터디 결과를 HTML 리포트로 내보내기
 출력: reports/nsga3_report.html  (reports/는 gitignore — 로컬 열람용)
 실행: 프로젝트 루트에서  python -m app.lab.report_nsga3
 """
-import sys
 from datetime import datetime
 from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import optuna
 

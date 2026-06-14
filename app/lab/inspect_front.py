@@ -10,10 +10,7 @@ inspect_front.py - 저장된 NSGA-III 스터디(sqlite)의 Pareto front 검사 �
 실행: 프로젝트 루트에서  python -m app.lab.inspect_front
 """
 import csv
-import sys
 from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import optuna
 

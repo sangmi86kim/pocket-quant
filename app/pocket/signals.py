@@ -120,7 +120,7 @@ def signal_MOM(prices: pd.Series, lookback: int = MOM_LOOKBACK) -> pd.Series:
 # ─────────────────────────────────────────────────────────────────────
 # 야생 포켓퀀트 (2026-06-13 v1.x 시즌 — 외부 정보원 7마리)
 # 모두 이벤트형 — 발동일만 의견, 평소 기권. 자산-횡단 알파 후보.
-# 외부 시계열은 data_io.data에서 yfinance 캐시로 받음 (캐시 hit이면 빠름).
+# 외부 시계열은 app.world.data_loader에서 yfinance 캐시로 받음 (캐시 hit이면 빠름).
 # ─────────────────────────────────────────────────────────────────────
 VOL_SPIKE_THRESHOLD = 2.5    # 거래량 평균 대비 폭증 배수
 FEAR_THRESHOLD = 30.0        # VIX 공포 임계

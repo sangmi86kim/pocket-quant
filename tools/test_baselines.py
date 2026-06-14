@@ -16,7 +16,7 @@ test_baselines.py - 적합도 퇴화 검증 ("아무것도 안 하기"가 최적
      - 전부 현금이 전체 순위 하위 25% 밖으로 못 올라옴
 
 실행: 프로젝트 루트에서
-    python tests/test_baselines.py
+    python tools/test_baselines.py
 """
 import sys
 from itertools import combinations

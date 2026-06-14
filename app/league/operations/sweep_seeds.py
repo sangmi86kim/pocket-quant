@@ -9,7 +9,7 @@ HV-MA(5) 얼리스탑이 정체 시 자동으로 끊으므로 trials=2000은 상
   - 라벨 후보 잔고 (Defensive/Balanced/Aggressive/Low-turnover) 6체육관 매트릭스
   - 산출물: reports/league_v1/sweep_seeds.md + .json
 
-실행: python tools/sweep_seeds.py
+실행: python -m app.league.operations.sweep_seeds
 """
 
 import json
@@ -17,7 +17,6 @@ import sys
 import time
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 for s in (sys.stdout, sys.stderr):
     try:
         s.reconfigure(encoding="utf-8")

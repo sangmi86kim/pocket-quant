@@ -21,7 +21,7 @@ DCA 기준선 무비용)에서 풀 정밀도로 실측한 값. 캐시된 가격(
     워크로그에 "왜 바뀌었는지"를 기록한다.
   - 의도하지 않았다 → 버그. 커밋 전에 원인을 찾는다.
 
-실행: 프로젝트 루트에서  python tests/test_engine_regression.py
+실행: 프로젝트 루트에서  python tools/test_engine_regression.py
 """
 import math
 import sys
@@ -56,17 +56,17 @@ GOLDEN_CHAMPION_DOTCOM = {
 
 # DCA 기준선 (무비용) raw 지표
 GOLDEN_DCA = {
-    "2000-02 닷컴 붕괴 체육관": {
+    "닷컴 붕괴 체육관": {
         "total_return": -0.4344835286303408,
         "max_drawdown": -0.5347524361839922,
         "sharpe": -0.6575959619001736,
     },
-    "2009-10 회복장 체육관": {
+    "회복장 체육관": {
         "total_return": 0.28893504917670687,
         "max_drawdown": -0.10633780310201768,
         "sharpe": 1.3657290594921125,
     },
-    "2020 코로나 급락 체육관": {
+    "코로나 급락 체육관": {
         "total_return": 0.1569439760195097,
         "max_drawdown": -0.06585306496248289,
         "sharpe": 1.9869544716965628,

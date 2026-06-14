@@ -27,7 +27,7 @@ import pandas as pd
 from app.academy.curriculum import bootstrap_gyms, prepare_academy_split
 from app.academy.curriculum.textbook import DATA_END, make_world
 from app.academy.exam.grade import evaluate_balances
-from app.academy.training import cma_es, gp, tpe
+from app.academy.training._single_obj import _objective
 from app.pocket.signals import (
     ALL_GENES,
     _fetch_external,
@@ -127,20 +127,14 @@ def run_check() -> bool:
     fixed_params = {f"w_{g}": 1.0 for g in ALL_GENES}
     trial = optuna.trial.FixedTrial(fixed_params)
     expected = sum(b["strat"] for b in train_bals.values())
-    check("TPE objective는 raw balance sum 유지",
-          tpe._objective(trial, train_gyms, train_dca) == expected)
-    check("CMA-ES objective는 raw balance sum 유지",
-          cma_es._objective(optuna.trial.FixedTrial(fixed_params),
-                            train_gyms, train_dca) == expected)
-    check("GP objective는 raw balance sum 유지",
-          gp._objective(optuna.trial.FixedTrial(fixed_params),
-                        train_gyms, train_dca) == expected)
+    check("단일목적 objective는 raw balance sum 유지",
+          _objective(trial, train_gyms, train_dca) == expected)
 
     print(f"\n=== 판정: {'PASS' if not failures else 'FAIL ' + str(failures)} ===")
     return not failures
 
 
-def test_academy_world_factory():
+def test_academy_synth_contract():
     assert run_check(), "아카데미 세계공장 산출물 계약 위반"
 
 

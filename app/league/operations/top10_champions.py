@@ -4,14 +4,13 @@
 별도 실행 없이 기존 sweep 결과만 재처리.
 
 산출: reports/league_v1/top10_champions.md + .json
-실행: python tools/top10_champions.py
+실행: python -m app.league.operations.top10_champions
 """
 
 import json
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 for s in (sys.stdout, sys.stderr):
     try:
         s.reconfigure(encoding="utf-8")

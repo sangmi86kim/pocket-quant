@@ -10,29 +10,20 @@ hold-out(2020-07~2026-06)은 06-11에 이미 1회 봉인 해제됐다 — 추가
   - 라운드별 1등 + 합산 잔고 + 국면 라벨 (Regime_Scanner)
 
 산출: reports/league_v1/elite_four_lineup.md (+ .json)
-실행: python tools/elite_four_lineup.py
+실행: python -m app.league.v1.elite_four_lineup
 """
 
 import json
-import sys
 from pathlib import Path
 
-_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_ROOT))
-for s in (sys.stdout, sys.stderr):
-    try:
-        s.reconfigure(encoding="utf-8")
-    except Exception:
-        pass
+_ROOT = Path(__file__).resolve().parents[3]
 
-import pandas as pd
-
-from app.pocket.battle import (_score_position, fight_dca, fight_savings,
-                                         terminal_balance)
+from app.pocket.battle import _score_position, terminal_balance
 from app.pocket.signals import ALL_GENES, combine_positions, positions_with_params
 from app.world.data_loader import LoadedGym, get_prices
 from app.world.regime import REGIME_LABELS, dominant_regime
 from app.league.elite_four import DATA_END, HOLDOUT_START, ROUNDS, TICKER, _loaded_window
+from app.league.operations.npcs import npc_graduates
 
 SEED_KRW = 1_000_000
 TOP10_JSON = _ROOT / "reports" / "league_v1" / "top10_champions.json"
@@ -42,23 +33,6 @@ OUT_MD = _ROOT / "reports" / "league_v1" / "elite_four_lineup.md"
 def eval_weights(weights: list[float], lw: LoadedGym) -> int:
     pos = combine_positions(positions_with_params(lw.prices), weights)
     return terminal_balance(_score_position(pos, lw), SEED_KRW)
-
-
-def eval_buy_hold(lw: LoadedGym) -> int:
-    pos = pd.Series(1.0, index=lw.prices.index)
-    return terminal_balance(_score_position(pos, lw), SEED_KRW)
-
-
-def eval_piggy(lw: LoadedGym) -> int:
-    return SEED_KRW
-
-
-def eval_savings(lw: LoadedGym) -> int:
-    return terminal_balance(fight_savings(lw), SEED_KRW)
-
-
-def eval_dca(lw: LoadedGym) -> int:
-    return terminal_balance(fight_dca(lw), SEED_KRW)
 
 
 def main() -> None:
@@ -72,17 +46,15 @@ def main() -> None:
     for i, t in enumerate(top10, 1):
         w = [t["params"][f"w_{g}"] for g in ALL_GENES]
         strategies.append((f"TOP{i:02d}", w))
-    baselines = [("어플삭제맨", eval_buy_hold),
-                 ("저축왕", eval_savings),
-                 ("성실이", eval_dca),
-                 ("돼지저금통", eval_piggy)]
+    npcs = npc_graduates()
 
     balances: dict[str, dict[str, int]] = {}
     for name, w in strategies:
         balances[name] = {nm: eval_weights(w, lw)
                            for nm, _, _, lw in rounds}
-    for name, fn in baselines:
-        balances[name] = {nm: fn(lw) for nm, _, _, lw in rounds}
+    for g in npcs:
+        balances[g["name"]] = {nm: g["evaluator"](lw, SEED_KRW)[1]
+                               for nm, _, _, lw in rounds}
 
     # 국면 라벨 (Regime_Scanner)
     regimes = {nm: REGIME_LABELS[dominant_regime(prices, s, e)]
