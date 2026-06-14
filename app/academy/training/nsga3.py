@@ -15,6 +15,7 @@
 """
 import secrets
 
+import numpy as np
 import optuna
 
 from app.academy.curriculum import prepare_academy_data
@@ -118,6 +119,96 @@ def prepare_data(n_gyms: int = 20, seed: int | None = None
     return loaded_gyms, dca
 
 
+def hv_early_stop_callback(population_size: int, window: int = 5,
+                           n_mc: int = 4096, seed: int = 0,
+                           stop: bool = True):
+    sign = np.array([-1.0 if d == "maximize" else 1.0 for d in DIRECTIONS])
+    rng = np.random.default_rng(seed)
+    n_obj = len(DIRECTIONS)
+    st = {"lo": None, "hi": None, "mc": rng.random((n_mc, n_obj)),
+          "hv": [], "best_ma": -1.0, "n": 0, "stopped": False}
+
+    def cb(study: optuna.Study, _trial) -> None:
+        st["n"] += 1
+        if st["n"] % population_size:
+            return
+        raw = np.array([t.values for t in study.trials
+                        if t.values is not None])
+        if len(raw) == 0:
+            return
+        vals = raw * sign
+        if st["lo"] is None:
+            st["lo"], hi = vals.min(0), vals.max(0)
+            st["hi"] = np.where(hi > st["lo"], hi, st["lo"] + 1e-9)
+            return
+        norm = np.clip((vals - st["lo"]) / (st["hi"] - st["lo"]),
+                       0.0, 1.0)
+        keep = []
+        for i in range(len(norm)):
+            dom = (norm <= norm[i]).all(1) & (norm < norm[i]).any(1)
+            dom[i] = False
+            if not dom.any():
+                keep.append(i)
+        dominated = np.zeros(len(st["mc"]), dtype=bool)
+        for p in norm[keep]:
+            dominated |= (st["mc"] >= p).all(1)
+        st["hv"].append(float(dominated.mean()))
+        cb.hv = list(st["hv"])
+        if len(st["hv"]) < window:
+            return
+        ma = float(np.mean(st["hv"][-window:]))
+        if ma > st["best_ma"] + 1e-12:
+            st["best_ma"] = ma
+            return
+        if stop:
+            print(f"  [early-stop] HV MA({window}) stale at "
+                  f"{st['n']} trials (HV {st['hv'][-1]:.4f})")
+            st["stopped"] = True
+            cb.stopped = True
+            study.stop()
+
+    cb.hv = []
+    cb.stopped = False
+    return cb
+
+
+def adaptive_mutation_callback(sampler, hv_cb, n_params: int,
+                               population_size: int, window: int = 3,
+                               up: float = 1.5, down: float = 0.85,
+                               hi: float = 0.5):
+    lo = 1.0 / n_params
+    state = {"best_ma": -1.0, "current": lo * 2, "n": 0}
+    try:
+        sampler._child_generation_strategy._mutation_prob = state["current"]
+    except AttributeError:
+        print("  [adaptive-mut] sampler path changed; disabled")
+        cb_noop = lambda *args, **kwargs: None
+        cb_noop.history = []
+        return cb_noop
+
+    def cb(_study, _trial):
+        state["n"] += 1
+        if state["n"] % population_size:
+            return
+        hv = list(hv_cb.hv)
+        if len(hv) < window:
+            return
+        ma = sum(hv[-window:]) / window
+        improved = ma > state["best_ma"] + 1e-9
+        factor = down if improved else up
+        new_val = max(lo, min(hi, state["current"] * factor))
+        state["current"] = new_val
+        if improved:
+            state["best_ma"] = ma
+        sampler._child_generation_strategy._mutation_prob = new_val
+        cb.history.append({"gen": len(hv), "hv": round(hv[-1], 4),
+                           "ma": round(ma, 4), "improved": improved,
+                           "mut_prob": round(new_val, 4)})
+
+    cb.history = []
+    return cb
+
+
 def run_study(n_trials: int, seed: int | None = None,
               storage: str | None = None,
               study_name: str = "academy_nsga3",
@@ -166,9 +257,22 @@ def run_study(n_trials: int, seed: int | None = None,
                 on_progress(n, n_trials, len(st.best_trials))
         callbacks.append(_cb)
 
+    hv_cb = None
+    if early_stop_window or adaptive_mutation:
+        hv_cb = hv_early_stop_callback(
+            population_size, window=early_stop_window or 3,
+            seed=seed or 0, stop=bool(early_stop_window))
+        callbacks.append(hv_cb)
+
+    mut_cb = None
+    if adaptive_mutation:
+        mut_cb = adaptive_mutation_callback(
+            sampler, hv_cb, len(ALL_GENES), population_size, window=3)
+        callbacks.append(mut_cb)
+
     study.optimize(make_objective(loaded_gyms), n_trials=n_trials,
                    callbacks=callbacks or None)
-    return study, loaded_gyms, dca, None, None
+    return study, loaded_gyms, dca, hv_cb, mut_cb
 
 
 def summarize_front(study, loaded_gyms: list[LoadedGym] | None = None,
