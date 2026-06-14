@@ -27,23 +27,24 @@ def hv_early_stop_callback(population_size: int, window: int = 5,
     """
     sign = np.array([-1.0 if d == "maximize" else 1.0 for d in DIRECTIONS])
     ref = np.ones(len(DIRECTIONS))   # 스케일 nadir(6세대 worst 코너) = HV 기준점
-    st = {"lo": None, "hi": None, "hv": [], "best_ma": -1.0, "n": 0, "stopped": False}
+    st = {"lo": None, "hi": None, "hv": [], "trend": [],
+          "best_ma": -1.0, "stale": 0, "n": 0, "stopped": False}
 
-    def cb(study: optuna.Study, _trial) -> None:
+    def cb(study: optuna.Study, trial) -> None:
         st["n"] += 1
-        if st["n"] % population_size:
-            return
-        gen = st["n"] // population_size
-        if gen < scale_warmup:
-            return
+        n = st["n"]
         if st["lo"] is None:
-            # 6세대 누적 전체(=population_size×scale_warmup trial)의 min/max로 스케일 고정
+            # 워밍업: scale_warmup 세대(=population_size×scale_warmup trial) 누적 min/max로 스케일 고정
+            if n < scale_warmup * population_size:
+                return
             allv = np.array([t.values for t in study.trials
                              if t.values is not None]) * sign
             if len(allv) == 0:
                 return
             st["lo"], hi = allv.min(0), allv.max(0)
             st["hi"] = np.where(hi > st["lo"], hi, st["lo"] + 1e-9)
+            return
+        if n % population_size:          # 세대 경계에서만 측정·기록 (현업 관행: 세대 단위)
             return
         front = np.array([t.values for t in study.best_trials
                           if t.values is not None])
@@ -53,21 +54,28 @@ def hv_early_stop_callback(population_size: int, window: int = 5,
         scaled = np.minimum(scaled, ref)                # 나쁜 쪽만 ref로 컷(HV 유효성)
         hv = float(compute_hypervolume(scaled, ref))    # 천장 없음 — front 좋아질수록 증가
         st["hv"].append(hv)
+        # MA(window) 평활: 세대별 노이즈를 눌러 수렴(평탄)이 눈에 보이게 한다.
+        # 정체 판정·기록 트렌드 모두 이 평활값을 쓴다 (raw는 함께 보존).
+        ma = float(np.mean(st["hv"][-window:]))         # window 덜 차면 부분 평균
+        st["trend"].append([trial.number, round(hv, 6), round(ma, 6)])
+        study.set_user_attr("hv_trend", st["trend"])    # DB 영속: 세대별 [trial, raw, ma]
         cb.hv = list(st["hv"])
         if len(st["hv"]) < window:
             return
-        ma = float(np.mean(st["hv"][-window:]))
-        if ma > st["best_ma"] * (1 + min_rel_improve):  # 추세가 더 오르면 계속
+        if ma > st["best_ma"] * (1 + min_rel_improve):  # 평활 HV가 의미있게 오르면 정체 카운터 리셋
             st["best_ma"] = ma
+            st["stale"] = 0
             return
-        if stop:
-            print(f"  [early-stop] HV MA({window}) 정체 at "
-                  f"{st['n']} trials (HV {st['hv'][-1]:.4f})")
+        st["stale"] += 1                                 # 변화 없는 세대 누적
+        if stop and st["stale"] >= window:               # 5세대 연속 변화 없으면 stop
+            print(f"  [early-stop] HV MA({window}) {window}세대 연속 변화 없음 → stop "
+                  f"at {st['n']} trials (HV_ma {ma:.4f})")
             st["stopped"] = True
             cb.stopped = True
             study.stop()
 
     cb.hv = []
+    cb.trend = st["trend"]   # 동일 리스트 참조 — engine이 마지막에 한 번 더 flush
     cb.stopped = False
     return cb
 

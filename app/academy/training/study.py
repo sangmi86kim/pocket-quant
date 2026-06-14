@@ -17,10 +17,10 @@ SINGLE_TRIALS = {
     "CMA-ES": 5000,
     "GP": 1500,
 }
-NSGA_TRIALS = 3000
+NSGA_TRIALS = 10000
 NSGA_GYMS = 20
-POPULATION = 50
-EARLY_STOP_WINDOW = 5
+POPULATION = 30          # 3목적 reference-point 정합(≈28점) + trial당 수렴 빠름 (pop 30 vs 50 실측)
+EARLY_STOP_WINDOW = 5    # HV MA(5)가 5세대 연속 변화 없으면 조기 종료
 
 
 def roll_seed() -> int:

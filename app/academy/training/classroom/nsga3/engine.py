@@ -85,4 +85,7 @@ def run_study(n_trials: int, seed: int | None = None,
 
     study.optimize(make_objective(loaded_gyms), n_trials=n_trials,
                    callbacks=callbacks or None)
+    if hv_cb is not None:
+        # 마지막 부분 세대까지 HV 추세를 DB에 확정 flush (세대 경계 안 떨어진 꼬리 보존)
+        study.set_user_attr("hv_trend", hv_cb.trend)
     return study, loaded_gyms, dca, hv_cb, mut_cb
