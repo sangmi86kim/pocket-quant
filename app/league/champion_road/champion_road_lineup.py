@@ -1,4 +1,4 @@
-﻿"""챔피언로드 ① 시험장에 top10 + 현 챔피언 + 성실이 입장 (06-13).
+"""챔피언로드 ① 시험장에 top10 + 현 챔피언 + 성실이 입장 (06-13).
 
 흐름: top10_champions.json 읽고 graduates 포맷 변환 → victory_road.run_gate1 호출.
 성실이는 victory_road 내부에서 자동으로 1등 후보 매트릭스에 들어감.
