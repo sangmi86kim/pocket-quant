@@ -1,6 +1,7 @@
 """Run classroom studies."""
 import json
 import secrets
+import traceback
 from datetime import datetime
 from pathlib import Path
 
@@ -120,31 +121,50 @@ def run_all() -> Path:
 
     academy_seed = roll_seed()
     loaded_gyms, dca = prepare_school_data(seed=academy_seed)
-    results = []
-    for name, engine in (("TPE", tpe), ("CMA-ES", cma_es), ("GP", gp)):
+    json_path = RESULTS_DIR / f"classroom_studies_{stamp}.json"
+    results: list[dict] = []
+    failed: list[str] = []
+
+    def flush() -> None:
+        # 한 반이 끝날 때마다 즉시 저장 — 뒤 반이 죽어도 앞 반 결과는 남는다.
+        payload = {
+            "stamp": stamp,
+            "source": "app.academy.training.study",
+            "academy_seed": academy_seed,
+            "academy_gyms": len(loaded_gyms),
+            "failed": failed,
+            "classrooms": results,
+        }
+        json_path.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+    def study_one(name: str, run) -> None:
+        # 한 반의 실패가 학기 전체를 죽이지 않게 격리한다 (예: GP는 torch 필요).
         print(f"Running {name} classroom...", flush=True)
-        result = run_single_classroom(name, engine, loaded_gyms, dca)
+        try:
+            result = run()
+        except Exception as exc:  # noqa: BLE001 — 반별 고립, 나머지 보존이 목적
+            failed.append(name)
+            print(f"  [FAIL] {name} classroom: {exc!r}", flush=True)
+            traceback.print_exc()
+            flush()
+            return
         result["academy_seed"] = academy_seed
         results.append(result)
+        flush()
         print(f"Done {name}: trials={result['trials']}", flush=True)
 
-    print("Running NSGA-III classroom...", flush=True)
-    result = run_nsga_classroom(stamp, loaded_gyms, dca, academy_seed)
-    results.append(result)
-    print(f"Done NSGA-III: trials={result['trials']}", flush=True)
+    for name, engine in (("TPE", tpe), ("CMA-ES", cma_es), ("GP", gp)):
+        study_one(name, lambda e=engine, n=name:
+                  run_single_classroom(n, e, loaded_gyms, dca))
+    study_one("NSGA-III",
+              lambda: run_nsga_classroom(stamp, loaded_gyms, dca, academy_seed))
 
-    payload = {
-        "stamp": stamp,
-        "source": "app.academy.training.study",
-        "academy_seed": academy_seed,
-        "academy_gyms": len(loaded_gyms),
-        "classrooms": results,
-    }
-    json_path = RESULTS_DIR / f"classroom_studies_{stamp}.json"
-    json_path.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
+    if failed:
+        print(f"[WARN] 실패한 반: {failed} — 완료된 {len(results)}개는 저장됨",
+              flush=True)
     return json_path
 
 
