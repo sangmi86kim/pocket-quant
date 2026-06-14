@@ -4,7 +4,7 @@ nsga3.py - Optuna NSGA-III 다목적 최적화 (설계: OPTIMIZATION.md 4절)
 [문제 정식화]
   maximize  [ bear, rebound, crash_v, bull, chop ]   # 국면별 라이벌(DCA)전 점수
   minimize  turnover                                  # 일평균 매매 비율
-     over   X = 시그널 가중치 6개 + 시그널 파라미터 7개
+     over   X = 시그널 가중치 len(ALL_GENES)개 + 시그널 파라미터 7개
 
   bear = min(닷컴, 금융위기) — 하락 2체육관을 min으로 압축해 6목적 유지
   (7목적은 front가 너무 넓어짐 — 코덱스 제안 채택)
@@ -74,7 +74,7 @@ def suggest_candidate(trial: optuna.Trial,
     [v2 리그 = 가중치 전용이 기본 (A안, 2026-06-11 사용자 결정)]
     v1 리그(가중치+파라미터 13차원)는 챔피언로드 관문 ①에서 전멸했다 —
     인샘플↔OOS 상관 -0.21, 유일 생존자는 무튜닝 기본값. 과적합 벡터가
-    파라미터 탐색이었으므로 v2는 파라미터를 기본값에 고정하고 가중치 6개만
+    파라미터 탐색이었으므로 v2는 파라미터를 기본값에 고정하고 시그널 가중치만
     탐색한다. tune_params=True는 나중에 고도화할 때를 위해 보존.
     """
     weights = [trial.suggest_float(f"w_{g}", 0.0, 1.0) for g in ALL_GENES]

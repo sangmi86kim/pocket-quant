@@ -1,4 +1,4 @@
-"""SPY 챔피언로드 ① OOS 11년 + ③ 사천왕 7라운드 — 자산 SPY로 출전.
+﻿"""SPY 챔피언로드 ① OOS 11년 + ③ 사천왕 7라운드 — 자산 SPY로 출전.
 
 [가설] QQQ 챔피언 가중치가 SPY OOS·사천왕에서는 어떻게 되나?
        체육관 6개 인샘플(`spy_robustness.py`)에서는 어플삭제맨이 1위였다 —
@@ -12,7 +12,6 @@
 
 [실행] python app/league/spy_road.py
 """
-from __future__ import annotations
 
 import sys
 import time

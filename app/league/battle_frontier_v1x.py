@@ -1,4 +1,4 @@
-"""챔피언로드 ② 배틀 프론티어 — v1.x 라인업 본판정.
+﻿"""챔피언로드 ② 배틀 프론티어 — v1.x 라인업 본판정.
 
 `champion_road_lineup_v1x.build_lineup()`이 만든 41명 + 기준선 4인방을 같은 시드의
 평행세계 3 arena(전천후/bear/rebound)에 입장. 사용자 메모리 핵심: "스페셜리스트는
@@ -11,7 +11,6 @@
 기존 `battle_frontier_lineup.py`(v1 TOP10 전용)와 같은 arena/world 상수를 재사용.
 단독 실행은 안 한다 — `champion_road_lineup_v1x.py` 끝에서 `main(lineup)` 호출.
 """
-from __future__ import annotations
 
 import sys
 import time

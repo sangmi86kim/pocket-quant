@@ -3,6 +3,7 @@
 > 이 문서는 **이 레포에서 작업하는 코딩 에이전트를 위한 온보딩 문서**다.
 > 코드가 source of truth — 문서와 코드가 다르면 코드가 맞고, 문서를 고친다.
 > 사람용 소개는 [README.md](README.md), 최적화 정식화는 [OPTIMIZATION.md](OPTIMIZATION.md).
+> 기본 코드 리뷰·수정 담당 에이전트는 **Codex 5.5 연구원**으로 기록한다.
 
 ---
 
@@ -23,6 +24,8 @@
    **도전권/벤치** (벤치 = 명단 보존, 재도전 가능).
 8. **오박사(LLM)는 해설 전용** — 판정·합불·매매 권유 금지. LLM을 적합도 루프에 넣지 않는다. (위치: `app/lab/oak.py`)
 9. **용어**: 시그널 = 포켓퀀트(세는 단위 '마리') · 전략 = 트레이더(세는 단위 '명').
+   사용자/운용자/전략 주체를 **절대 '트레이너'라고 부르지 않는다.** 이 레포의 공식 호칭은
+   항상 **트레이더**다. 오박사 대사·labnotes·README·코드 주석도 동일하게 맞춘다.
    '포켓몬'은 README 도입부 비유·법적 고지 두 곳에만 존재한다.
 10. **코드 스타일**: 한국어 왜-주석(설계 이유·실측 근거) 중심, `from __future__` 금지,
     타입 힌트는 시그니처에만 절제, 튜닝 상수는 모듈 상단에 모음. 과한 추상화 금지.
@@ -78,14 +81,13 @@ pocket_quant/
 │     ├─ engine/
 │     │  └─ battle.py         # _score_position(공용 채점기) · fight · fight_dca(성실이)
 │     │                       #   · score_vs_dca · 비용 0.1%/편도 (성실이만 무비용)
-│     ├─ search/              # 옵티마이저 3종 (2026-06-13 engine에서 분리)
-│     │  ├─ nsga3.py          # Optuna NSGA-III — 다목적 6개 (가중치 전용 v2)
-│     │  ├─ tpe.py            # Optuna TPE — 단일목적 잔고 합 max (v1 챔피언 출신)
-│     │  └─ cma_es.py         # Optuna CMA-ES — 단일목적, 연속 공간 강함 (v1.x 신설)
 │     └─ data_io/             # 입력/리포팅 파이프라인 (워크플로우 아님)
 │        ├─ data.py           #   yfinance + get_prices + get_volume + data_cache/<ticker>/
 │        ├─ inspect_front.py · report_nsga3.py · battle_frontier_total.py  # 스터디 → CSV/HTML/MD
 │        └─ (예정) kis_client.py  # KIS API 외인기관/호가/체결 — 새 시그널 원천
+│  └─ academy/
+│     ├─ academy.py           # 블록 부트스트랩 합성 체육관(내신) 생성
+│     └─ study/               # 옵티마이저 4종: nsga3/tpe/cma_es/gp
 │
 ├─ data_cache/                # 캐시 (gitignore) — 티커별 서브폴더: QQQ/, (예정) KIS/...
 ├─ tools/                     # validator + 진단 (코드/로직 검증만 — 워크플로우 X)
@@ -120,10 +122,11 @@ pocket_quant/
 - **시그널 풀 (2026-06-13 v1.x)**: 13마리. 스타팅 6(가격 기반) + 야생 7(외부 정보원).
   외부 정보원은 yfinance로 받음 (`^VIX`, `^TNX`, `UUP`, `SPY`, `TLT`, `QQQ`, `DIA`).
   외부 데이터 없는 시기는 자동 NaN 기권 (UUP는 2007년~).
-- **옵티마이저 3종** (`app/academy/study/`):
+- **옵티마이저 4종** (`app/academy/study/`):
   - `nsga3.py` — **다목적**. 6목적 score_vs_dca (5국면 + turnover). Pareto 라인업.
   - `tpe.py` — **단일목적 Bayesian**. 잔고 합 max. v1 챔피언(TPE-s11)이 여기서 나옴.
   - `cma_es.py` — **단일목적 CMA-ES**. 연속 공간 강함. NSGA 계열 친숙 (사용자 본업).
+  - `gp.py` — **단일목적 GP Bayesian**. v1.x 본탐색에서 가장 빠른 saturation을 보였으나 OOS 음의 상관으로 벤치.
   셋 다 같은 인터페이스 (`run_study(trials, seed, storage, study_name, load_if_exists=False, ...)`).
   채점(`battle.py`)은 `engine/`에 유지 — 탐색(search)과 평가(engine) 분리.
 - **NSGA-III 목적**: [bear=min(닷컴,GFC), rebound, crash_v, bull, chop] score_vs_dca

@@ -1,4 +1,4 @@
-"""GP(Gaussian Process) 단일목적 엔진 — TPE/CMA-ES와 같은 인터페이스.
+﻿"""GP(Gaussian Process) 단일목적 엔진 — TPE/CMA-ES와 같은 인터페이스.
 
 [샘플러 3종 정리]
 - `tpe`    : Tree-structured Parzen Estimator (Bayesian, 시드 안정성·빠른 수렴)
@@ -12,7 +12,6 @@ nsga3에서 재사용. service에서 갈아끼울 수 있게 시그니처는 tpe
 [v1.x] CMA-ES sweep이 ±0.53% 수렴 양호 직전 + 코사인 0.951(multi-modal 가능성 잔존).
 GP는 surrogate 모델로 적은 trial에서 답을 짚어내는 데 강해 비교 의의 있음.
 """
-from __future__ import annotations
 
 from typing import Callable
 

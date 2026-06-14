@@ -1,4 +1,4 @@
-"""단일목적 5시드 분산 — `search.tpe.run_study` 시드별 호출 + 안정성 보고.
+﻿"""단일목적 5시드 분산 — `search.tpe.run_study` 시드별 호출 + 안정성 보고.
 
 엔진(`app/academy/study/tpe.py`)이 탐색·1등 추출까지 책임 — 본 어댑터는 5번 호출,
 시드별 1등 표 작성, 시드 간 폭(%)으로 수렴 판정 + reports/single_obj_sweep.md 저장.
@@ -8,7 +8,6 @@
   ±2.5% 이내 = 수렴 보통
   그 이상     = 들쭉날쭉 (trials 부족 / sampler 노이즈)
 """
-from __future__ import annotations
 
 import sys
 import time
@@ -53,7 +52,7 @@ def _verdict(spread_pct: float) -> str:
 
 def main() -> None:
     print("=== 단일목적 TPE × 5 시드 — 잔고 합 max + 안정성 ===")
-    print(f"시드 {SEEDS} · trials {TRIALS} · sampler TPE · 가중치 6차원\n")
+    print(f"시드 {SEEDS} · trials {TRIALS} · sampler TPE · 가중치 {len(ALL_GENES)}차원\n")
 
     # 데이터는 시드 무관 — 한 번 준비해 5번 재사용 (yfinance/fight_dca 중복 제거)
     loaded_gyms, dca = tpe.prepare_data()

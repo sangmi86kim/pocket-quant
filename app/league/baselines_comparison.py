@@ -1,4 +1,4 @@
-"""챔피언로드 ① OOS 11년 — 챔피언/Top10 vs 기준선 4인방 풀비교 (06-13).
+﻿"""챔피언로드 ① OOS 11년 — 챔피언/Top10 vs 기준선 4인방 풀비교 (06-13).
 
 기준선 3인방 + 성실이를 OOS 시험장에 같이 보내 100만원 시드 잔고 비교:
   - 어플삭제맨: B&H (항상 풀매수, 거래비용 0.1% 한 번)
@@ -9,7 +9,6 @@
 산출: reports/league_v1/champion_road_with_baselines.md (+ .json)
 실행: python tools/baselines_comparison.py
 """
-from __future__ import annotations
 
 import json
 import sys

@@ -1,4 +1,4 @@
-"""sweep_seeds.json에서 잔고 합 상위 10명 챔피언 추출 (06-13).
+﻿"""sweep_seeds.json에서 잔고 합 상위 10명 챔피언 추출 (06-13).
 
 사용자 안: "챔피언 한 놈만 하란 법 있어? 10명 돌려봐" — 라인업으로 본다.
 별도 실행 없이 기존 sweep 결과만 재처리.
@@ -6,7 +6,6 @@
 산출: reports/league_v1/top10_champions.md + .json
 실행: python tools/top10_champions.py
 """
-from __future__ import annotations
 
 import json
 import sys

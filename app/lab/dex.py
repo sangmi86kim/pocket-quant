@@ -4,7 +4,15 @@ dex.py - 포켓퀀트 도감 (각 유전자/시그널의 사람 친화적 설명
 판정·계산엔 안 쓰는 '플레이버' 데이터다. 단, 카드 키는 반드시 실제 시그널
 명단(signals.GENE_SIGNALS)과 일치해야 한다 (모듈 로드 시 assert로 검증).
 """
+import sys
+
 from app.backend.genes.signals import GENE_SIGNALS
+
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8")    # type: ignore[union-attr]
+    except Exception:
+        pass
 
 SIGNAL_CARDS = {
     "DD": {
@@ -61,7 +69,7 @@ SIGNAL_CARDS = {
         "strength": "강한 상승장",
         "weakness": "반전장에서 늦게 얻어맞을 수 있음",
     },
-    # ── 야생 6마리 (v1.x 시즌, 2026-06-13 잡힘) — 외부 정보원 ──
+    # ── 야생 7마리 (v1.x 시즌, 2026-06-13 잡힘) — 외부 정보원 ──
     "VOL_SPIKE": {
         "name": "스파이크몬",
         "type": "역발상 / 자산-내부",
