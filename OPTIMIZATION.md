@@ -138,7 +138,7 @@ Y = [ bear     = min(닷컴, 금융위기) score_vs_dca,   # maximize
 
 ```python
 # ① 시그널 가중치 — 기권 제외 '가중' 평균으로 결합 확장
-w = [trial.suggest_float(f"w_{g}", 0.0, 1.0) for g in ALL_GENES]
+w = [trial.suggest_float(f"w_{g}", 0.0, 1.0) for g in SIGNAL_NAMES]
 # 결합: position = Σ wᵢ·posᵢ / Σ wᵢ   (그날 의견 낸 시그널만, NaN 기권 제외)
 # → 정규화가 결합식 안에 있으므로 Σw=1 제약과 동치 (예산 제약 내장)
 
@@ -241,7 +241,7 @@ gate3_holdout  : 봉인 6년 × 챔피언 잔고 + 국면 라벨     ← app/lea
 | 일반 최적화 파이프라인 | PocketQuant |
 |---|---|
 | 품질 지표 N개 (목적함수) | 국면별 score_vs_dca 5개 + 턴오버 |
-| 파라미터 탐색공간 | 시그널 가중치 len(ALL_GENES) + 파라미터 ~6 (작게 시작) |
+| 파라미터 탐색공간 | 시그널 가중치 len(SIGNAL_NAMES) + 파라미터 ~6 (작게 시작) |
 | 더미 입력으로 루프 검증 → 실계측 교체 | 가짜 점수(v0.1) → yfinance 실계측(v0.3) ✅ 완료 |
 | Pareto front → 운영 세팅 라인업 | front → Defensive/Balanced/Aggressive 라인업 |
 | 학습/검증 분리 | 훈련 체육관 / OOS 리그 본선·부트스트랩·hold-out |

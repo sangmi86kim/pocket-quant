@@ -23,7 +23,7 @@ _ROOT = Path(__file__).resolve().parents[3]
 import numpy as np
 
 from app.pocket.battle import _score_position, terminal_balance
-from app.pocket.signals import ALL_GENES, combine_positions, positions_with_params
+from app.pocket.signals import SIGNAL_NAMES, combine_positions, positions_with_params
 from app.world.data_loader import LoadedGym, get_prices
 from app.league.battle_frontier import (DATA_START, DATA_END, N_WORLDS_ALL,
                                      N_WORLDS_REGIME, REGIME_SPANS, SEED,
@@ -51,10 +51,10 @@ def main() -> None:
 
     # 명단
     top10 = json.loads(TOP10_JSON.read_text(encoding="utf-8"))
-    champion_w = [1.0 if g in ("VOL", "REV_RSI", "REV_BB") else 0.0 for g in ALL_GENES]
+    champion_w = [1.0 if g in ("VOL", "REV_RSI", "REV_BB") else 0.0 for g in SIGNAL_NAMES]
     weight_candidates = [("현챔피언", champion_w)]
     for i, t in enumerate(top10, 1):
-        w = [t["params"][f"w_{g}"] for g in ALL_GENES]
+        w = [t["params"][f"w_{g}"] for g in SIGNAL_NAMES]
         weight_candidates.append((f"TOP{i:02d}", w))
     npcs = npc_graduates()
     all_names = [n for n, _ in weight_candidates] + [g["name"] for g in npcs]

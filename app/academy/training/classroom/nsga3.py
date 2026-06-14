@@ -21,7 +21,7 @@ import optuna
 from app.academy.curriculum import prepare_academy_data
 from app.academy.exam.grade import decode_params
 from app.pocket.battle import _score_position, fight_dca, terminal_balance
-from app.pocket.signals import ALL_GENES, combine_positions, positions_with_params
+from app.pocket.signals import SIGNAL_NAMES, combine_positions, positions_with_params
 from app.world.data_loader import LoadedGym
 
 OBJECTIVE_NAMES = ["mean_balance", "worst_balance", "turnover"]
@@ -37,7 +37,7 @@ def roll_seed() -> int:
 def suggest_candidate(trial: optuna.Trial) -> tuple[list[float], dict]:
     """학교 NSGA-III는 v2 기본처럼 가중치만 탐색한다."""
     params = {f"w_{g}": trial.suggest_float(f"w_{g}", 0.0, 1.0)
-              for g in ALL_GENES}
+              for g in SIGNAL_NAMES}
     return decode_params(params)
 
 
@@ -267,7 +267,7 @@ def run_study(n_trials: int, seed: int | None = None,
     mut_cb = None
     if adaptive_mutation:
         mut_cb = adaptive_mutation_callback(
-            sampler, hv_cb, len(ALL_GENES), population_size, window=3)
+            sampler, hv_cb, len(SIGNAL_NAMES), population_size, window=3)
         callbacks.append(mut_cb)
 
     study.optimize(make_objective(loaded_gyms), n_trials=n_trials,

@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 
 
 # ──────────────────────────────────────────────
-# 유전자 명단은 여기에 없다. 진짜 출처는 signals.py(GENE_SIGNALS / ALL_GENES)다.
+# 유전자 명단은 여기에 없다. 진짜 출처는 signals.py(SIGNAL_REGISTRY / SIGNAL_NAMES)다.
 # 옛날엔 여기 GENE_SCORES 라는 가짜 점수표가 명단을 정의했지만, 실데이터 도입 후
 # '실제 시그널을 가진 유전자'만이 진짜 유전자라서 그 정의를 signals로 옮겼다.
 # ──────────────────────────────────────────────

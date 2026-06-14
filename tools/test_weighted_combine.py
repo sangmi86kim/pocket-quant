@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import numpy as np
 
-from app.pocket.signals import (ALL_GENES, GENE_SIGNALS,
+from app.pocket.signals import (SIGNAL_NAMES, SIGNAL_REGISTRY,
                                        combine_positions, positions_with_params)
 from app.world.data_loader import get_prices
 
@@ -28,7 +28,7 @@ def _same(a, b) -> bool:
 
 def run_check() -> bool:
     prices = get_prices("SPY", "1994-01-01", "2026-06-09")  # 캐시 사용, 오프라인 OK
-    positions = [GENE_SIGNALS[g](prices) for g in ALL_GENES]
+    positions = [SIGNAL_REGISTRY[g](prices) for g in SIGNAL_NAMES]
     failures: list[str] = []
 
     def check(label: str, ok: bool):
@@ -38,10 +38,10 @@ def run_check() -> bool:
 
     print("=== 가중 결합 불변식 ===")
 
-    n = len(ALL_GENES)        # 시그널 풀 크기 — 풀 확장돼도 자동 반영
-    idx_vol = ALL_GENES.index("VOL")
-    idx_rsi = ALL_GENES.index("REV_RSI")
-    idx_bb = ALL_GENES.index("REV_BB")
+    n = len(SIGNAL_NAMES)        # 시그널 풀 크기 — 풀 확장돼도 자동 반영
+    idx_vol = SIGNAL_NAMES.index("VOL")
+    idx_rsi = SIGNAL_NAMES.index("REV_RSI")
+    idx_bb = SIGNAL_NAMES.index("REV_BB")
 
     # ① 동일 가중치 == 기존 동일가중 평균 (골든 경로 보호)
     check(f"동등성: weights=[1]*{n} == weights=None",
@@ -69,7 +69,7 @@ def run_check() -> bool:
     check("기권 보존: 전원 기권일은 0.0",
           bool((rev_only[rev_union_abstain] == 0.0).all()))
 
-    # ⑤ 파라미터 주입 기본값 경로 == GENE_SIGNALS 경로
+    # ⑤ 파라미터 주입 기본값 경로 == SIGNAL_REGISTRY 경로
     check("파라미터 주입: params=None == 기본 시그널",
           all(_same(a, b) for a, b in
               zip(positions_with_params(prices), positions)))

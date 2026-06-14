@@ -7,7 +7,7 @@ test_baselines.py - 적합도 퇴화 검증 ("아무것도 안 하기"가 최적
 거의 모든 진짜 전략을 이겼다. 적합도 재설계 후 이 퇴화가 사라졌는지 잰다.
 
 [방법]
-1) 기준선 2마리를 임시 유전자로 등록 (GA 풀 ALL_GENES에는 안 넣음)
+1) 기준선 2마리를 임시 유전자로 등록 (GA 풀 SIGNAL_NAMES에는 안 넣음)
      CASH = 항상 포지션 0 (전부 현금)
      FULL = 항상 포지션 1 (항상 풀매수)
 2) 진짜 유전자 6개의 모든 조합(63개) + 기준선 2개 = 65마리를 전 체육관에 도전
@@ -31,14 +31,14 @@ from app.academy.exam import all_gyms
 from app.pocket import signals
 from app.pocket.battle import challenge
 from app.pocket.models import Strategy
-from app.pocket.signals import ALL_GENES
+from app.pocket.signals import SIGNAL_NAMES
 from app.world.data_loader import load_gyms
 
 
 def _register_baselines() -> None:
-    """기준선 유전자를 시그널 레지스트리에만 등록한다 (ALL_GENES는 건드리지 않음 = GA 무관)."""
-    signals.GENE_SIGNALS["CASH"] = lambda p: pd.Series(0.0, index=p.index)
-    signals.GENE_SIGNALS["FULL"] = lambda p: pd.Series(1.0, index=p.index)
+    """기준선 유전자를 시그널 레지스트리에만 등록한다 (SIGNAL_NAMES는 건드리지 않음 = GA 무관)."""
+    signals.SIGNAL_REGISTRY["CASH"] = lambda p: pd.Series(0.0, index=p.index)
+    signals.SIGNAL_REGISTRY["FULL"] = lambda p: pd.Series(1.0, index=p.index)
 
 
 def run_check() -> bool:
@@ -48,8 +48,8 @@ def run_check() -> bool:
     # 진짜 유전자 전 조합(63) + 기준선 2
     entries: list[Strategy] = [
         Strategy(genes=list(combo), name="+".join(combo))
-        for size in range(1, len(ALL_GENES) + 1)
-        for combo in combinations(ALL_GENES, size)
+        for size in range(1, len(SIGNAL_NAMES) + 1)
+        for combo in combinations(SIGNAL_NAMES, size)
     ]
     cash = Strategy(genes=["CASH"], name="[기준선] 전부 현금")
     full = Strategy(genes=["FULL"], name="[기준선] 항상 풀매수")

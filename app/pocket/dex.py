@@ -2,11 +2,11 @@
 dex.py - 포켓퀀트 도감 (각 유전자/시그널의 사람 친화적 설명 카드)
 
 판정·계산엔 안 쓰는 '플레이버' 데이터다. 단, 카드 키는 반드시 실제 시그널
-명단(signals.GENE_SIGNALS)과 일치해야 한다 (모듈 로드 시 assert로 검증).
+명단(signals.SIGNAL_REGISTRY)과 일치해야 한다 (모듈 로드 시 assert로 검증).
 """
 import sys
 
-from app.pocket.signals import GENE_SIGNALS
+from app.pocket.signals import SIGNAL_REGISTRY
 
 for _stream in (sys.stdout, sys.stderr):
     try:
@@ -136,8 +136,8 @@ SIGNAL_CARDS = {
 }
 
 # 도감과 실제 시그널 명단이 어긋나면 즉시 알려준다(유전자 추가/삭제 시 깜빡 방지).
-assert set(SIGNAL_CARDS) == set(GENE_SIGNALS), \
-    f"도감/시그널 불일치: {set(SIGNAL_CARDS) ^ set(GENE_SIGNALS)}"
+assert set(SIGNAL_CARDS) == set(SIGNAL_REGISTRY), \
+    f"도감/시그널 불일치: {set(SIGNAL_CARDS) ^ set(SIGNAL_REGISTRY)}"
 
 
 # ──────────────────────────────────────────────
@@ -224,7 +224,7 @@ def print_pokedex() -> None:
     print("=== PocketQuant 도감 ===\n")
 
     print(f"─── 포켓퀀트 {len(SIGNAL_CARDS)}마리 (시그널) ───\n")
-    for gene in GENE_SIGNALS:        # source of truth — assert가 SIGNAL_CARDS와 일치 보장
+    for gene in SIGNAL_REGISTRY:        # source of truth — assert가 SIGNAL_CARDS와 일치 보장
         c = SIGNAL_CARDS[gene]
         print(f"[{gene:<3}] {c['name']}   ({c['type']} · {c['role']})")
         print(f"      성격: {c['personality']}")

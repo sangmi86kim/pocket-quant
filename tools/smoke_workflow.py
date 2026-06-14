@@ -31,9 +31,9 @@ for _stream in (sys.stdout, sys.stderr):
 from app.academy.curriculum import prepare_academy_split
 from app.academy.exam import all_gyms
 from app.academy.exam.grade import decode_params, evaluate_balances
-from app.academy.training import cma_es, gp, nsga3, tpe
+from app.academy.training.classroom import nsga3, gp, cma_es, tpe
 from app.pocket.battle import fight_dca
-from app.pocket.signals import ALL_GENES
+from app.pocket.signals import SIGNAL_NAMES
 from app.world.data_loader import load_gyms
 
 SEED = 42
@@ -76,7 +76,7 @@ def _run_optional_single_obj(label: str, engine, loaded_gyms: list, dca: dict,
 
 def _format_main_weights(weights: list[float]) -> str:
     total = sum(weights) or 1.0
-    pairs = [(g, w / total * 100) for g, w in zip(ALL_GENES, weights)]
+    pairs = [(g, w / total * 100) for g, w in zip(SIGNAL_NAMES, weights)]
     pairs = [(g, p) for g, p in pairs if p >= 10.0]
     pairs.sort(key=lambda x: x[1], reverse=True)
     return " · ".join(f"{g} {p:.0f}%" for g, p in pairs) or "분산"

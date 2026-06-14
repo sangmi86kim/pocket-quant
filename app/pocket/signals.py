@@ -259,7 +259,7 @@ def signal_QQQ_DIA(prices: pd.Series,
 # [2026-06-10 재배치] 구 RSI(과열)·BB(상단)는 죽은 시그널이라 제외하고
 # 역발상 이벤트형 REV_RSI(과매도 매수)·REV_BB(하단 매수)로 교체. 3타입 × 2마리.
 # [2026-06-13 v1.x] 야생 7마리 추가 — 외부 정보원으로 자산-횡단 알파 후보.
-GENE_SIGNALS = {
+SIGNAL_REGISTRY = {
     # 옛 6마리 (가격 기반)
     "DD": signal_DD,                # 💧 위험회피
     "VOL": signal_VOL,              # 💧 위험회피
@@ -278,7 +278,7 @@ GENE_SIGNALS = {
 }
 
 # 사용 가능한 모든 유전자 이름 (v1.x: 13마리).
-ALL_GENES = list(GENE_SIGNALS.keys())
+SIGNAL_NAMES = list(SIGNAL_REGISTRY.keys())
 
 # 참고: 유전자 설명 카드(포켓퀀트 도감)는 dex.py(SIGNAL_CARDS)에 있다.
 
@@ -323,9 +323,9 @@ def combine_positions(positions: list[pd.Series],
 # NSGA-III가 탐색하는 시그널 파라미터의 기본값/탐색범위 정의는 nsga3.py에 있다.
 # 여기서는 "파라미터를 주입해 포지션 목록을 만드는" 입구만 제공한다.
 def positions_with_params(prices: pd.Series, params: dict | None = None) -> list[pd.Series]:
-    """ALL_GENES 순서대로, 파라미터를 주입한 포지션 목록을 만든다.
+    """SIGNAL_NAMES 순서대로, 파라미터를 주입한 포지션 목록을 만든다.
     params에 없는 키는 모듈 기본값을 쓴다 (params=None이면 전부 기본값 =
-    GENE_SIGNALS 경로와 동일)."""
+    SIGNAL_REGISTRY 경로와 동일)."""
     p = params or {}
     return [
         signal_DD(prices, limit=p.get("DD_LIMIT", DD_LIMIT)),
@@ -350,4 +350,4 @@ def combined_position(genes: list[str], prices: pd.Series) -> pd.Series:
     """전략의 유전자들이 만드는 포지션을 합쳐 최종 일별 포지션(0~1)을 만든다."""
     if not genes:                                  # 유전자 없으면 풀매수로 간주
         return pd.Series(1.0, index=prices.index)
-    return combine_positions([GENE_SIGNALS[g](prices) for g in genes])
+    return combine_positions([SIGNAL_REGISTRY[g](prices) for g in genes])

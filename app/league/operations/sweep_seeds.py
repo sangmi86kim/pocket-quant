@@ -26,8 +26,7 @@ for s in (sys.stdout, sys.stderr):
 import optuna
 
 from app.academy.exam.grade import decode_params, evaluate_balances
-from app.academy.training import nsga3
-from app.pocket.battle import terminal_balance
+from app.academy.training.classroom import nsga3
 
 SEEDS = [42, 7, 11, 19, 23]
 TRIALS = 2000

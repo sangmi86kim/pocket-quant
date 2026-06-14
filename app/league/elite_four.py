@@ -37,7 +37,7 @@ from app.pocket.models import Gym
 from app.pocket import battle
 from app.pocket.battle import (_dca_position, _score_position, fight_dca,
                                        score_vs_dca, terminal_balance)
-from app.pocket.signals import ALL_GENES, combine_positions, positions_with_params
+from app.pocket.signals import SIGNAL_NAMES, combine_positions, positions_with_params
 from app.world.data_loader import LoadedGym, WARMUP_DAYS, get_prices
 from app.world.regime import REGIME_LABELS, dominant_regime
 from app.league.operations.regime_picks import update_regime_picks as _update_regime_picks
@@ -50,7 +50,7 @@ TICKER = "QQQ"
 SEED_KRW = 1_000_000   # 표시·판정용 시드 (06-13 — 매년 100만원)
 
 # 도전자: 관문 ①·② 통과자 (고정 — 여기서 다른 후보를 끼워넣지 않는다)
-CHAMPION_WEIGHTS = [1.0 if g in ("VOL", "REV_RSI", "REV_BB") else 0.0 for g in ALL_GENES]
+CHAMPION_WEIGHTS = [1.0 if g in ("VOL", "REV_RSI", "REV_BB") else 0.0 for g in SIGNAL_NAMES]
 
 # 연 단위 라운드 (마지막은 데이터 끝까지)
 ROUNDS = [

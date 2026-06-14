@@ -8,7 +8,7 @@
 
 [load_graduates_from_study]
 NSGA-III sqlite 스터디 직접 로드 + summarize_front로 졸업생 명단 만드는 함수는
-원래 victory_road.py에 있었으나 학교(`academy.training.nsga3`) 후처리를 시즌 코어가
+원래 victory_road.py에 있었으나 학교(`academy.training.classroom.nsga3`) 후처리를 시즌 코어가
 부르는 의존 정리를 위해 시즌 어댑터로 이주(2026-06-14). battle_frontier.py도 이 경로를
 사용한다.
 
@@ -29,10 +29,10 @@ for _s in (sys.stdout, sys.stderr):
 import optuna
 
 from app.academy.exam.grade import decode_params
-from app.academy.training import nsga3
+from app.academy.training.classroom import nsga3
 from app.league.operations.npcs import npc_graduates
 from app.league.victory_road import run_gate1
-from app.pocket.signals import ALL_GENES
+from app.pocket.signals import SIGNAL_NAMES
 
 TOP10_JSON = _ROOT / "reports" / "league_v1" / "top10_champions.json"
 
@@ -67,7 +67,7 @@ def load_graduates_from_study() -> list[dict]:
 
     graduates: list[dict] = [{
         "name": "현챔피언(동일가중)", "label": "기준",
-        "weights": [1.0 if g in ("VOL", "REV_RSI", "REV_BB") else 0.0 for g in ALL_GENES],
+        "weights": [1.0 if g in ("VOL", "REV_RSI", "REV_BB") else 0.0 for g in SIGNAL_NAMES],
         "params": {}, "academy": None, "specialist": False,
     }]
     for r in sorted(summary["passed"],
@@ -110,11 +110,11 @@ def main() -> None:
     graduates: list[dict] = [{
         "name": "현챔피언", "label": "기준(동일가중)",
         "weights": [1.0 if g in ("VOL", "REV_RSI", "REV_BB") else 0.0
-                     for g in ALL_GENES],
+                     for g in SIGNAL_NAMES],
         "params": {}, "academy": None, "specialist": False,
     }]
     for i, t in enumerate(top10, 1):
-        weights = [t["params"][f"w_{g}"] for g in ALL_GENES]
+        weights = [t["params"][f"w_{g}"] for g in SIGNAL_NAMES]
         graduates.append({
             "name": f"TOP{i:02d}",
             "label": f"#{t['trial_number']}(s{t['seed']})",

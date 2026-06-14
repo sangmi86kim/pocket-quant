@@ -23,14 +23,14 @@ from app.academy.exam import all_gyms
 from app.pocket import signals
 from app.pocket.battle import challenge, fight_dca, fight_savings, score_vs_dca
 from app.pocket.models import Strategy
-from app.pocket.signals import ALL_GENES
+from app.pocket.signals import SIGNAL_NAMES
 from app.world.data_loader import load_gyms
 
 
 def main() -> None:
-    # 기준선 유전자 등록 (test_baselines.py와 동일 패턴 — ALL_GENES엔 안 넣음)
-    signals.GENE_SIGNALS["CASH"] = lambda p: pd.Series(0.0, index=p.index)
-    signals.GENE_SIGNALS["FULL"] = lambda p: pd.Series(1.0, index=p.index)
+    # 기준선 유전자 등록 (test_baselines.py와 동일 패턴 — SIGNAL_NAMES엔 안 넣음)
+    signals.SIGNAL_REGISTRY["CASH"] = lambda p: pd.Series(0.0, index=p.index)
+    signals.SIGNAL_REGISTRY["FULL"] = lambda p: pd.Series(1.0, index=p.index)
 
     loaded = load_gyms(all_gyms())
     dca = {lg.gym.name: fight_dca(lg) for lg in loaded}
@@ -51,8 +51,8 @@ def main() -> None:
 
     # ── 2. 전수조사: score_vs_dca 줄세우기 ──
     entries = [Strategy(genes=list(c), name="+".join(c))
-               for k in range(1, len(ALL_GENES) + 1)
-               for c in combinations(ALL_GENES, k)]
+               for k in range(1, len(SIGNAL_NAMES) + 1)
+               for c in combinations(SIGNAL_NAMES, k)]
     entries += [Strategy(genes=["CASH"], name="[기준선] 전부 현금"),
                 Strategy(genes=["FULL"], name="[기준선] 항상 풀매수")]
 

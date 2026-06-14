@@ -22,7 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import numpy as np
 
-from app.pocket.signals import ALL_GENES, GENE_SIGNALS, combined_position
+from app.pocket.signals import SIGNAL_NAMES, SIGNAL_REGISTRY, combined_position
 from app.world.data_loader import get_prices
 
 # 잘라낼 날짜들 — 위기 한복판(리먼) / 코로나 V자 바닥 부근 / 평범한 평시
@@ -48,16 +48,16 @@ def run_check() -> bool:
         print(f"[자르는 날짜 {cut}] (과거 {len(past)}일)")
 
         # 유전자 하나씩
-        for gene in ALL_GENES:
-            ok = _same_until(GENE_SIGNALS[gene](prices), GENE_SIGNALS[gene](past))
+        for gene in SIGNAL_NAMES:
+            ok = _same_until(SIGNAL_REGISTRY[gene](prices), SIGNAL_REGISTRY[gene](past))
             print(f"  [{'PASS' if ok else 'FAIL'}] {gene}")
             if not ok:
                 failures.append(f"{gene}@{cut}")
 
         # 전 유전자 결합 (기권 제외 평균까지 통째로)
-        ok = _same_until(combined_position(ALL_GENES, prices),
-                         combined_position(ALL_GENES, past))
-        print(f"  [{'PASS' if ok else 'FAIL'}] 결합({'+'.join(ALL_GENES)})\n")
+        ok = _same_until(combined_position(SIGNAL_NAMES, prices),
+                         combined_position(SIGNAL_NAMES, past))
+        print(f"  [{'PASS' if ok else 'FAIL'}] 결합({'+'.join(SIGNAL_NAMES)})\n")
         if not ok:
             failures.append(f"combined@{cut}")
 

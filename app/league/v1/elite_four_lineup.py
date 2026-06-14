@@ -19,7 +19,7 @@ from pathlib import Path
 _ROOT = Path(__file__).resolve().parents[3]
 
 from app.pocket.battle import _score_position, terminal_balance
-from app.pocket.signals import ALL_GENES, combine_positions, positions_with_params
+from app.pocket.signals import SIGNAL_NAMES, combine_positions, positions_with_params
 from app.world.data_loader import LoadedGym, get_prices
 from app.world.regime import REGIME_LABELS, dominant_regime
 from app.league.elite_four import DATA_END, HOLDOUT_START, ROUNDS, TICKER, _loaded_window
@@ -41,10 +41,10 @@ def main() -> None:
               for name, start, end in ROUNDS]
 
     top10 = json.loads(TOP10_JSON.read_text(encoding="utf-8"))
-    champion_w = [1.0 if g in ("VOL", "REV_RSI", "REV_BB") else 0.0 for g in ALL_GENES]
+    champion_w = [1.0 if g in ("VOL", "REV_RSI", "REV_BB") else 0.0 for g in SIGNAL_NAMES]
     strategies = [("현챔피언", champion_w)]
     for i, t in enumerate(top10, 1):
-        w = [t["params"][f"w_{g}"] for g in ALL_GENES]
+        w = [t["params"][f"w_{g}"] for g in SIGNAL_NAMES]
         strategies.append((f"TOP{i:02d}", w))
     npcs = npc_graduates()
 

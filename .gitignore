@@ -22,3 +22,5 @@ Thumbs.db
 
 # Optuna storage (NSGA-III training DB)
 *.db
+app/academy/training/results/
+app/academy/exam/results/

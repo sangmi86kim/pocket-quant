@@ -18,11 +18,11 @@ from typing import Callable
 
 import optuna
 
-from app.academy.exam import all_gyms
+from app.academy.curriculum import prepare_academy_data
 from app.academy.exam.grade import decode_params, evaluate_balances
 from app.pocket.battle import fight_dca
-from app.pocket.signals import ALL_GENES
-from app.world.data_loader import LoadedGym, load_gyms
+from app.pocket.signals import SIGNAL_NAMES
+from app.world.data_loader import LoadedGym
 
 # 100만원 시드 — sweep_seeds·hall_of_fame과 동일 단위(만원 환산은 표시 층에서).
 SEED_KRW = 1_000_000
@@ -63,16 +63,17 @@ class PlateauStopCallback:
 
 def _objective(trial: optuna.Trial, loaded_gyms: list[LoadedGym], dca: dict) -> float:
     """시그널 가중치 제시 → 6체육관 잔고 합. sampler 무관(공정 비교)."""
-    for g in ALL_GENES:
+    for g in SIGNAL_NAMES:
         trial.suggest_float(f"w_{g}", 0.0, 1.0)
     weights, sig_params = decode_params(trial.params)
     bals = evaluate_balances(weights, sig_params, loaded_gyms, dca, seed_krw=SEED_KRW)
     return sum(b["strat"] for b in bals.values())
 
 
-def prepare_data() -> tuple[list[LoadedGym], dict]:
+def prepare_data(n_gyms: int = 20, seed: int | None = None
+                 ) -> tuple[list[LoadedGym], dict]:
     """체육관 가격 로딩 + 성실이(DCA) 기준선 — 시드 sweep 등에서 한 번만 만들고 재사용."""
-    loaded_gyms = load_gyms(all_gyms())
+    loaded_gyms = prepare_academy_data(n_gyms=n_gyms, seed=seed)[0]
     dca = {lg.gym.name: fight_dca(lg) for lg in loaded_gyms}
     return loaded_gyms, dca
 

@@ -29,7 +29,7 @@ from app.academy.curriculum.textbook import DATA_END, make_world
 from app.academy.exam.grade import evaluate_balances
 from app.academy.training._single_obj import _objective
 from app.pocket.signals import (
-    ALL_GENES,
+    SIGNAL_NAMES,
     _fetch_external,
     signal_QQQ_DIA,
     signal_QQQ_SPY,
@@ -118,13 +118,13 @@ def run_check() -> bool:
         split_seed_guard = True
     check("train/validation seed 충돌은 즉시 차단",
           split_seed_guard)
-    equal_weights = [1.0] * len(ALL_GENES)
+    equal_weights = [1.0] * len(SIGNAL_NAMES)
     train_bals = evaluate_balances(equal_weights, {}, train_gyms, train_dca)
     val_bals = evaluate_balances(equal_weights, {}, val_gyms, val_dca)
     check("raw balance sum 계측은 train/validation 모두 가능",
           sum(b["strat"] for b in train_bals.values()) > 0
           and sum(b["strat"] for b in val_bals.values()) > 0)
-    fixed_params = {f"w_{g}": 1.0 for g in ALL_GENES}
+    fixed_params = {f"w_{g}": 1.0 for g in SIGNAL_NAMES}
     trial = optuna.trial.FixedTrial(fixed_params)
     expected = sum(b["strat"] for b in train_bals.values())
     check("단일목적 objective는 raw balance sum 유지",
