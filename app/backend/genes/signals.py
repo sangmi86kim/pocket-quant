@@ -142,12 +142,16 @@ def _is_synthetic(prices: pd.Series) -> bool:
 
 def _fetch_external(ticker: str, prices: pd.Series) -> pd.Series:
     """외부 시계열을 prices 인덱스에 정렬해 받아오는 헬퍼.
+    합성 세계는 prices.attrs["external_streams"]를 우선 사용한다.
     캐시 hit이면 yfinance 호출 없이 즉시. forward-fill로 holiday 차이 흡수.
     데이터가 요청 기간을 cover 못 하면 (예: UUP는 2007년~) NaN 시리즈 반환 →
     시그널은 자연스러운 기권 처리(이벤트형 패턴과 일관)."""
-    from app.backend.data_io.data import get_prices    # 지연 import (순환 회피)
+    streams = getattr(prices, "attrs", {}).get("external_streams") or {}
+    if ticker in streams:
+        return streams[ticker].reindex(prices.index)
     if _is_synthetic(prices):
         return pd.Series(np.nan, index=prices.index)
+    from app.backend.data_io.data import get_prices    # 지연 import (순환 회피)
     start = prices.index[0].strftime("%Y-%m-%d")
     end = prices.index[-1].strftime("%Y-%m-%d")
     try:
@@ -160,13 +164,17 @@ def _fetch_external(ticker: str, prices: pd.Series) -> pd.Series:
 def signal_VOL_SPIKE(prices: pd.Series,
                      threshold: float = VOL_SPIKE_THRESHOLD) -> pd.Series:
     """거래량 폭증 + 가격 음봉 = 패닉 매도 → 역발상 매수 의견. 평소 기권."""
-    if _is_synthetic(prices):
+    streams = getattr(prices, "attrs", {}).get("external_streams") or {}
+    if "QQQ_volume" in streams:
+        vol = streams["QQQ_volume"].reindex(prices.index)
+    elif _is_synthetic(prices):
         return pd.Series(np.nan, index=prices.index)
-    from app.backend.data_io.data import get_volume
-    ticker = prices.name or "QQQ"
-    start = prices.index[0].strftime("%Y-%m-%d")
-    end = prices.index[-1].strftime("%Y-%m-%d")
-    vol = get_volume(str(ticker), start, end).reindex(prices.index, method="ffill")
+    else:
+        from app.backend.data_io.data import get_volume
+        ticker = prices.name or "QQQ"
+        start = prices.index[0].strftime("%Y-%m-%d")
+        end = prices.index[-1].strftime("%Y-%m-%d")
+        vol = get_volume(str(ticker), start, end).reindex(prices.index, method="ffill")
     avg = vol.rolling(20, min_periods=10).mean()
     spike = vol / avg
     down = prices.pct_change() < 0

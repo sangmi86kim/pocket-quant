@@ -4,5 +4,5 @@
 - app/lab/   : 오박사 LLM 어댑터 + labnotes 작성. LM Studio 부재 시 조용히 부재 처리.
 - app/league/: 리그 워크플로우(NSGA-III + 챔피언로드 + 라인업 + 분석)
 - app/       : 모드 디스패처(service.py) + backend
-- tools/     : validator + 진단 (test_*, check_*, walk_forward)
+- tools/     : validator + 진단 + 스모크 (test_*, check_*, smoke_*)
 """

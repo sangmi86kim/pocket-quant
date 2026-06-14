@@ -93,7 +93,7 @@ pocket_quant/
 ├─ tools/                     # validator + 진단 (코드/로직 검증만 — 워크플로우 X)
 │  ├─ test_baselines.py · test_engine_regression.py · test_no_lookahead.py
 │  ├─ test_weighted_combine.py · check_signals.py · check_dca.py
-│  └─ walk_forward.py         # 선발 과정 OOS (자산/기간/비용 민감도)
+│  └─ test_academy_world_factory.py · smoke_workflow.py  # 아카데미 계약 검증 + 짧은 워크플로우 스모크
 ├─ worklog/                   # (gitignore) 실험 노트 — 개인 맥락은 여기만
 ├─ labnotes/                  # 오박사 연구 일지 (커밋 가능 — 개인 맥락 금지)
 └─ reports/                   # 리그 영구 기록 — hall_of_fame.md (시즌 인덱스) + hall_of_fame_<버전>.md 시즌별 파일, regime_picks.json
@@ -144,8 +144,9 @@ pocket_quant/
 | test_weighted_combine.py | 가중 결합 불변식 5종 | 게이트 (결합 변경 시) |
 | check_signals.py | 노출/발동률/상관 — 새 시그널의 '새 정보' 검사 | 진단 |
 | check_dca.py | 성실이 기준선 + score_vs_dca 전수조사 | 진단 |
-| walk_forward.py | 선발 과정 OOS (legacy 클램프 스탯 GA 기반 — 새 풀에선 별도 사용) | 참고 |
-| e2e.py | 전 파이프라인 스모크 (게이트 4 + 진단 2 + NSGA-III). walk_forward 제외 | 큰 변경 후 |
+| test_academy_world_factory.py | 아카데미 합성세계 계약 — 외부 스트림 동기화·NaN 보존·hold-out 경계·split 검증 | 게이트 (아카데미 변경 시) |
+| smoke_workflow.py | 짧은 워크플로우 스모크 — 아카데미 → 체육관 → 리그 trial 소량 실행 | 큰 변경 후 |
+| e2e.py | 전 파이프라인 스모크 (compileall + 게이트 + 진단 + NSGA-III) | 큰 변경 후 |
 
 ## 리그 (app/league/) — `python app/league/<파일>.py`
 

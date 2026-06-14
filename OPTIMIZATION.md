@@ -221,7 +221,7 @@ gate3_holdout  : 봉인 6년 × 챔피언 잔고 + 국면 라벨     ← app/lea
 ### 4-6. 검증 프로토콜 (학습 = 실데이터, 검증 = 3단)
 
 ```
-① QQQ 워크 포워드   : 과거 선발 → 다음 1년 OOS (tools/walk_forward.py, 심판 — 결과 보고 목적함수 고치지 않기)
+① OOS 리그 본선    : 졸업생을 연도별 실데이터에 재출전 (app/league/victory_road.py)
 ② 합성 스트레스     : 블록 부트스트랩 ~100세계 생존률 (훈련 목적 아님, Pareto 후 필터)
 ③ 봉인 hold-out     : post-COVID(2020-07~), NSGA-III 최종판정 때 딱 1회
 ```
@@ -244,7 +244,7 @@ gate3_holdout  : 봉인 6년 × 챔피언 잔고 + 국면 라벨     ← app/lea
 | 파라미터 탐색공간 | 시그널 가중치 len(ALL_GENES) + 파라미터 ~6 (작게 시작) |
 | 더미 입력으로 루프 검증 → 실계측 교체 | 가짜 점수(v0.1) → yfinance 실계측(v0.3) ✅ 완료 |
 | Pareto front → 운영 세팅 라인업 | front → Defensive/Balanced/Aggressive 라인업 |
-| 학습/검증 분리 | 훈련 체육관 / 워크포워드·부트스트랩·hold-out |
+| 학습/검증 분리 | 훈련 체육관 / OOS 리그 본선·부트스트랩·hold-out |
 | 콜백 훅 | `on_generation` / Optuna callbacks |
 
 구조는 같고 도메인만 다르다 — **"목적함수의 빈틈을 옵티마이저가 먼저 찾는다"**는
@@ -258,8 +258,8 @@ gate3_holdout  : 봉인 6년 × 챔피언 잔고 + 국면 라벨     ← app/lea
 이기려는 대상 : 사용자의 실제 DCA 머신 (무비용 매일 적립)
 목적          : 국면별 DCA 개선을 동시에 (Pareto), 턴오버는 최소로
 수단          : Optuna NSGA-III — 시그널 가중치 공간, 시그널 파라미터 동결 (v1 과적합 회피)
-검증          : 워크포워드 → 합성 스트레스 → 봉인 hold-out (이 순서, 역류 금지)
-자동화        : tools/e2e.py 한 번 = compileall + 게이트 4 + 진단 2 + walk_forward + nsga3 smoke (≤10s)
+검증          : OOS 리그 본선 → 합성 스트레스 → 봉인 hold-out (이 순서, 역류 금지)
+자동화        : tools/e2e.py 한 번 = compileall + 게이트 + 진단 + nsga3 smoke
 ```
 
 ---
