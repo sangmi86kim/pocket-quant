@@ -19,9 +19,8 @@ from typing import Callable
 import optuna
 
 from app.academy.curriculum import prepare_academy_data
-from app.academy.exam.grade import decode_params, evaluate_balances
-from app.pocket.battle import fight_dca
-from app.pocket.signals import SIGNAL_NAMES
+from app.academy.exam.grade import evaluate_balances
+from app.academy.training.candidate import decode_params, suggest_weights
 from app.world.data_loader import LoadedGym
 
 # 100만원 시드 — sweep_seeds·hall_of_fame과 동일 단위(만원 환산은 표시 층에서).
@@ -62,20 +61,19 @@ class PlateauStopCallback:
 
 
 def _objective(trial: optuna.Trial, loaded_gyms: list[LoadedGym], dca: dict) -> float:
-    """시그널 가중치 제시 → 6체육관 잔고 합. sampler 무관(공정 비교)."""
-    for g in SIGNAL_NAMES:
-        trial.suggest_float(f"w_{g}", 0.0, 1.0)
-    weights, sig_params = decode_params(trial.params)
+    """시그널 가중치 제시 → 체육관 잔고 합. sampler 무관(공정 비교)."""
+    weights, sig_params = suggest_weights(trial)
     bals = evaluate_balances(weights, sig_params, loaded_gyms, dca, seed_krw=SEED_KRW)
     return sum(b["strat"] for b in bals.values())
 
 
 def prepare_data(n_gyms: int = 20, seed: int | None = None
                  ) -> tuple[list[LoadedGym], dict]:
-    """체육관 가격 로딩 + 성실이(DCA) 기준선 — 시드 sweep 등에서 한 번만 만들고 재사용."""
-    loaded_gyms = prepare_academy_data(n_gyms=n_gyms, seed=seed)[0]
-    dca = {lg.gym.name: fight_dca(lg) for lg in loaded_gyms}
-    return loaded_gyms, dca
+    """학교 합성장 + 성실이(DCA) 기준선 — 엔진 공용 인터페이스 이름.
+
+    실제 (gyms, dca) 생성은 curriculum.prepare_academy_data 한 곳에 있다 — 여기선
+    sweep 어댑터가 tpe/cma_es/gp/nsga3를 갈아끼울 수 있도록 같은 이름만 유지한다."""
+    return prepare_academy_data(n_gyms=n_gyms, seed=seed)
 
 
 def run_single_obj_study(

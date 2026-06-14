@@ -30,7 +30,8 @@ for _stream in (sys.stdout, sys.stderr):
 
 from app.academy.curriculum import prepare_academy_split
 from app.academy.exam import all_gyms
-from app.academy.exam.grade import decode_params, evaluate_balances
+from app.academy.exam.grade import evaluate_balances
+from app.academy.training.candidate import decode_params
 from app.academy.training.classroom import nsga3, gp, cma_es, tpe
 from app.pocket.battle import fight_dca
 from app.pocket.signals import SIGNAL_NAMES

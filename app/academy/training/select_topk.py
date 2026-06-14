@@ -2,7 +2,7 @@
 import json
 from pathlib import Path
 
-from app.academy.exam.grade import decode_params
+from app.academy.training.candidate import decode_params
 from app.pocket.signals import SIGNAL_NAMES
 
 

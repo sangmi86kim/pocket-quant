@@ -30,7 +30,7 @@ victory_road.py - 챔피언로드: 리그 졸업생의 검증 관문 (사천왕 
 [관문 ② 배틀 프론티어] 평행세계 운빨 검사 — app.league.battle_frontier
 [관문 ③ 사천왕] post-COVID hold-out — 봉인. 최후의 1회만.
 
-실행: 시즌 어댑터로 진입 (예: python -m app.league.v1.champion_road_lineup)
+실행: 단독 실행 불가 — 시즌 어댑터가 graduates를 준비해 본 코어를 호출한다.
 """
 import sys
 
@@ -234,9 +234,7 @@ def run_gate1(graduates: list) -> bool:
 
 if __name__ == "__main__":
     # 단독 실행 금지 — graduates는 시즌 어댑터가 준비한다.
-    # v1 시즌:   python app/league/v1/champion_road_lineup.py
-    # v1.x 시즌: python app/league/v1x/champion_road_lineup.py
     raise SystemExit(
         "[victory_road] 본 코어는 graduates 인자가 필요합니다. "
-        "시즌 어댑터로 진입하세요 (예: app/league/v1/champion_road_lineup.py)."
+        "시즌 어댑터로 진입하세요."
     )

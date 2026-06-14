@@ -320,8 +320,8 @@ def combine_positions(positions: list[pd.Series],
     return combined.fillna(0.0).clip(0.0, 1.0)
 
 
-# NSGA-III가 탐색하는 시그널 파라미터의 기본값/탐색범위 정의는 nsga3.py에 있다.
-# 여기서는 "파라미터를 주입해 포지션 목록을 만드는" 입구만 제공한다.
+# 시그널 파라미터 기본값은 SIGNAL_REGISTRY(이 파일)에 있다. 학교 NSGA-III는
+# 가중치만 탐색하므로, 여기서는 "파라미터를 주입해 포지션 목록을 만드는" 입구만 제공한다.
 def positions_with_params(prices: pd.Series, params: dict | None = None) -> list[pd.Series]:
     """SIGNAL_NAMES 순서대로, 파라미터를 주입한 포지션 목록을 만든다.
     params에 없는 키는 모듈 기본값을 쓴다 (params=None이면 전부 기본값 =

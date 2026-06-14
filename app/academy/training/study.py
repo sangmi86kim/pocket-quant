@@ -6,7 +6,6 @@ from pathlib import Path
 
 from app.academy.curriculum import prepare_academy_data
 from app.academy.training.classroom import nsga3, gp, cma_es, tpe
-from app.pocket.battle import fight_dca
 
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -29,9 +28,8 @@ def roll_seed() -> int:
 
 def prepare_school_data(n_gyms: int = NSGA_GYMS,
                         seed: int | None = None):
-    loaded_gyms = prepare_academy_data(n_gyms=n_gyms, seed=seed)[0]
-    dca = {lg.gym.name: fight_dca(lg) for lg in loaded_gyms}
-    return loaded_gyms, dca
+    """한 학기 합성장 + 성실이 기준선. (gyms, dca) 생성은 curriculum에 위임."""
+    return prepare_academy_data(n_gyms=n_gyms, seed=seed)
 
 
 def single_trials(study) -> list[dict]:
