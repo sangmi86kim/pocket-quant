@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1068" height="590" viewBox="0 0 1068 590">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="88" y="32" font-size="22" font-weight="700" fill="#1f2933">평행세계 200세계 평균 boxplot</text>
+<text x="88" y="56" font-size="13" fill="#52606d">unit: 만원(10,000 KRW), whisker=min/max, box=p25/p75, line=median</text>
+<line x1="88" y1="506.0" x2="1032" y2="506.0" stroke="#eef2f7" stroke-width="1"/>
+<text x="76" y="510.0" text-anchor="end" font-size="12" fill="#52606d">98</text>
+<line x1="88" y1="420.0" x2="1032" y2="420.0" stroke="#eef2f7" stroke-width="1"/>
+<text x="76" y="424.0" text-anchor="end" font-size="12" fill="#52606d">103</text>
+<line x1="88" y1="334.0" x2="1032" y2="334.0" stroke="#eef2f7" stroke-width="1"/>
+<text x="76" y="338.0" text-anchor="end" font-size="12" fill="#52606d">107</text>
+<line x1="88" y1="248.0" x2="1032" y2="248.0" stroke="#eef2f7" stroke-width="1"/>
+<text x="76" y="252.0" text-anchor="end" font-size="12" fill="#52606d">112</text>
+<line x1="88" y1="162.0" x2="1032" y2="162.0" stroke="#eef2f7" stroke-width="1"/>
+<text x="76" y="166.0" text-anchor="end" font-size="12" fill="#52606d">116</text>
+<line x1="88" y1="76.0" x2="1032" y2="76.0" stroke="#eef2f7" stroke-width="1"/>
+<text x="76" y="80.0" text-anchor="end" font-size="12" fill="#52606d">121</text>
+<line x1="88" y1="58" x2="88" y2="506" stroke="#9aa5b1" stroke-width="1"/>
+<line x1="88" y1="506" x2="1032" y2="506" stroke="#9aa5b1" stroke-width="1"/>
+<text x="147.0" y="530.0" text-anchor="middle" font-size="14" fill="#1f2933">TPE</text>
+<text x="147.0" y="548.0" text-anchor="middle" font-size="11" fill="#7b8794">n=30</text>
+<line x1="147.0" y1="110.5" x2="147.0" y2="147.5" stroke="#2f6fdd" stroke-width="2"/>
+<line x1="138.0" y1="110.5" x2="156.0" y2="110.5" stroke="#2f6fdd" stroke-width="2"/>
+<line x1="138.0" y1="147.5" x2="156.0" y2="147.5" stroke="#2f6fdd" stroke-width="2"/>
+<rect x="124.0" y="114.1" width="46" height="10.4" fill="#2f6fdd" opacity="0.24" stroke="#2f6fdd" stroke-width="2"/>
+<line x1="122.0" y1="116.6" x2="172.0" y2="116.6" stroke="#2f6fdd" stroke-width="3"/>
+<text x="147.0" y="100.5" text-anchor="middle" font-size="11" fill="#52606d">119</text>
+<text x="265.0" y="530.0" text-anchor="middle" font-size="14" fill="#1f2933">CMA-ES</text>
+<text x="265.0" y="548.0" text-anchor="middle" font-size="11" fill="#7b8794">n=30</text>
+<line x1="265.0" y1="133.3" x2="265.0" y2="208.0" stroke="#2c9c69" stroke-width="2"/>
+<line x1="256.0" y1="133.3" x2="274.0" y2="133.3" stroke="#2c9c69" stroke-width="2"/>
+<line x1="256.0" y1="208.0" x2="274.0" y2="208.0" stroke="#2c9c69" stroke-width="2"/>
+<rect x="242.0" y="163.7" width="46" height="15.7" fill="#2c9c69" opacity="0.24" stroke="#2c9c69" stroke-width="2"/>
+<line x1="240.0" y1="172.1" x2="290.0" y2="172.1" stroke="#2c9c69" stroke-width="3"/>
+<text x="265.0" y="123.3" text-anchor="middle" font-size="11" fill="#52606d">116</text>
+<text x="383.0" y="530.0" text-anchor="middle" font-size="14" fill="#1f2933">NSGA</text>
+<text x="383.0" y="548.0" text-anchor="middle" font-size="11" fill="#7b8794">n=30</text>
+<line x1="383.0" y1="112.5" x2="383.0" y2="312.2" stroke="#d48a1f" stroke-width="2"/>
+<line x1="374.0" y1="112.5" x2="392.0" y2="112.5" stroke="#d48a1f" stroke-width="2"/>
+<line x1="374.0" y1="312.2" x2="392.0" y2="312.2" stroke="#d48a1f" stroke-width="2"/>
+<rect x="360.0" y="154.9" width="46" height="49.8" fill="#d48a1f" opacity="0.24" stroke="#d48a1f" stroke-width="2"/>
+<line x1="358.0" y1="190.7" x2="408.0" y2="190.7" stroke="#d48a1f" stroke-width="3"/>
+<text x="383.0" y="102.5" text-anchor="middle" font-size="11" fill="#52606d">115</text>
+<text x="501.0" y="530.0" text-anchor="middle" font-size="14" fill="#1f2933">GP</text>
+<text x="501.0" y="548.0" text-anchor="middle" font-size="11" fill="#7b8794">n=30</text>
+<line x1="501.0" y1="270.8" x2="501.0" y2="270.8" stroke="#9a6ad6" stroke-width="2"/>
+<line x1="492.0" y1="270.8" x2="510.0" y2="270.8" stroke="#9a6ad6" stroke-width="2"/>
+<line x1="492.0" y1="270.8" x2="510.0" y2="270.8" stroke="#9a6ad6" stroke-width="2"/>
+<circle cx="501.0" cy="270.8" r="7" fill="#9a6ad6" opacity="0.88"/>
+<text x="501.0" y="260.8" text-anchor="middle" font-size="11" fill="#52606d">111</text>
+<text x="619.0" y="530.0" text-anchor="middle" font-size="14" fill="#1f2933">어플삭제단</text>
+<text x="619.0" y="548.0" text-anchor="middle" font-size="11" fill="#7b8794">n=300</text>
+<line x1="619.0" y1="105.7" x2="619.0" y2="476.3" stroke="#58606a" stroke-width="2"/>
+<line x1="610.0" y1="105.7" x2="628.0" y2="105.7" stroke="#58606a" stroke-width="2"/>
+<line x1="610.0" y1="476.3" x2="628.0" y2="476.3" stroke="#58606a" stroke-width="2"/>
+<rect x="596.0" y="225.9" width="46" height="184.8" fill="#58606a" opacity="0.24" stroke="#58606a" stroke-width="2"/>
+<line x1="594.0" y1="292.0" x2="644.0" y2="292.0" stroke="#58606a" stroke-width="3"/>
+<text x="619.0" y="95.7" text-anchor="middle" font-size="11" fill="#52606d">110</text>
+<text x="737.0" y="530.0" text-anchor="middle" font-size="14" fill="#1f2933">성실이</text>
+<text x="737.0" y="548.0" text-anchor="middle" font-size="11" fill="#7b8794">n=1</text>
+<line x1="737.0" y1="311.8" x2="737.0" y2="311.8" stroke="#c44545" stroke-width="2"/>
+<line x1="728.0" y1="311.8" x2="746.0" y2="311.8" stroke="#c44545" stroke-width="2"/>
+<line x1="728.0" y1="311.8" x2="746.0" y2="311.8" stroke="#c44545" stroke-width="2"/>
+<circle cx="737.0" cy="311.8" r="7" fill="#c44545" opacity="0.88"/>
+<text x="737.0" y="301.8" text-anchor="middle" font-size="11" fill="#52606d">108</text>
+<text x="855.0" y="530.0" text-anchor="middle" font-size="14" fill="#1f2933">저축왕</text>
+<text x="855.0" y="548.0" text-anchor="middle" font-size="11" fill="#7b8794">n=1</text>
+<line x1="855.0" y1="357.5" x2="855.0" y2="357.5" stroke="#4a8f9f" stroke-width="2"/>
+<line x1="846.0" y1="357.5" x2="864.0" y2="357.5" stroke="#4a8f9f" stroke-width="2"/>
+<line x1="846.0" y1="357.5" x2="864.0" y2="357.5" stroke="#4a8f9f" stroke-width="2"/>
+<circle cx="855.0" cy="357.5" r="7" fill="#4a8f9f" opacity="0.88"/>
+<text x="855.0" y="347.5" text-anchor="middle" font-size="11" fill="#52606d">106</text>
+<text x="973.0" y="530.0" text-anchor="middle" font-size="14" fill="#1f2933">돼지저금통</text>
+<text x="973.0" y="548.0" text-anchor="middle" font-size="11" fill="#7b8794">n=1</text>
+<line x1="973.0" y1="473.7" x2="973.0" y2="473.7" stroke="#777777" stroke-width="2"/>
+<line x1="964.0" y1="473.7" x2="982.0" y2="473.7" stroke="#777777" stroke-width="2"/>
+<line x1="964.0" y1="473.7" x2="982.0" y2="473.7" stroke="#777777" stroke-width="2"/>
+<circle cx="973.0" cy="473.7" r="7" fill="#777777" opacity="0.88"/>
+<text x="973.0" y="463.7" text-anchor="middle" font-size="11" fill="#52606d">100</text>
+</svg>

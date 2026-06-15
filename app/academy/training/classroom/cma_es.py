@@ -3,7 +3,7 @@
 [메모]
 - CMA-ES는 워밍업 단계(boundary 학습)에 N >= n_dim 트라이얼이 필요. n_startup_trials
   기본 = n_dim. 가중치 13차원이면 startup 13개 정도.
-- NSGA-III 계열과 친숙 (사용자 본업 sampler 정신).
+- NSGA-III 계열과 친숙한 연속공간 sampler.
 """
 import optuna
 

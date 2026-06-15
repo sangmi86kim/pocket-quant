@@ -19,10 +19,10 @@ def hv_early_stop_callback(population_size: int, window: int = 5,
                            min_rel_improve: float = 1e-3):
     """세대별 hypervolume 추세로 Pareto 수렴을 감지 → 정체하면 study.stop().
 
-    HV는 "front가 더 커지나"만 보는 단조 증가 추세 지수다 — 천장(1.0) 없다.
+    HV는 "front가 더 커지나"만 보는 단조 증가 추세 지수다 — 옛 1.0 캡은 없다.
       - 첫 scale_warmup 세대: 목적값 모으기만 (스케일 박스 확보), HV 미계산.
       - 이후: 6세대 누적 min/max로 min-max 스케일(축 단위 통일: 잔고 ~백만 vs turnover ~0.04)
-        → optuna 내장 HV. 개선이 스케일 0 미만으로 가도 clip하지 않아 HV가 계속 큰다.
+        → optuna 내장 HV. 좋은 쪽은 무제한이고, ref보다 나쁜 쪽만 HV 유효성을 위해 컷한다.
       - window 이동평균이 min_rel_improve 미만으로 정체하면 수렴으로 보고 멈춘다.
     """
     sign = np.array([-1.0 if d == "maximize" else 1.0 for d in DIRECTIONS])
@@ -52,7 +52,7 @@ def hv_early_stop_callback(population_size: int, window: int = 5,
             return
         scaled = (front * sign - st["lo"]) / (st["hi"] - st["lo"])  # 좋은 쪽 무제한(no clip)
         scaled = np.minimum(scaled, ref)                # 나쁜 쪽만 ref로 컷(HV 유효성)
-        hv = float(compute_hypervolume(scaled, ref))    # 천장 없음 — front 좋아질수록 증가
+        hv = float(compute_hypervolume(scaled, ref))    # 1.0 캡 없음 — front 좋아질수록 증가
         st["hv"].append(hv)
         # MA(window) 평활: 세대별 노이즈를 눌러 수렴(평탄)이 눈에 보이게 한다.
         # 정체 판정·기록 트렌드 모두 이 평활값을 쓴다 (raw는 함께 보존).
