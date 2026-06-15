@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 
 
-REGIME_PICKS_PATH = Path("reports/regime_picks.json")
+REGIME_PICKS_PATH = Path("app/league/results/regime_picks.json")
 
 
 def update_regime_picks(section: str, data) -> Path:

@@ -24,3 +24,4 @@ Thumbs.db
 *.db
 app/academy/training/results/
 app/academy/exam/results/
+app/league/results/
