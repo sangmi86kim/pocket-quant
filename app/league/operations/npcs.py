@@ -1,7 +1,7 @@
 """NPC 4인방 — 시즌 무관 정식 선수.
 
 [책임]
-어플삭제맨·저축왕·돼지저금통·성실이를 챔피언로드 라인업에 정식 선수로 입장시키는
+어플삭제단·저축왕·돼지저금통·성실이를 챔피언로드 라인업에 정식 선수로 입장시키는
 경로. 옛 `v1/baselines_comparison.py`(별도 후처리 도구)를 폐기하고, 시즌 어댑터가
 NPC를 가중치 후보들과 같은 graduate dict 포맷으로 명단에 섞을 수 있게 한다.
 
@@ -19,8 +19,9 @@ graduate dict는 본래 `{"name", "label", "weights", "params", ...}` — 시그
 매트릭스에만 참여.
 
 [NPC 정의]
-- 어플삭제맨 = B&H 5명 — 주사위로 랜덤 진입일에 풀매수(진입 전 현금), 진입 비용 0.1% 한 번.
-  첫날(체육관 시작=종종 바닥) 완벽 진입 특혜를 흩어 공정한 벤치마크로.
+- 어플삭제단 = B&H 300명 (로켓단 컨셉) — 각자 주사위 랜덤 진입일에 풀매수(진입 전 현금),
+  진입 비용 0.1% 한 번. 첫날(체육관 시작=종종 바닥) 완벽 진입 특혜를 300명으로 흩어 제거.
+  대표값 = 300명의 **중앙값 단원** = '아무 날에나 산 평범한 존버러'의 공정 buy-hold 기준선.
 - 저축왕     = 연 3% 무위험 복리 (낙폭 0)
 - 돼지저금통  = 전부 현금 (수익 0, 금리 0)
 - 성실이     = 일별 DCA, 무비용 (토스 자동 모으기)
@@ -40,29 +41,38 @@ def _slice(loaded: LoadedGym) -> tuple[pd.Series, pd.Timestamp, pd.Timestamp]:
     return px, start, end
 
 
-def _make_buy_hold(entry_frac: float):
-    """어플삭제맨 — 구간 내 entry_frac 위치(0=첫날 1=막날)에 풀매수, 그 전엔 현금.
+# 어플삭제단(로켓단) — 300명이 각자 주사위(시드 고정) 랜덤 진입일에 풀매수. 첫날 특혜 제거.
+_BH_SQUAD_N = 300
+_BH_ENTRY_FRACS = np.random.default_rng(20260615).random(_BH_SQUAD_N)
 
-    옛 버전은 무조건 첫날(=체육관 시작점) 매수였는데, 체육관 시작이 종종 바닥/상승
-    초입이라 '완벽한 진입' 공짜 이점이 붙었다(어떤 전략도 못 가지는). 진입일을 주사위로
-    흩어 그 이점을 제거 → B&H가 공정한(이길 수 있는) 벤치마크가 된다.
+
+def _app_deletion_squad(loaded: LoadedGym, seed_krw: int) -> tuple[pd.Series, int]:
+    """어플삭제단 — 300명이 각자 랜덤 진입일에 풀매수(진입 전 현금)하고 어플 삭제(존버).
+
+    한 명 한 명은 진입 운빨이 제각각이라, 단(團) 전체의 **중앙값 단원**을 대표로 반환한다
+    (returns, terminal). 옛 어플삭제맨은 무조건 첫날(체육관 시작=종종 바닥) 진입이라 '완벽
+    진입' 공짜 특혜가 붙었는데, 300명으로 진입일을 흩으면 그 특혜가 사라지고 중앙값은
+    '아무 날에나 산 평범한 존버러' = 공정한 buy-hold 벤치마크가 된다.
     """
-    def _bh(loaded: LoadedGym, seed_krw: int) -> tuple[pd.Series, int]:
-        px, _, _ = _slice(loaded)
-        rets = px.pct_change().dropna().copy()
-        n = len(rets)
-        if n == 0:
-            return rets, seed_krw
-        entry = min(int(entry_frac * n), n - 1)
-        rets.iloc[:entry] = 0.0           # 진입 전 현금 (아직 안 삼)
-        rets.iloc[entry] -= TRADE_COST    # 진입일 매수 비용 0.1% 한 번
-        terminal = int(seed_krw * float((1 + rets).cumprod().iloc[-1]))
-        return rets, terminal
-    return _bh
-
-
-# 어플삭제맨 5명 — 주사위(시드 고정)로 랜덤 진입 시점. 첫날 완벽 진입 특혜 제거.
-_BH_ENTRY_FRACS = np.random.default_rng(20260615).random(5)
+    px, _, _ = _slice(loaded)
+    base = px.pct_change().dropna()
+    n = len(base)
+    if n == 0:
+        return base, seed_krw
+    arr = base.to_numpy()
+    members = []     # (terminal, entry_idx)
+    for f in _BH_ENTRY_FRACS:
+        e = min(int(f * n), n - 1)
+        a = arr.copy()
+        a[:e] = 0.0              # 진입 전 현금
+        a[e] -= TRADE_COST       # 진입일 매수 비용 0.1%
+        members.append((seed_krw * float(np.prod(1.0 + a)), e))
+    members.sort()
+    med_term, med_e = members[len(members) // 2]   # 중앙값 단원 = 대표
+    rets = base.copy()
+    rets.iloc[:med_e] = 0.0
+    rets.iloc[med_e] -= TRADE_COST
+    return rets, int(med_term)
 
 
 def _savings(loaded: LoadedGym, seed_krw: int) -> tuple[pd.Series, int]:
@@ -97,10 +107,9 @@ def _dca(loaded: LoadedGym, seed_krw: int) -> tuple[pd.Series, int]:
 
 # graduate dict 템플릿 (run_gate1이 그대로 처리)
 _NPC_GRADUATES: list[dict] = [
-    *[{"name": f"어플삭제맨#{i + 1}", "label": f"B&H@{f:.0%}",
-       "weights": [], "params": {}, "academy": None, "specialist": False,
-       "evaluator": _make_buy_hold(f)}
-      for i, f in enumerate(_BH_ENTRY_FRACS)],
+    {"name": "어플삭제단", "label": "B&H×300 로켓단",
+     "weights": [], "params": {}, "academy": None, "specialist": False,
+     "evaluator": _app_deletion_squad},
     {"name": "저축왕", "label": "연3%",
      "weights": [], "params": {}, "academy": None, "specialist": False,
      "evaluator": _savings},
