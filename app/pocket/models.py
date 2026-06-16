@@ -30,18 +30,6 @@ from dataclasses import dataclass, field
 # ──────────────────────────────────────────────
 STAT_WEIGHTS = {"HP": 0.0, "ATK": 1.0, "DEF": 1.0, "SKILL": 1.0}
 
-# ──────────────────────────────────────────────
-# 등급 테이블 (적합도 하한선 -> 등급). 적합도는 0~100 → 0~1로 환산해 비교.
-# ──────────────────────────────────────────────
-GRADES = [
-    (0.9, "S"),
-    (0.7, "A"),
-    (0.5, "B"),
-    (0.3, "C"),
-    (0.0, "D"),
-]
-
-
 @dataclass
 class Stats:
     """트레이더(전략)의 스탯블록. 각 값은 0~100으로 정규화됨."""
@@ -120,19 +108,6 @@ class Report:
     results: list[BattleResult] = field(default_factory=list)
 
     @property
-    def stats(self) -> Stats:
-        """종합 스탯블록 = 체육관별 스탯의 평균."""
-        if not self.results:
-            return Stats()
-        n = len(self.results)
-        return Stats(
-            hp=sum(r.stats.hp for r in self.results) / n,
-            atk=sum(r.stats.atk for r in self.results) / n,
-            def_=sum(r.stats.def_ for r in self.results) / n,
-            skill=sum(r.stats.skill for r in self.results) / n,
-        )
-
-    @property
     def fitness(self) -> float:
         """
         종합 적합도 (0~100) = 체육관별 적합도의 [평균 70% + 최약 30%].
@@ -153,25 +128,3 @@ class Report:
             return 0.0
         per_gym = [r.stats.fitness for r in self.results]
         return 0.7 * (sum(per_gym) / len(per_gym)) + 0.3 * min(per_gym)
-
-    @property
-    def weakest_gym(self) -> tuple[str, float]:
-        """최약 체육관 (이름, 적합도) — 리포트 표시·진단용."""
-        if not self.results:
-            return ("", 0.0)
-        worst = min(self.results, key=lambda r: r.stats.fitness)
-        return (worst.gym_name, worst.stats.fitness)
-
-    @property
-    def bst(self) -> float:
-        """종합 종족치 (0~400)."""
-        return self.stats.bst
-
-    @property
-    def grade(self) -> str:
-        """종합 적합도(0~100)를 0~1로 환산해 GRADES에서 등급을 정한다."""
-        f = self.fitness / 100
-        for threshold, grade in GRADES:
-            if f >= threshold:
-                return grade
-        return "D"
