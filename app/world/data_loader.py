@@ -30,6 +30,13 @@ CACHE_DIR = os.path.abspath(
 # 이 버퍼 구간은 지표 워밍업에만 쓰이고, 실제 성적 계산(battle)에서는 잘라낸다.
 WARMUP_DAYS = 400
 
+# 이 프로세스에서 yfinance가 "데이터 없음"을 돌려준 (ticker,start,end) 기억.
+# UUP(2007년~) 같은 외부 시그널을 닷컴(2000~02) 등 상장 이전 구간에 후보·trial마다 다시
+# 요청하면 야후에 헛콜을 수천 번 날려 멈춘다 — 한 번 빈 걸 확인하면 그 프로세스 동안은
+# 네트워크 재시도 없이 즉시 같은 RuntimeError(_fetch_external이 받아 NaN 기권). 디스크엔
+# 안 남긴다: 진짜 부재와 전송 실패를 구분 못 하니 다음 실행은 다시 시도하게 둔다. 결과는 동일.
+_NO_DATA_WINDOWS: set[tuple[str, str, str]] = set()
+
 
 def _cache_path(ticker: str, start: str, end: str) -> str:
     """티커별 서브폴더 안 기간 파일. 예) data_cache/SPY/2000-01-01_2002-12-31.csv"""
@@ -62,6 +69,13 @@ def get_prices(ticker: str, start: str, end: str) -> pd.Series:
     반환: pd.Series (인덱스=날짜, 값=가격). 백테스트는 이 한 줄짜리 가격만 쓴다.
     """
     path = _cache_path(ticker, start, end)
+    key = (ticker, start, end)
+
+    # (0) 이미 이 프로세스에서 빈 구간으로 확인됨 — 네트워크 재시도 생략 (UUP 상장 이전 등)
+    if key in _NO_DATA_WINDOWS:
+        raise RuntimeError(
+            f"[data] '{ticker}' {start}~{end} 데이터 없음 (이 프로세스에서 확인됨)."
+        )
 
     # (1) 캐시 우선 — 있으면 네트워크 없이 즉시 사용
     if os.path.exists(path):
@@ -85,6 +99,7 @@ def get_prices(ticker: str, start: str, end: str) -> pd.Series:
     df = yf.download(ticker, start=start, end=download_end,
                      auto_adjust=True, progress=False)
     if df is None or df.empty:
+        _NO_DATA_WINDOWS.add(key)        # 빈 구간 기억 → 이 프로세스 내 재다운로드 차단
         raise RuntimeError(
             f"[data] '{ticker}' {start}~{end} 데이터를 받지 못했습니다. "
             f"네트워크 또는 티커/기간을 확인하세요."
