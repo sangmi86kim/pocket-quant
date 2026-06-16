@@ -39,11 +39,6 @@ class Stats:
     skill: float = 0.0    # ✨ 솜씨 (샤프비율)
 
     @property
-    def bst(self) -> float:
-        """종족치(Base Stat Total) = 네 스탯의 단순 합 (0~400)."""
-        return self.hp + self.atk + self.def_ + self.skill
-
-    @property
     def fitness(self) -> float:
         """GA 적합도 = 스탯 가중평균 (0~100). 가중치는 STAT_WEIGHTS."""
         w = STAT_WEIGHTS
