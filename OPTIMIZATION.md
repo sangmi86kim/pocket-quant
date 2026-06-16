@@ -5,7 +5,8 @@
 > 그리고 다음 단계(Optuna NSGA-III 다목적)를 어떻게 정식화할지 정리한다.
 >
 > v0.2(가짜 데이터·생존률) 시절 내용은 폐기.
-> 2026-06-11 v0.5 → 2026-06-13 v1 마감 → 2026-06-13 v1.x 시즌 시작 (야생 7마리 + CMA-ES 추가).
+> 2026-06-11 v0.5 → 2026-06-13 v1 마감 → v1.x(야생 7마리+CMA-ES) → **2026-06-16 시즌 v2 마감**
+> (아카데미 부트스트랩 리그 — 3목적 학교 + 4아레나 검증). 현행 설계는 §9, §4는 v1 가중치-탐색 설계(역사).
 
 ---
 
@@ -86,7 +87,11 @@ Y = 0.7 × mean(체육관별 fitness) + 0.3 × min(체육관별 fitness)
 
 ---
 
-## 4. 다음 단계: Optuna NSGA-III 다목적 확장 (설계 확정안)
+## 4. v1/v1.x NSGA-III 설계 (6목적 score_vs_dca — 실현·마감, 역사)
+
+> ⚠️ 이 절은 v1·v1.x 가중치-탐색 리그의 설계다 — **실현돼 돌았고 2026-06-13 마감**됐다.
+> 현행 v2 학교 NSGA-III는 목적이 **6 score_vs_dca → 3 누적자산(평균·최악·turnover)**으로 바뀌었다.
+> 현행 설계는 §9 참고. 이 절은 "왜 다목적인가"의 논리와 함정 회피 근거(2절과 연결)로 남긴다.
 
 ### 4-1. 왜 다목적인가
 
@@ -213,7 +218,7 @@ gate3_holdout  : 봉인 6년 × 챔피언 잔고 + 국면 라벨     ← app/lea
 국면 라벨 정의는 [Regime_Scanner](../Regime_Scanner) 프로젝트(`backend/signals.py`)와
 동기 — 4종(`bull`/`bear`/`sideways`/`volatile`). 50/200 이동평균 · 60일 수익률 ·
 20일 실현변동성 백분위(룩어헤드 방지). PocketQuant 쪽 단일 소스는
-`app/backend/market/regime.py` — Regime_Scanner config 변경 시 양쪽 같이 손볼 것.
+`app/world/regime.py` — Regime_Scanner config 변경 시 양쪽 같이 손볼 것.
 
 ⚠️ 평행세계(gate2)는 합성이라 일별 판정 불가 → 풀명(전천후/bear/rebound) 그대로 사용.
 인샘플(gate0)은 체육관 이름(닷컴/금융위기/...) 그대로.
@@ -258,13 +263,13 @@ gate3_holdout  : 봉인 6년 × 챔피언 잔고 + 국면 라벨     ← app/lea
 이기려는 대상 : 사용자의 실제 DCA 머신 (무비용 매일 적립)
 목적          : 국면별 DCA 개선을 동시에 (Pareto), 턴오버는 최소로
 수단          : Optuna NSGA-III — 시그널 가중치 공간, 시그널 파라미터 동결 (v1 과적합 회피)
-검증          : OOS 리그 본선 → 합성 스트레스 → 봉인 hold-out (이 순서, 역류 금지)
+검증          : OOS 리그 본선 → 합성 스트레스 → hold-out (v2서 4아레나로 개봉, 이후 오염)
 자동화        : tools/e2e.py 한 번 = compileall + 게이트 + 진단 + nsga3 smoke
 ```
 
 ---
 
-## 7. v1 마감 (2026-06-13) — 누적 기록은 `reports/hall_of_fame.md`
+## 7. v1 마감 (2026-06-13) — 기록은 `reports/포켓퀀트리그/hall_of_fame_v1.md`
 
 - 시즌: 2026-06-12 ~ 2026-06-13. 5 시드 × NSGA-III 2000 trials, 인구 100, HV-MA(5)
   얼리스탑, 적응형 mutation. 시드 간 잔고 합 ±0.4% 수렴.
@@ -296,9 +301,9 @@ v1의 자산-횡단 한계 = 가격 6마리만 보던 게 원인. 야생 7마리
 
 | 엔진 | 모듈 | 성격 |
 |---|---|---|
-| NSGA-III | `app/academy/training/nsga3.py` | 학교 다목적 (평균 누적자산 + 최악 누적자산 + turnover) → Pareto front |
-| TPE | `app/backend/academy/study/tpe.py` | 단일목적 Bayesian (잔고 합 max). v1 챔피언 TPE-s11 출신 |
-| **CMA-ES** | `app/backend/academy/study/cma_es.py` (v1.x 신설) | 단일목적 진화전략. 연속 공간 강함 |
+| NSGA-III | `app/academy/training/classroom/nsga3/` | 학교 다목적 (평균 누적자산 + 최악 누적자산 + turnover) → Pareto front |
+| TPE | `app/academy/training/classroom/tpe.py` | 단일목적 Bayesian (잔고 합 max). v1 챔피언 TPE-s11 출신 |
+| **CMA-ES** | `app/academy/training/classroom/cma_es.py` (v1.x 신설) | 단일목적 진화전략. 연속 공간 강함 |
 
 셋 다 같은 인터페이스(`run_study(trials, seed, storage, study_name, on_progress,
 loaded_gyms, dca)`) → service에서 sampler만 갈아끼울 수 있다. `cmaes>=0.10` 의존성 추가.
@@ -316,3 +321,74 @@ loaded_gyms, dca)`) → service에서 sampler만 갈아끼울 수 있다. `cmaes
 - 자산-횡단 검증 (SPY 6체육관 + SPY OOS + SPY 사천왕)
 - 합격선: **SPY에서 어플삭제맨 이기는 챔피언** ([Issue #1](../../issues/1) Phase 3)
 - 워밍업: TPE-s11 옛 6마리 가중치 → 새 13차원 변환 후 `enqueue_trial` 주입 (옛 6마리만 살리고 새 7마리는 0)
+
+> 이 v1.x "본탐색" 계획은 시즌 v2(2026-06-16)에서 아카데미 부트스트랩으로 실현됐다 → §9.
+
+---
+
+## 9. 시즌 v2 (2026-06-16 마감) — 아카데미 부트스트랩 + 4아레나
+
+v1.x의 "본탐색" 계획(§8)은 v2에서 **합성 평행세계 훈련(아카데미)**으로 실현됐다.
+가격 시그널 과적합을 피하려고 실QQQ에 직접 학습시키지 않고, 블록 부트스트랩으로 만든
+가상장에서 훈련한 뒤 실데이터로만 검증한다.
+
+### 9-1. X — 결정변수
+가중치 전용 (`suggest_weights`, 13차원). 시그널 파라미터는 동결 — v1 과적합 회피 결정 유지.
+
+### 9-2. Y — 학교 3목적 (`app/academy/training/classroom/nsga3/objectives.py`)
+6 score_vs_dca를 버리고 **누적 잔고 3목적**으로 단순화했다 (합성 체육관엔 국면 키가 없어
+국면별 score 목적이 성립 안 함):
+
+```
+Y = [ mean_balance   = 합성 체육관 평균 종료 잔고,    # maximize
+      worst_balance  = 가장 운 나쁜 체육관 종료 잔고,  # maximize (최악을 끌어올림)
+      turnover       = 일평균 |포지션 변화|            # minimize
+    ]   # 시드 100만원, directions = [maximize, maximize, minimize]
+```
+
+### 9-3. 졸업 태그·라벨 (`.../nsga3/graduate.py`) — 리그 진출 게이트 아님
+학습 중 `summarize_front`가 front 후보마다 4조건 통과 여부를 **`graduated` 태그**로 달고
+라벨을 매긴다 (합/불 게이트가 아니다 — 리그 출전은 §9-5에서 top30 전원). 조건("성실이/어플삭제맨을 이겼나"):
+
+```
+① mean_balance  > 성실이(DCA) 평균
+② worst_balance > 성실이 최악      ← 옛 "최악 > 시드(절대 흑자)"는 불가능 게이트라 폐기
+                                     (성실이도 -21% 잃는 학살 평행세계에서 흑자 요구 = front 전멸)
+③ mean_balance ≥ 어플삭제맨(B&H) 평균 × 0.90
+④ turnover ≤ 0.10
+```
+
+라벨: Rich(평균 최고) · Sturdy(최악 최고) · Low-turnover(턴오버 최소).
+선발(`select_topk`)은 NSGA 교실에서만 이 태그를 후보 풀 약한 우선순위로 쓰고
+(`pool = graduates or rows`), 단일목적 교실(TPE/CMA/GP)은 졸업 개념 없이 잔고 상위로 뽑는다.
+
+### 9-4. HV 조기종료 (`.../nsga3/callbacks.py`)
+optuna 내장 `compute_hypervolume`(정확 계산) + 세대별 MA(5) patience. **천장(캡) 없다** —
+front가 좋아질수록 단조 증가. 저차원(≤4목적)에서 MC 근사·dominated 비율·clip(0,1) 금지
+(2026-06-15 비표준 1.0캡 구현 적발·교체). pop 30 (3목적 reference-point 정합). 실측:
+10000판 → 6180판 조기종료, 졸업생 129/340.
+
+### 9-5. 4아레나 검증 (`app/league/v2/classroom_league.py`)
+**졸업 게이트로 거르지 않는다** — 교실별 top30(점수 상위) **전원**을 4아레나에 출전시키고,
+어플삭제단 300 + 기준선 3종과 분포로 비교 (중앙값 기준):
+
+```
+체육관 6국면    : 합성장 적성 (보조 잣대)           ← TPE 1위
+평행세계 200    : 부트스트랩 robustness (보조)       ← TPE 1위
+OOS 11년        : 실QQQ 평시 누적 (핵심 잣대)        ← NSGA가 어플삭제단 중앙값 이김
+사천왕 hold-out : 봉인했던 post-COVID (최종 합격선)  ← NSGA가 어플삭제단·성실이 이김 → 이후 오염
+```
+
+**잣대의 무게가 다르다**(2026-06-16 결정): 장기 투자가 목표면 긴 실데이터(OOS·사천왕)가
+핵심이고, 합성 시험장(체육관·평행세계) 1등은 "시험지 외운" 의심 신호다. 챔피언 =
+**NSGA-t5938** (`US10Y 32% + QQQ_SPY 27% + QQQ_DIA 15% + REV_RSI 15%`, 크로스에셋 성장 틸트).
+
+### 9-6. 어플삭제맨 → 어플삭제단 (벤치마크 공정화, `operations/npcs.py`)
+옛 어플삭제맨은 무조건 체육관 첫날(=종종 바닥) 완벽진입이라 공짜 특혜가 붙었다.
+**300명이 각자 랜덤 진입일에 풀매수(어플삭제단)**, 중앙값 단원을 대표로 = '아무 날에나
+산 평범한 존버러' 공정 buy-hold. 단 학교 졸업 게이트(§9-3 ③)는 여전히 단순 B&H(어플삭제맨)를
+보수적 하한 바닥재로 쓴다 — 게이트는 하한, 리그는 공정 분포 비교로 역할이 다르다.
+
+> ⚠️ **hold-out 오염**: v2 재경기로 post-COVID 구간이 top30 전원에게 노출됐다.
+> "1회용 깨끗한 시험지" 지위는 종료 — 다음 최종 시험지는 지금부터 쌓이는 미래 데이터다.
+> 기록: `reports/포켓퀀트리그/hall_of_fame_v2.md`.
