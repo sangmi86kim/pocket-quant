@@ -15,7 +15,7 @@
 
 [모듈 구성 — 한 파일을 책임별로 뽀갬]
   - objectives : 목적 상수 + 후보 제시 + 3목적 환산 + 학기 데이터 준비
-  - callbacks  : HV 조기종료 + 적응 변이율 (sampler 튜닝 기계장치)
+  - callbacks  : HV 트렌드 트래커 + 조기종료/적응변이 리스너 (sampler 튜닝 기계장치)
   - graduate   : 졸업 필터/라벨 (채점·선발 성격)
   - engine     : sampler 배선 + study.optimize (run_study)
 
@@ -23,8 +23,9 @@
 `nsga3.run_study(...)` 식 호출이 그대로 동작한다.
 """
 from app.academy.training.classroom.nsga3.callbacks import (
-    adaptive_mutation_callback,
-    hv_early_stop_callback,
+    AdaptiveMutation,
+    HVEarlyStopper,
+    HVTrendTracker,
 )
 from app.academy.training.classroom.nsga3.engine import run_study
 from app.academy.training.classroom.nsga3.graduate import summarize_front
@@ -41,13 +42,14 @@ from app.academy.training.classroom.nsga3.objectives import (
 )
 
 __all__ = [
+    "AdaptiveMutation",
     "DIRECTIONS",
+    "HVEarlyStopper",
+    "HVTrendTracker",
     "OBJECTIVE_NAMES",
     "SEED_KRW",
     "academy_metrics",
-    "adaptive_mutation_callback",
     "evaluate_objectives",
-    "hv_early_stop_callback",
     "make_objective",
     "prepare_data",
     "roll_seed",

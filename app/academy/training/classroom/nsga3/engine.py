@@ -6,8 +6,9 @@ objective는 objectives.make_objective, 졸업 요약은 graduate.summarize_fron
 import optuna
 
 from app.academy.training.classroom.nsga3.callbacks import (
-    adaptive_mutation_callback,
-    hv_early_stop_callback,
+    AdaptiveMutation,
+    HVEarlyStopper,
+    HVTrendTracker,
 )
 from app.academy.training.classroom.nsga3.objectives import (
     DIRECTIONS,
@@ -70,18 +71,21 @@ def run_study(n_trials: int, seed: int | None = None,
                 on_progress(n, n_trials, len(st.best_trials))
         callbacks.append(_cb)
 
+    # HV 트렌드 트래커 하나가 추세를 계산하고, 조기종료·적응변이 리스너가 그걸 받아 행동한다.
     hv_cb = None
-    if early_stop_window or adaptive_mutation:
-        hv_cb = hv_early_stop_callback(
-            population_size, window=early_stop_window or 3,
-            stop=bool(early_stop_window))
-        callbacks.append(hv_cb)
-
     mut_cb = None
-    if adaptive_mutation:
-        mut_cb = adaptive_mutation_callback(
-            sampler, hv_cb, len(SIGNAL_NAMES), population_size, window=3)
-        callbacks.append(mut_cb)
+    if early_stop_window or adaptive_mutation:
+        listeners = []
+        if early_stop_window:
+            listeners.append(HVEarlyStopper(
+                window=early_stop_window, patience=early_stop_window))
+        if adaptive_mutation:
+            mut_cb = AdaptiveMutation(sampler, len(SIGNAL_NAMES), window=3)
+            listeners.append(mut_cb)
+        hv_cb = HVTrendTracker(
+            population_size, trend_window=early_stop_window or 3,
+            listeners=listeners)
+        callbacks.append(hv_cb)
 
     study.optimize(make_objective(loaded_gyms), n_trials=n_trials,
                    callbacks=callbacks or None)
