@@ -10,7 +10,7 @@ models.py - 데이터의 '모양'을 정의하는 파일
   ⚔️ ATK  (공격력)  = CAGR           = 돈 버는 능력
   🛡️ DEF  (방어력)  = Calmar         = 낙폭(MDD) 한 단위당 수익 = 위험조정 방어
   ✨ SKILL(솜씨)    = 샤프비율       = 같은 수익을 얼마나 효율적으로 냈나
-  각 스탯은 0~100으로 정규화된다(포켓퀀트식). 합 = 종족치(BST).
+  각 스탯은 0~100으로 정규화된다(포켓퀀트식).
 """
 from dataclasses import dataclass, field
 
