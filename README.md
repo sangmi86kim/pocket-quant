@@ -127,6 +127,10 @@ PocketQuant는 **"가장 강한 전략"** 이 아니라,
 > ⚠️ **단순화된 시뮬레이션**입니다 — 수수료 0.1%는 반영하지만 세금·슬리피지·환율은 0,
 > 매일 정확히 비중 조정, 소수점 주식 가능, 현금 이자 0% 가정. "어느 전략이 어느 시대에
 > 강한가"를 비교하는 연구 도구이지 실거래 권유가 아닙니다.
+>
+> 🔬 **시즌 3 예정**: ① **슬리피지**(체결가 밀림) 도입 — 성실이(DCA) 포함 전원 공통, 수수료만
+> 비대칭 ② **노트레이드밴드** — 매일 정확히 맞추지 않고 비중이 어지간히 벗어날 때만 거래(불필요한
+> 잦은 매매 억제). 둘은 한 세트(슬리피지만 넣으면 가짜 매매에 과징수).
 
 ---
 
@@ -356,7 +360,7 @@ pocket_quant/
 │  ├─ pocket/              # 🎒 포켓퀀트 — signals.py(시그널 13마리) · battle.py(백테스트) · models.py · dex.py(도감) · eggs/
 │  ├─ world/               # 🌍 시장 — data_loader.py(yfinance + 캐시) · regime.py(국면 라벨)
 │  ├─ league/              # 🏆 리그 — victory_road(챔피언로드 ①) · battle_frontier(②) · elite_four(③) · operations/(sweep_seeds·top10·npcs)
-│  └─ lab/                 # 🧪 실험실 — inspect_front(NSGA-III front 분석) · report_nsga3
+│  └─ lab/                 # 🧪 실험실 — 진단·분석(check_* · regime_distribution · v2_signal_analysis · synth_vs_real_regime) · inspect_front · report_nsga3 (리포트는 lab/reports/)
 ├─ tools/                  # validator + 진단 + 스모크 (test_*, check_*, smoke_*)
 └─ worklog/                # 실험실 노트 (로컬 전용)
 ```
@@ -377,7 +381,8 @@ pocket_quant/
 - ✅ **아카데미 v2 (블록 부트스트랩) + 리그 전면 재경기** — 합성 평행세계로 훈련 → 실QQQ 졸업시험 → **4아레나 리그**(체육관·OOS 11년·평행세계 200·사천왕 hold-out). 누수·졸업게이트·HV(비표준 1.0캡 → optuna 정확·무캡) 3중 수술 후 첫 정상 시즌. **공정(랜덤 진입) buy-hold 대비 수익 알파 입증** — 옛 day-1 B&H의 첫날 완벽진입 특혜를 어플삭제단 300명 랜덤진입으로 공정화, NSGA 중앙값이 OOS·사천왕에서 그 중앙값을 이김. GP는 한 답 복붙으로 벤치. 챔피언 = NSGA-t5938(크로스에셋 성장 틸트). 자세히: [`hall_of_fame_v2.md`](reports/포켓퀀트리그/hall_of_fame_v2.md)
 - ✅ **사천왕전** — 2026-06-11 1회 개봉(동일가중 챔피언, 판정: 벽) → v2(2026-06-16) 4번째 아레나로 재개봉: top30 전원 도전, **NSGA 중앙값이 공정 B&H·성실이를 봉인 구간서도 이김**. 이후 오염 — 최종 판정은 미래 데이터로만
 - ✅ **오박사 페르소나** — 한강 둔치 쌉고인물 해설역. 옛 LM Studio 로컬 모델(gemma)은 2026-06-14 폐기, 코딩 에이전트가 페르소나 인계 — 성적표 귀인 해설·연구 일지 작성(해설 전용 — 판정 안 함)
-- 🗂️ **전략 도감 DB** → 🧭 **시장 판독기** (regime detector, 70% robust + 30% tilt 오버레이 — Defensive 틸트 1호 후보 #1918 대기 중)
+- 🔬 **시즌 3 (진행) — 교육 개혁** — 시즌2 데이터 분석으로 **합성 교과서가 실제보다 출렁대고(변동장 ~5배) 레벨형 외부신호(VIX·금리)를 블록 경계 가짜 이벤트로 오학습**함을 진단(GP의 '한 답 복붙'도 교과서 탓 — 학습기는 정상). 방향: 교과서 재설계(레벨형 합성 정교화 + 실제 국면 분포 맞춤) · 크로스에셋 로테이션 시그널 확장 · 매매모델 슬리피지+노트레이드밴드. 진단: [`season3_textbook_diagnosis.md`](app/lab/reports/season3_textbook_diagnosis.md)
+- 🗓️ **시즌 4 (예정) — 시장 판독기** (regime detector, 70% robust + 30% tilt 오버레이 — Defensive 틸트 1호 후보 #1918 대기). 2026-06-18 결정으로 시즌 4 연기 (MA200 후행 라벨러를 크로스에셋·위험선호 즉시 스캔으로 재설계)
 
 ---
 
