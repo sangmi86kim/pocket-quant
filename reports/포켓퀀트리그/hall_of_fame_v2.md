@@ -36,22 +36,22 @@
 
 ### 사천왕 hold-out (봉인 해제 — 최종 시험지)
 
-![사천왕 hold-out boxplot](season_v2_top30_league_holdout_boxplot.svg)
+![사천왕 hold-out boxplot](graph/v2/season_v2_top30_league_holdout_boxplot.svg)
 
 > 봉인됐던 post-COVID 구간에서도 NSGA·CMA-ES 중앙값이 어플삭제단 300명 중앙값을 넘는다.
 > 단 어플삭제단의 max(럭키 진입)는 여전히 더 높다 — 알파는 "운빨 천장"이 아니라 "분포 중앙값" 싸움.
 
 ### OOS 11년 합산
 
-![OOS 11년 합산 boxplot](season_v2_top30_league_oos_boxplot.svg)
+![OOS 11년 합산 boxplot](graph/v2/season_v2_top30_league_oos_boxplot.svg)
 
 ### 공식 6체육관 합산
 
-![exam boxplot](season_v2_top30_league_exam_boxplot.svg)
+![exam boxplot](graph/v2/season_v2_top30_league_exam_boxplot.svg)
 
 ### 평행세계 200세계 평균
 
-![world boxplot](season_v2_top30_league_world_boxplot.svg)
+![world boxplot](graph/v2/season_v2_top30_league_world_boxplot.svg)
 
 > 전체 표·후보별 1등은 리그 결과 파일 `app/league/results/season_v2_top30_league.md`(로컬, 재생성 가능) 참조.
 
