@@ -17,6 +17,9 @@ docs/
 worklog/**/*.log
 worklog/**/*.pid
 
+# 에이전트 온보딩 문서 — 로컬 전용 (깃허브 비공개, 2026-06-19 대표님 결정)
+AGENTS.md
+
 # IDE / OS
 .vscode/
 .idea/
