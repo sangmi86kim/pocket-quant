@@ -13,9 +13,8 @@ env/
 data_cache/
 docs/
 
-# worklog: 작업일지·계획·실험 스크립트는 추적, 런타임 잡파일(로그·PID)만 제외
-worklog/**/*.log
-worklog/**/*.pid
+# worklog: 로컬 전용 (깃허브 비공개 — 2026-06-19 대표님 결정, 개인 맥락 유입으로 전면 제외)
+worklog/
 
 # 에이전트 온보딩 문서 — 로컬 전용 (깃허브 비공개, 2026-06-19 대표님 결정)
 AGENTS.md
