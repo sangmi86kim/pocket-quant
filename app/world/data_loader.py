@@ -30,6 +30,15 @@ CACHE_DIR = os.path.abspath(
 # 이 버퍼 구간은 지표 워밍업에만 쓰이고, 실제 성적 계산(battle)에서는 잘라낸다.
 WARMUP_DAYS = 400
 
+# ── 미래 봉인 (FUTURE_SEAL_DATE) — DLC hold-out 적립 ────────────────────────
+# 이 날짜 이후 데이터는 학습(아카데미)·튜닝·검증 설계에 쓰지 않는다. 가장 깨끗한 OOS는
+# '설계 시점에 우리가 못 본 미래'다 — 시간이 알아서 찍어주는 무오염 시험지.
+# 사천왕(2020-07~)은 이미 봤으므로 영원히 오염: hold-out 오염은 모델이 아니라 '연구자' 단위라
+# (그 시대를 아는 우리가 교과서를 설계하면 학생을 새로 가르쳐도 새 챔피언이 간접 오염된다),
+# 학생만 바꾼다고 깨끗해지지 않는다. 개봉은 충분히 쌓인 뒤 allow_future=True로 '딱 1회',
+# 확정된 모델 1개를 판정하고 결과 보고 재조정 금지(보는 순간 소진).
+FUTURE_SEAL_DATE = "2026-06-19"
+
 # 이 프로세스에서 yfinance가 "데이터 없음"을 돌려준 (ticker,start,end) 기억.
 # UUP(2007년~) 같은 외부 시그널을 닷컴(2000~02) 등 상장 이전 구간에 후보·trial마다 다시
 # 요청하면 야후에 헛콜을 수천 번 날려 멈춘다 — 한 번 빈 걸 확인하면 그 프로세스 동안은
@@ -62,12 +71,16 @@ def _covers_end(series: pd.Series, end: str) -> bool:
     return len(pd.bdate_range(last_date + pd.Timedelta(days=1), end_date)) == 0
 
 
-def get_prices(ticker: str, start: str, end: str) -> pd.Series:
+def get_prices(ticker: str, start: str, end: str,
+               allow_future: bool = False) -> pd.Series:
     """
     한 티커의 '수정종가(Adjusted Close)' 시계열을 돌려준다.
 
     반환: pd.Series (인덱스=날짜, 값=가격). 백테스트는 이 한 줄짜리 가격만 쓴다.
+    allow_future=False(기본)면 FUTURE_SEAL_DATE 이후는 자동 절단(미래 봉인). DLC 개봉만 True.
     """
+    if not allow_future and pd.Timestamp(end) > pd.Timestamp(FUTURE_SEAL_DATE):
+        end = FUTURE_SEAL_DATE          # 미래 봉인 — SEAL 이후 학습/검증 유입 차단
     path = _cache_path(ticker, start, end)
     key = (ticker, start, end)
 
@@ -143,8 +156,12 @@ def load_gyms(gyms: list[Gym]) -> list[LoadedGym]:
 
 # ── 거래량 — VOL_SPIKE 같은 거래량 의존 시그널용 (2026-06-13 신설) ────────
 # 일관성: get_prices()와 같은 캐시 디렉토리/파일명 규약, suffix _vol 만 추가.
-def get_volume(ticker: str, start: str, end: str) -> pd.Series:
-    """티커 일별 거래량 시계열. 캐시: data_cache/<ticker>/<기간>_vol.csv."""
+def get_volume(ticker: str, start: str, end: str,
+               allow_future: bool = False) -> pd.Series:
+    """티커 일별 거래량 시계열. 캐시: data_cache/<ticker>/<기간>_vol.csv.
+    allow_future=False면 FUTURE_SEAL_DATE 이후 자동 절단(미래 봉인)."""
+    if not allow_future and pd.Timestamp(end) > pd.Timestamp(FUTURE_SEAL_DATE):
+        end = FUTURE_SEAL_DATE
     safe = f"{start}_{end}_vol.csv".replace(":", "-")
     path = os.path.join(CACHE_DIR, ticker, safe)
 
