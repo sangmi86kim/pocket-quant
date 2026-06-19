@@ -33,14 +33,18 @@ WARMUP_TDAYS = 270
 EVAL_TDAYS = 504
 
 
-# 야생 시그널이 쓰는 외부 정보원 묶음
-#   "price"  = 가격형 (QQQ/SPY/TLT/UUP/DIA) → log return으로 잘라 cumprod로 복원
-#   "level"  = 절대값형 (VIX/^TNX/거래량) → raw 값 그대로 잘라 raw로 복원
-#              ⚠️ 코덱스 연구원 권장: "raw 그대로면 블록 경계 점프 위험 (예: 평온기 VIX 12
-#              다음에 위기 VIX 60 갑자기 붙음). 다음 단계에서 log-delta + 클립으로 정교화."
+# 야생 시그널이 쓰는 외부 정보원 묶음 — 복원 방식은 신호가 절대값을 보느냐로 갈린다.
+#   "price"  = 가격형 (QQQ/SPY/TLT/UUP/DIA) → log return으로 잘라 cumprod로 복원 (이음매 연속)
+#   "level"  = 변동성 지수형 (VIX/VXN) → raw 값 그대로. FEAR가 절대 임계(>30/>47)로 보므로
+#              눈금을 보존해야 한다. 경계 점프는 '그날 값만 보는' 절대 임계엔 무해.
+#   "yield"  = 금리형 (^TNX) → 블록을 통째로 평행이동해 이어붙임(offset). US10Y는 '60일 평균
+#              대비'로 보므로 절대 레벨은 안 중요하고, 경계 절벽이 만들던 가짜 급락 이벤트를
+#              없앤다 (lab/textbook_offset_stitch 실험: 가짜 ~176일/권 제거).
+#   "volume" = 거래량형 (QQQ_volume) → raw 값 그대로 (VOL_SPIKE용)
 DEFAULT_EXTERNAL_STREAMS = (
-    ("^VIX", "level"),     # 공포 지수
-    ("^TNX", "level"),     # 10년물 금리 (%)
+    ("^VIX", "level"),     # 공포 지수 (S&P 변동성) → raw, 절대 눈금 보존
+    ("^VXN", "level"),     # 공포 지수 (나스닥 변동성, FEAR_NQ용) → raw. 2001년~, 이전은 NaN
+    ("^TNX", "yield"),     # 10년물 금리 (%) → offset, 경계 절벽 제거
     ("UUP", "price"),      # 달러 ETF (2007년~, 그 이전은 없음 = NaN 유지)
     ("SPY", "price"),      # S&P 500
     ("TLT", "price"),      # 장기채 (2002년~)
@@ -54,12 +58,30 @@ def _to_block_unit(series: pd.Series, stream_type: str) -> pd.Series:
 
     price → log return (어제 대비 변화율의 로그). cumprod로 복원 시 자연스러움.
     level/volume → raw 값 그대로. VIX 30, 거래량 절대 규모 의미가 유지됨.
+    yield → raw 값. 단 결측은 메운다 — 복원이 블록 평행이동(연속)이라 빈칸이 있으면 끊긴다.
     """
     if stream_type == "price":
         return (series / series.shift(1)).apply(np.log).dropna()
     if stream_type in ("level", "volume"):
         return series.dropna()
+    if stream_type == "yield":
+        return series.interpolate().dropna()
     raise ValueError(f"unknown stream type: {stream_type!r}")
+
+
+def _offset_stitch(values: np.ndarray) -> np.ndarray:
+    """블록을 통째로 위아래로 밀어 앞 블록 끝에 이어붙인다 (yield 복원 = 경계 절벽 제거).
+
+    블록 내부 일별 등락(트렌드)은 그대로, 블록 b 전체에 (앞 블록 끝값 - b 첫값)을 더해
+    이음매를 연속으로 만든다. 평균회귀 앵커는 걸지 않는다 — US10Y는 '60일 평균 대비'만 보고,
+    금리는 셔플 누적 표류가 작아 밴드를 잘 유지한다(lab/textbook_offset_stitch 실험 확인).
+    """
+    out = np.array(values, dtype=float)
+    if np.isnan(out).any():    # holiday 정렬 NaN만 메움(상장 전 발명 아님 — 금리는 전구간 존재)
+        out = pd.Series(out).interpolate().ffill().bfill().to_numpy(copy=True)
+    for s in range(BLOCK_DAYS, len(out), BLOCK_DAYS):
+        out[s:s + BLOCK_DAYS] += out[s - 1] - out[s]
+    return out
 
 
 def _from_block_unit(values: np.ndarray, stream_type: str,
@@ -77,6 +99,8 @@ def _from_block_unit(values: np.ndarray, stream_type: str,
     if stream_type in ("level", "volume"):
         # level/volume은 cumsum 안 함 → NaN 전파 없음. 빈칸은 그대로 NaN.
         return np.asarray(values, dtype=float)
+    if stream_type == "yield":
+        return _offset_stitch(values)
     raise ValueError(f"unknown stream type: {stream_type!r}")
 
 
@@ -132,7 +156,7 @@ def make_world(seed: int = 42,
       - prices: 합성 QQQ 가격 (100에서 시작)
       - prices.attrs["synthetic"] = True (signals.py 표식)
       - prices.attrs["external_streams"] = {ticker: 합성 시리즈, ...}
-        포함 키: QQQ, ^VIX, ^TNX, UUP, SPY, TLT, DIA, QQQ_volume
+        포함 키: QQQ, ^VIX, ^VXN, ^TNX, UUP, SPY, TLT, DIA, QQQ_volume
         → 다음 단계에서 signals._fetch_external이 여기서 읽음
 
     [흐름]

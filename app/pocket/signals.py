@@ -124,6 +124,7 @@ def signal_MOM(prices: pd.Series, lookback: int = MOM_LOOKBACK) -> pd.Series:
 # ─────────────────────────────────────────────────────────────────────
 VOL_SPIKE_THRESHOLD = 2.5    # 거래량 평균 대비 폭증 배수
 FEAR_THRESHOLD = 30.0        # VIX 공포 임계
+FEAR_NQ_THRESHOLD = 47.0     # VXN(나스닥 변동성) 공포 임계 — VIX>30과 발동빈도 매칭(상위 ~10%)
 US10Y_DROP_BP = 0.5          # ^TNX 60일 평균 대비 -0.5%p 하락 임계
 DXY_UP_PCT = 0.015           # DXY 60일 평균 대비 +1.5% 상승 임계
 SPY_TLT_THRESHOLD = 0.01     # TLT/SPY 비율 60일 평균 대비 +1% 임계 (채권 강세)
@@ -189,6 +190,16 @@ def signal_FEAR(prices: pd.Series,
     vix = _fetch_external("^VIX", prices)
     pos = pd.Series(np.nan, index=prices.index)
     pos[vix > threshold] = 1.0
+    return pos
+
+
+def signal_FEAR_NQ(prices: pd.Series,
+                   threshold: float = FEAR_NQ_THRESHOLD) -> pd.Series:
+    """VXN(나스닥100 변동성) > threshold = 나스닥 공포 → 역발상 매수 의견. 평소 기권.
+    VXN은 VIX의 나스닥 버전 — QQQ 백테스트엔 더 정합적. 2001년~(그 이전은 NaN 기권)."""
+    vxn = _fetch_external("^VXN", prices)
+    pos = pd.Series(np.nan, index=prices.index)
+    pos[vxn > threshold] = 1.0
     return pos
 
 
@@ -270,6 +281,7 @@ SIGNAL_REGISTRY = {
     # v1.x 야생 7마리 (외부 정보원)
     "VOL_SPIKE": signal_VOL_SPIKE,  # 📊 자산 내부 (거래량)
     "FEAR": signal_FEAR,            # 😱 글로벌 (VIX 공포)
+    "FEAR_NQ": signal_FEAR_NQ,      # 😱 나스닥 (VXN 공포, 시즌3 추가)
     "US10Y": signal_US10Y,          # 💵 글로벌 (10년 금리)
     "DXY": signal_DXY,              # 💰 글로벌 (달러 인덱스)
     "SPY_TLT": signal_SPY_TLT,      # 🏦 글로벌 (채권-주식 상관)
@@ -277,7 +289,7 @@ SIGNAL_REGISTRY = {
     "QQQ_DIA": signal_QQQ_DIA,      # 🏭 글로벌 (테크 vs 다우 가치)
 }
 
-# 사용 가능한 모든 유전자 이름 (v1.x: 13마리).
+# 사용 가능한 모든 유전자 이름 (시즌3: 14마리 — v1.x 13 + VXN FEAR_NQ).
 SIGNAL_NAMES = list(SIGNAL_REGISTRY.keys())
 
 # 참고: 유전자 설명 카드(포켓퀀트 도감)는 dex.py(SIGNAL_CARDS)에 있다.
@@ -338,6 +350,7 @@ def positions_with_params(prices: pd.Series, params: dict | None = None) -> list
         # v1.x 야생 7마리 — 파라미터 동결 (탐색공간 추가 시 정정)
         signal_VOL_SPIKE(prices),
         signal_FEAR(prices),
+        signal_FEAR_NQ(prices),
         signal_US10Y(prices),
         signal_DXY(prices),
         signal_SPY_TLT(prices),
