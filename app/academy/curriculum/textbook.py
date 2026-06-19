@@ -36,7 +36,7 @@ EVAL_TDAYS = 504
 # 야생 시그널이 쓰는 외부 정보원 묶음
 #   "price"  = 가격형 (QQQ/SPY/TLT/UUP/DIA) → log return으로 잘라 cumprod로 복원
 #   "level"  = 절대값형 (VIX/^TNX/거래량) → raw 값 그대로 잘라 raw로 복원
-#              ⚠️ 코덱스 5.5 권장: "raw 그대로면 블록 경계 점프 위험 (예: 평온기 VIX 12
+#              ⚠️ 코덱스 연구원 권장: "raw 그대로면 블록 경계 점프 위험 (예: 평온기 VIX 12
 #              다음에 위기 VIX 60 갑자기 붙음). 다음 단계에서 log-delta + 클립으로 정교화."
 DEFAULT_EXTERNAL_STREAMS = (
     ("^VIX", "level"),     # 공포 지수
@@ -100,7 +100,7 @@ def _load_external(streams_spec, start: str, end: str,
     """야생 정보원 시계열을 받아서 같은 거래일 인덱스로 정렬.
 
     UUP는 2007년부터, TLT는 2002년부터 — 그 이전 날짜는 NaN으로 유지
-    (코덱스 5.5 권장: "없는 역사 만들지 마라, NaN은 그대로 NaN").
+    (코덱스 연구원 권장: "없는 역사 만들지 마라, NaN은 그대로 NaN").
     데이터 fetch 자체 실패 시 전체 NaN 시리즈.
     """
     aligned = {}
@@ -171,7 +171,7 @@ def make_world(seed: int = 42,
         synth = _from_block_unit(values, stream_type)
         external_synth[ext_ticker] = pd.Series(synth, index=synth_dates)
 
-    # 6. attrs 부착 — 코덱스 5.5 권장: LoadedGym 필드 확장 NO, prices.attrs로만
+    # 6. attrs 부착 — 코덱스 연구원 권장: LoadedGym 필드 확장 NO, prices.attrs로만
     prices.attrs["synthetic"] = True
     prices.attrs["external_streams"] = external_synth
 
