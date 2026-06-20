@@ -35,13 +35,16 @@ def select_single(classroom: dict, k: int) -> list[dict]:
     rows = sorted(classroom["items"], key=lambda r: r["value"], reverse=True)
     out = []
     for rank, row in enumerate(rows[:k], start=1):
-        out.append({
+        entry = {
             "rank": rank,
             "trial": row["trial"],
             "balance_sum": row["value"],
             "weights": weights_label(row["params"]),
             "params": row["params"],
-        })
+        }
+        if "seed" in row:                      # seed-league: 어느 시드의 대표인지 보존
+            entry["seed"] = row["seed"]
+        out.append(entry)
     return out
 
 
@@ -94,7 +97,10 @@ def write_markdown(selection: dict, path: Path) -> None:
     for classroom in selection["classrooms"]:
         lines.append(f"## {classroom['name']}")
         lines.append("")
-        meta = [f"seed={classroom['seed']}", f"trials={classroom['trials']}"]
+        if classroom.get("seedleague"):
+            meta = [f"seeds={len(classroom['seeds'])}", f"trials={classroom['trials']}"]
+        else:
+            meta = [f"seed={classroom['seed']}", f"trials={classroom['trials']}"]
         if classroom["kind"] == "multi":
             meta.extend([
                 f"academy_seed={classroom['academy_seed']}",
@@ -102,7 +108,7 @@ def write_markdown(selection: dict, path: Path) -> None:
                 f"passed={classroom['passed']}",
                 f"hv_stopped={classroom['hv_stopped']}",
             ])
-        else:
+        elif not classroom.get("seedleague"):
             meta.append(f"early_stop={classroom['early_stop']}")
         lines.append("- " + " / ".join(meta))
         lines.append("")

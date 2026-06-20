@@ -17,6 +17,7 @@ SINGLE_TRIALS = {
     "CMA-ES": 5000,
     "GP": 1500,
 }
+GP_SEED_LEAGUE = 5       # GP는 단일 study top-k가 한 전략으로 도배되므로 독립 seed별 대표 1명씩 뽑는다
 NSGA_TRIALS = 10000
 NSGA_GYMS = 20
 POPULATION = 30          # 3목적 reference-point 정합(≈28점) + trial당 수렴 빠름 (pop 30 vs 50 실측)
@@ -28,7 +29,7 @@ def roll_seed() -> int:
 
 
 def prepare_school_data(n_gyms: int = NSGA_GYMS,
-                        seed: int | None = None):
+                        seed: int = 42):
     """한 학기 합성장 + 성실이 기준선. (gyms, dca) 생성은 curriculum에 위임."""
     return prepare_academy_data(n_gyms=n_gyms, seed=seed)
 
@@ -63,6 +64,45 @@ def run_single_classroom(name: str, engine, loaded_gyms, dca,
         "trial_target": trials or SINGLE_TRIALS[name],
         "early_stop": study.user_attrs.get("early_stop"),
         "items": single_trials(study),
+    }
+
+
+def run_gp_seedleague(loaded_gyms, dca, trials: int | None = None,
+                      n_seeds: int = GP_SEED_LEAGUE) -> dict:
+    """GP를 랜덤 seed n개의 독립 study로 돌려 seed별 best 1명씩 선발한다.
+
+    [왜] GP는 한 study 안에서 좋은 점을 찾으면 그 주변을 exploit해 top-k가 사실상
+    같은 전략으로 도배된다. 성적순 top-k 대신 독립 seed별 대표 1명으로 다양성을 확보한다.
+    같은 합성장(loaded_gyms·dca)을 공유하고 GP 탐색 seed만 다르게 가, 같은 문제를
+    여러 출발점에서 독립적으로 푼다.
+    """
+    target = trials or SINGLE_TRIALS["GP"]
+    seeds = [roll_seed() for _ in range(n_seeds)]
+    items = []
+    total_trials = 0
+    for seed in seeds:
+        study, _, _ = gp.run_study(
+            trials=target, seed=seed,
+            loaded_gyms=loaded_gyms, dca=dca, early_stop=True,
+        )
+        best = study.best_trial
+        total_trials += len(study.trials)
+        items.append({
+            "seed": seed,
+            "trial": best.number,
+            "value": best.value,
+            "params": dict(best.params),
+            "study_trials": len(study.trials),
+            "early_stop": study.user_attrs.get("early_stop"),
+        })
+    return {
+        "name": "GP",
+        "kind": "single",
+        "seedleague": True,
+        "seeds": seeds,
+        "trial_target": target,
+        "trials": total_trials,
+        "items": items,
     }
 
 
@@ -156,9 +196,10 @@ def run_all() -> Path:
         flush()
         print(f"Done {name}: trials={result['trials']}", flush=True)
 
-    for name, engine in (("TPE", tpe), ("CMA-ES", cma_es), ("GP", gp)):
+    for name, engine in (("TPE", tpe), ("CMA-ES", cma_es)):
         study_one(name, lambda e=engine, n=name:
                   run_single_classroom(n, e, loaded_gyms, dca))
+    study_one("GP", lambda: run_gp_seedleague(loaded_gyms, dca))
     study_one("NSGA-III",
               lambda: run_nsga_classroom(stamp, loaded_gyms, dca, academy_seed))
 
