@@ -59,12 +59,12 @@ def _run_single_obj(label: str, engine, loaded_gyms: list, dca: dict):
         trials=SINGLE_OBJ_TRIALS, seed=SEED, loaded_gyms=loaded_gyms, dca=dca)
     elapsed = time.perf_counter() - t0
     weights, bals, summary = engine.champion_balances(study, gyms, dca_out)
-    ok = len(study.trials) == SINGLE_OBJ_TRIALS and summary["balance_sum"] > 0
+    ok = len(study.trials) == SINGLE_OBJ_TRIALS and summary["balance_median"] > 0
     if not ok:
         raise RuntimeError(f"{label} 단일목적 smoke 실패")
     main = _format_main_weights(weights)
     print(f"  [PASS] {label:<14} trials {len(study.trials)} · "
-          f"best {summary['balance_sum']/10000:7.1f}만 · {elapsed:4.1f}s · {main}")
+          f"best {summary['balance_median']/10000:7.1f}만 · {elapsed:4.1f}s · {main}")
     return study, elapsed, _balance_sum(bals)
 
 

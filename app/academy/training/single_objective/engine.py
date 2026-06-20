@@ -162,7 +162,7 @@ def champion_balances(
     bals = evaluate_balances(weights, sig_params, loaded_gyms, dca, seed_krw=SEED_KRW)
     summary = {
         "trial": best.number,
-        "balance_sum": best.value,
+        "balance_median": best.value,   # 목적값 = 체육관 잔고 중앙값 (합 아님)
         "weights": weights,
         "per_gym": bals,
     }
