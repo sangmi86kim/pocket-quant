@@ -107,6 +107,23 @@ def run_gp_seedleague(loaded_gyms, dca, trials: int | None = None,
     }
 
 
+def nsga_items(summary: dict) -> list[dict]:
+    """summarize_front 결과 → 학기 저장용 items(top30 selected, select_score 포함).
+
+    payload 조립의 핵심 소비부를 함수로 빼 둔다 — smoke가 이걸 직접 태워, summary
+    키를 소비하다 깨지는 류(제거된 키 참조·selected/select_score 누락)를 1차 그물에서
+    잡게 하기 위함. run_nsga_classroom과 smoke가 같은 조립 코드를 공유한다.
+    """
+    return [{
+        "trial": row["number"],
+        "values": row["values"],
+        "academy": row["academy"],
+        "graduated": row["graduated"],
+        "select_score": row["select_score"],
+        "params": dict(row["params"]),
+    } for row in summary["selected"]]
+
+
 def run_nsga_classroom(stamp: str, loaded_gyms, dca,
                        academy_seed: int,
                        trials: int = NSGA_TRIALS) -> dict:
@@ -128,16 +145,7 @@ def run_nsga_classroom(stamp: str, loaded_gyms, dca,
         adaptive_mutation=True,
     )
     summary = nsga3.summarize_front(study)
-    rows = []
-    for row in summary["selected"]:
-        rows.append({
-            "trial": row["number"],
-            "values": row["values"],
-            "academy": row["academy"],
-            "graduated": row["graduated"],
-            "select_score": row["select_score"],
-            "params": dict(row["params"]),
-        })
+    rows = nsga_items(summary)
     return {
         "name": "NSGA-III",
         "kind": "multi",

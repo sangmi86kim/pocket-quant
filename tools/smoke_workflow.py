@@ -32,6 +32,7 @@ for _stream in (sys.stdout, sys.stderr):
 from app.academy.curriculum import prepare_academy_split
 from app.academy.exam import all_gyms
 from app.academy.exam.grade import evaluate_balances
+from app.academy.training import study
 from app.academy.training.candidate import decode_params
 from app.academy.training.multi_objective import nsga3
 from app.academy.training.single_objective import cma_es, gp, tpe
@@ -141,14 +142,20 @@ def _check_league() -> float:
     """리그 다목적 NSGA-III 최소 실행."""
     print("\n=== ③ 리그 smoke ===")
     t0 = time.perf_counter()
-    study, _gyms, _dca, _hv, _mut = nsga3.run_study(
+    study_obj, _gyms, _dca, _hv, _mut = nsga3.run_study(
         NSGA3_TRIALS, seed=SEED, population_size=NSGA3_POPULATION)
-    if len(study.trials) != NSGA3_TRIALS:
+    if len(study_obj.trials) != NSGA3_TRIALS:
         raise RuntimeError("NSGA-III trial 수 불일치")
-    summary = nsga3.summarize_front(study)
+    summary = nsga3.summarize_front(study_obj)
+    # payload 저장 경로(study.run_nsga_classroom)가 소비하는 조립을 1차 그물로 직접
+    # 검증한다 — 제거된 키 참조·selected/select_score 누락을 여기서 잡는다(2-trial 함정 보완).
+    items = study.nsga_items(summary)
+    if not items or any("select_score" not in it for it in items):
+        raise RuntimeError("NSGA payload items/select_score 누락 — payload 저장 깨짐")
+    _ = summary["front_size"], summary["passed"]   # payload가 읽는 키 존재 확인
     elapsed = time.perf_counter() - t0
-    print(f"  [PASS] NSGA-III      trials {len(study.trials)} · "
-          f"front {summary['front_size']} · {elapsed:4.1f}s")
+    print(f"  [PASS] NSGA-III      trials {len(study_obj.trials)} · "
+          f"front {summary['front_size']} · selected {len(items)} · {elapsed:4.1f}s")
     return elapsed
 
 
