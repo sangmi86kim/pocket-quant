@@ -139,11 +139,11 @@ def _check_league() -> float:
     """리그 다목적 NSGA-III 최소 실행."""
     print("\n=== ③ 리그 smoke ===")
     t0 = time.perf_counter()
-    study, gyms, dca, _hv, _mut = nsga3.run_study(
+    study, _gyms, _dca, _hv, _mut = nsga3.run_study(
         NSGA3_TRIALS, seed=SEED, population_size=NSGA3_POPULATION)
     if len(study.trials) != NSGA3_TRIALS:
         raise RuntimeError("NSGA-III trial 수 불일치")
-    summary = nsga3.summarize_front(study, loaded_gyms=gyms, dca=dca)
+    summary = nsga3.summarize_front(study)
     elapsed = time.perf_counter() - t0
     print(f"  [PASS] NSGA-III      trials {len(study.trials)} · "
           f"front {summary['front_size']} · {elapsed:4.1f}s")

@@ -113,7 +113,7 @@ def run_nsga_classroom(stamp: str, loaded_gyms, dca,
     storage_path = RESULTS_DIR / f"classroom_nsga3_{stamp}.db"
     storage = f"sqlite:///{storage_path.as_posix()}"
     study_name = f"classroom_nsga3_{stamp}"
-    study, gyms, dca, hv_cb, mut_cb = nsga3.run_study(
+    study, _gyms, _dca, hv_cb, mut_cb = nsga3.run_study(
         n_trials=trials,
         seed=seed,
         academy_seed=academy_seed,
@@ -126,7 +126,7 @@ def run_nsga_classroom(stamp: str, loaded_gyms, dca,
         early_stop_window=EARLY_STOP_WINDOW,
         adaptive_mutation=True,
     )
-    summary = nsga3.summarize_front(study, gyms, dca)
+    summary = nsga3.summarize_front(study)
     rows = []
     for row in summary["front"]:
         rows.append({

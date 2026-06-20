@@ -47,7 +47,7 @@ def run_one(seed: int) -> dict:
     study, lg, dca, hv_cb, mut_cb = nsga3.run_study(
         TRIALS, seed=seed, population_size=POPULATION,
         early_stop_window=EARLY_STOP_WINDOW, adaptive_mutation=True)
-    summary = nsga3.summarize_front(study, loaded_gyms=lg, dca=dca)
+    summary = nsga3.summarize_front(study)
 
     # ── front 전체 후보의 잔고 합 계산 ──
     # 게이트(tolerance/turnover) 무시 — 사용자 안: 한 체육관 깊게 깨져도 다른 장

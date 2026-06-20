@@ -1,76 +1,70 @@
-"""학교 졸업 판정 — front 후보를 기준선과 견줘 졸업 필터·라벨 부여.
+"""학교 졸업 판정 — front 후보를 turnover 게이트로 거르고 라벨 부여.
 
 [책임]
-  - 기준선 계산(_baseline_summary): 성실이(DCA)·어플삭제맨(buy&hold) 평균/최악
-  - 졸업 필터(summarize_front): front 후보 중 4개 조건 통과자 추림 + 라벨
+  - 졸업 필터(summarize_front): front 후보 중 turnover cap 통과자 추림 + 대표 라벨
+
+졸업 필터는 turnover cap 하나뿐이다. 합성장(가짜)에서 벤치마크(성실이 DCA·
+어플삭제맨 buy&hold)를 이겼는지는 보지 않는다 — 진짜 벤치마크 승부는 졸업시험
+(실데이터)에서 가린다. 최악 시장 방어(worst)도 졸업 게이트가 아니라 top-k 선발
+점수(정규화 median+worst)로 옮겼다.
 
 이건 sampler 진행이 아니라 "채점/선발" 성격의 일이다 — objectives(목적함수)·
 callbacks(튜닝)와 분리해 두면 나중에 채점 규칙을 손볼 때 엔진을 안 건드린다.
 """
 import numpy as np
 
-from app.academy.training.classroom.nsga3.objectives import (
-    SEED_KRW,
-    academy_metrics,
-    prepare_data,
-)
-from app.pocket.battle import terminal_balance
-from app.world.data_loader import LoadedGym
+from app.academy.training.classroom.nsga3.objectives import SEED_KRW, academy_metrics
 
 
-def _buy_hold_balance(loaded: LoadedGym, seed_krw: int = SEED_KRW) -> int:
-    prices = loaded.prices.loc[loaded.gym.start:loaded.gym.end]
-    rets = prices.pct_change().dropna()
-    if len(rets) == 0:
-        return seed_krw
-    return int(seed_krw * float((1 + rets).cumprod().iloc[-1]))
+def _percentile_rank(values: list[float]) -> list[float]:
+    """각 값의 백분위 순위(0=최저~1=최고). 잔고 스케일·이상치에 강건한 정규화.
+
+    raw 가중합은 잔고(원 단위) 때문에 worst가 묻힌다 — 순위로 바꿔 같은 0~1 축에 둔다."""
+    arr = np.asarray(values, dtype=float)
+    n = len(arr)
+    if n <= 1:
+        return [1.0] * n
+    order = arr.argsort()
+    ranks = np.empty(n)
+    ranks[order] = np.arange(n)
+    return list(ranks / (n - 1))
 
 
-def _baseline_summary(loaded_gyms: list[LoadedGym], dca: dict,
-                      seed_krw: int = SEED_KRW) -> dict:
-    dca_balances = [terminal_balance(dca[lg.gym.name], seed_krw)
-                    for lg in loaded_gyms]
-    bh_balances = [_buy_hold_balance(lg, seed_krw) for lg in loaded_gyms]
-    return {
-        "dca_median": float(np.median(dca_balances)),
-        "dca_worst": min(dca_balances),
-        "bh_median": float(np.median(bh_balances)),
-        "bh_worst": min(bh_balances),
-    }
+def select_topk(passed: list[dict], k: int = 30,
+                w_median: float = 0.65, w_worst: float = 0.35) -> list[dict]:
+    """졸업자를 '정규화 median + 정규화 worst' 점수로 줄세워 상위 k명.
+
+    파레토 프론트는 본래 순위가 없다(서로 비지배) — 최종 선발엔 점수화가 필요하다.
+    median(전형적 성과) 단독이면 졸업선 바로 위 고위험 후보가 올라오니, worst(생존력)를
+    섞는다. 잔고 스케일이 커서 졸업자 내부 백분위로 정규화한 뒤 가중합한다.
+    가중치(median 0.65 / worst 0.35)는 GPT 고문 협의 기본값 — 운영하며 조정 대상.
+    """
+    if not passed:
+        return []
+    med_rank = _percentile_rank([r["academy"]["median_balance"] for r in passed])
+    wor_rank = _percentile_rank([r["academy"]["worst_balance"] for r in passed])
+    scored = [{**r, "select_score": w_median * mr + w_worst * wr}
+              for r, mr, wr in zip(passed, med_rank, wor_rank)]
+    scored.sort(key=lambda r: r["select_score"], reverse=True)
+    return scored[:k]
 
 
-def summarize_front(study, loaded_gyms: list[LoadedGym] | None = None,
-                    dca: dict | None = None,
-                    turnover_cap: float = 0.10,
-                    bh_mean_floor: float = 0.90,
+def summarize_front(study, turnover_cap: float = 0.10,
                     seed_krw: int = SEED_KRW) -> dict:
     """학교 front 졸업 후보 요약.
 
-    졸업 필터 (전부 기준선 상대 — "성실이/어플삭제맨을 이겼나"):
-      ① 중앙값 잔고가 성실이 중앙값보다 큼
-      ② 최악 잔고가 성실이 최악보다 큼 (최악 평행세계에서도 성실이보다 덜 잃음)
-      ③ 중앙값 잔고가 어플삭제맨 중앙값의 bh_mean_floor 이상
-      ④ turnover cap 이하
+    졸업 필터 = turnover cap 하나. 벤치마크(성실이/어플삭제맨) 상대비교는 제거됐다
+    — 합성장은 가짜라, 진짜 비교는 졸업시험(실데이터)에서 한다. worst 방어는 졸업
+    게이트가 아니라 top-k 선발 점수로 옮겼다.
 
-    ①③은 목적함수가 평균→중앙값으로 바뀌며 기준선도 median으로 통일됐다(엇박자 방지).
-    ②는 옛 "최악 > 시드(절대 흑자)"에서 바뀜 — 성실이도 -21% 잃는 학살 평행세계에서
-    흑자를 요구하던 불가능 게이트라 front 전원 탈락. 기준을 성실이 최악으로 맞춰 ①③과 일관.
+    라벨(Rich/Sturdy/Low-turnover)은 졸업자 중 대표를 뽑는 표시용이다.
     """
-    if loaded_gyms is None or dca is None:
-        loaded_gyms, dca = prepare_data(
-            seed=study.user_attrs.get("academy_seed"))
-    baselines = _baseline_summary(loaded_gyms, dca, seed_krw)
     front = []
     for t in study.best_trials:
         row = {"number": t.number, "values": list(t.values),
                "params": dict(t.params)}
         row["academy"] = academy_metrics(row["values"], seed_krw)
-        row["graduated"] = (
-            row["academy"]["median_balance"] > baselines["dca_median"]
-            and row["academy"]["worst_balance"] > baselines["dca_worst"]
-            and row["academy"]["median_balance"] >= baselines["bh_median"] * bh_mean_floor
-            and row["academy"]["turnover"] <= turnover_cap
-        )
+        row["graduated"] = row["academy"]["turnover"] <= turnover_cap
         front.append(row)
 
     passed = [r for r in front if r["graduated"]]
@@ -85,8 +79,7 @@ def summarize_front(study, loaded_gyms: list[LoadedGym] | None = None,
         "front_size": len(front),
         "front": front,
         "passed": passed,
+        "selected": select_topk(passed),  # top30 — 정규화 median+worst 점수
         "labels": labels,
-        "baselines": baselines,
         "turnover_cap": turnover_cap,
-        "bh_mean_floor": bh_mean_floor,
     }
