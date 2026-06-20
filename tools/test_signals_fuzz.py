@@ -15,6 +15,9 @@ test_signals_fuzz.py - 시그널 함수 속성 기반 퍼징 (Hypothesis)
   2) 가격 기반 시그널 각각의 출력값은 기권(NaN)이거나 [0,1] (inf 없음).
   3) 가중결합 combine_positions 도 임의 가중치에서 [0,1]·유한.
   4) 어떤 입력에도 예외로 죽지 않는다 (죽으면 그게 곧 버그 리포트).
+  5) safe_ratio(공용 비율 가드): 분모가 0이어도 결과는 항상 finite 이거나 NaN —
+     ±inf를 만들지 않는다(불변식 1·2는 출력이 0/1/NaN이라 'inf가 발동으로 둔갑'을
+     못 잡는다. 이 규약은 비율 단계 자체를 직접 두들겨야 보인다).
 
 [범위 = signals.py 전체 14마리]
   - 가격 기반 6마리(DD/VOL/MA/MOM/REV_RSI/REV_BB): 합성 양(+)가격으로 두들긴다.
@@ -38,6 +41,7 @@ import numpy as np
 import pandas as pd
 from hypothesis import HealthCheck, given, example, settings, strategies as st
 
+from app.pocket.ratio_guard import safe_ratio
 from app.pocket.signals import (
     SIGNAL_NAMES,
     SIGNAL_REGISTRY,
@@ -180,6 +184,23 @@ def test_weighted_combine_in_range(prices, data):
     assert _finite_unit(pos.to_numpy()), "가중결합이 [0,1]·유한 위반"
 
 
+@settings(max_examples=200, deadline=None)
+@given(data=st.data())
+def test_safe_ratio_never_inf(data):
+    """불변식 5: 유한한 분자 / (0·극단값 섞인) 분모 — 결과는 finite or NaN, inf 없음."""
+    n = data.draw(st.integers(min_value=1, max_value=200))
+    idx = pd.bdate_range("2000-01-01", periods=n)
+    finite = st.floats(min_value=-1e6, max_value=1e6,
+                       allow_nan=False, allow_infinity=False)
+    dirty_den = st.one_of(finite, st.just(0.0), st.just(float("nan")))  # 0 = 정의 불가
+    num = pd.Series(data.draw(st.lists(finite, min_size=n, max_size=n)),
+                    index=idx, dtype=float)
+    den = pd.Series(data.draw(st.lists(dirty_den, min_size=n, max_size=n)),
+                    index=idx, dtype=float)
+    out = safe_ratio(num, den).to_numpy()
+    assert not np.isinf(out).any(), "safe_ratio가 ±inf를 흘렸다 (분모 0 → 기권 위반)"
+
+
 def run_check() -> bool:
     """pytest 없이 스크립트로 돌릴 때의 진입점. 각 속성을 직접 호출한다."""
     checks = [
@@ -188,6 +209,7 @@ def run_check() -> bool:
         ("야생 시그널 well-formed (더러운 외부)", test_each_external_signal_well_formed),
         ("결합 [0,1] (외부 스트림 포함)", test_combined_with_external_streams),
         ("가중결합 [0,1]", test_weighted_combine_in_range),
+        ("safe_ratio finite-or-NaN (분모 0)", test_safe_ratio_never_inf),
     ]
     print("=== signals.py 속성 기반 퍼징 (Hypothesis) ===\n")
     failures: list[str] = []
