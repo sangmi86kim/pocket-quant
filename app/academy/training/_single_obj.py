@@ -16,6 +16,7 @@
 """
 from typing import Callable
 
+import numpy as np
 import optuna
 
 from app.academy.curriculum import prepare_academy_data
@@ -61,10 +62,13 @@ class PlateauStopCallback:
 
 
 def _objective(trial: optuna.Trial, loaded_gyms: list[LoadedGym], dca: dict) -> float:
-    """시그널 가중치 제시 → 체육관 잔고 합. sampler 무관(공정 비교)."""
+    """시그널 가중치 제시 → 체육관 잔고 중앙값. sampler 무관(공정 비교).
+
+    합/평균이 아니라 중앙값 — 한 합성장 대박이 점수를 부풀리는 평균의 함정을 피한다.
+    NSGA-III 1목적(median_balance)과 같은 잣대로 단일목적 교실도 통일."""
     weights, sig_params = suggest_weights(trial)
     bals = evaluate_balances(weights, sig_params, loaded_gyms, dca, seed_krw=SEED_KRW)
-    return sum(b["strat"] for b in bals.values())
+    return float(np.median([b["strat"] for b in bals.values()]))
 
 
 def prepare_data(n_gyms: int = 20, seed: int | None = None
