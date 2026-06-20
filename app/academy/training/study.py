@@ -19,6 +19,7 @@ SINGLE_TRIALS = {
     "GP": 1500,
 }
 GP_SEED_LEAGUE = 5       # GP는 단일 study top-k가 한 전략으로 도배되므로 독립 seed별 대표 1명씩 뽑는다
+SINGLE_TOPK = 30         # TPE/CMA-ES 단일목적은 점수(median) 순 top-k 선발 (GP는 seedleague 예외)
 NSGA_TRIALS = 10000
 NSGA_GYMS = 20
 POPULATION = 30          # 3목적 reference-point 정합(≈28점) + trial당 수렴 빠름 (pop 30 vs 50 실측)
@@ -35,17 +36,15 @@ def prepare_school_data(n_gyms: int = NSGA_GYMS,
     return prepare_academy_data(n_gyms=n_gyms, seed=seed)
 
 
-def single_trials(study) -> list[dict]:
-    out = []
-    for trial in study.trials:
-        if trial.value is None:
-            continue
-        out.append({
-            "trial": trial.number,
-            "value": trial.value,
-            "params": dict(trial.params),
-        })
-    return out
+def single_trials(study, k: int = SINGLE_TOPK) -> list[dict]:
+    """완료 trial을 점수(value=median 잔고) 내림차순 상위 k명.
+
+    단일목적은 목적값 자체가 순위라, NSGA의 복합점수(median+worst)와 달리 그냥
+    점수순 top-k가 곧 선발이다(심플). GP는 seedleague(run_gp_seedleague)라 예외."""
+    done = [{"trial": t.number, "value": t.value, "params": dict(t.params)}
+            for t in study.trials if t.value is not None]
+    done.sort(key=lambda r: r["value"], reverse=True)
+    return done[:k]
 
 
 def run_single_classroom(name: str, engine, loaded_gyms, dca,
