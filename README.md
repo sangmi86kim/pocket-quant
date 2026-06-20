@@ -328,7 +328,7 @@ pocket_quant/
 │  ├─ academy/             # 🏫 학교 — 트레이더 양성
 │  │  ├─ curriculum/       #   교재: textbook.py(평행세계 1권) · __init__.py(N권 학기 코스)
 │  │  ├─ exam/             #   시험장: __init__.py(공식 6체육관 명단) · grade.py(채점)
-│  │  └─ training/         #   학습법: tpe·cma_es·gp(단일목적) · nsga3/(다목적 패키지) · _single_obj(공통) · candidate(코덱) · study(학기 러너)
+│  │  └─ training/         #   학습법: single_objective(tpe·cma_es·gp) · multi_objective/nsga3 · candidate(코덱) · study(학기 러너)
 │  ├─ pocket/              # 🎒 포켓퀀트 — signals.py(시그널 14마리) · battle.py(백테스트) · models.py · dex.py(도감) · eggs/
 │  ├─ world/               # 🌍 시장 — data_loader.py(yfinance + 캐시) · regime.py(국면 라벨)
 │  ├─ league/              # 🏆 리그 — victory_road(챔피언로드 ①) · battle_frontier(②) · elite_four(③) · operations/(sweep_seeds·top10·npcs)

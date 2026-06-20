@@ -11,10 +11,9 @@ on_generation으로 받아 움직인다. 모두 sampler 진행 상태만 보는 
 학교 목적/졸업 판정(objectives/graduate)과 분리돼 있다.
 """
 import numpy as np
-import optuna
 from optuna._hypervolume import compute_hypervolume  # optuna 내장 HV (private — 인터페이스 변동 가능)
 
-from app.academy.training.classroom.nsga3.objectives import DIRECTIONS
+from app.academy.training.multi_objective.nsga3.objectives import DIRECTIONS
 
 
 class HVTrendTracker:
@@ -38,11 +37,11 @@ class HVTrendTracker:
         self.listeners = list(listeners or [])
         self._sign = np.array([-1.0 if d == "maximize" else 1.0 for d in DIRECTIONS])
         self._ref = np.ones(len(DIRECTIONS))   # 스케일 nadir(누적 worst 코너) = HV 기준점
-        self._lo = None
-        self._hi = None
+        self._lo: np.ndarray | None = None
+        self._hi: np.ndarray | None = None
         self._n = 0
-        self.hv = []           # 세대별 raw HV (단조 추세 지수, 캡 없음)
-        self.trend = []        # [trial_number, raw, ma] — DB 영속용
+        self.hv: list[float] = []           # 세대별 raw HV (단조 추세 지수, 캡 없음)
+        self.trend: list[list[float]] = []  # [trial_number, raw, ma] — DB 영속용
         self.stopped = False   # 조기종료 리스너가 멈췄으면 True (run 요약용)
 
     def moving_avg(self, window: int):
@@ -77,6 +76,8 @@ class HVTrendTracker:
         self.hv.append(hv)
         # 기록 트렌드는 trend_window 평활값을 함께 남긴다(세대 노이즈를 눌러 수렴이 눈에 보이게).
         ma = self.moving_avg(self.trend_window)
+        if ma is None:
+            return
         self.trend.append([trial.number, round(hv, 6), round(ma, 6)])
         study.set_user_attr("hv_trend", self.trend)       # DB 영속: 세대별 [trial, raw, ma]
         for listener in self.listeners:
@@ -103,6 +104,8 @@ class HVEarlyStopper:
         if len(tracker.hv) < self.window:
             return
         ma = tracker.moving_avg(self.window)
+        if ma is None:
+            return
         if ma > self.best_ma * (1 + self.min_rel_improve):   # 평활 HV가 의미있게 오르면 정체 카운터 리셋
             self.best_ma = ma
             self.stale = 0
@@ -131,7 +134,7 @@ class AdaptiveMutation:
         self.lo = 1.0 / n_params
         self.current = self.lo * 2
         self.best_ma = -1.0
-        self.history = []
+        self.history: list[dict] = []
         self.enabled = self._set_prob(self.current)
         if not self.enabled:
             print("  [adaptive-mut] sampler path changed; disabled")
@@ -147,6 +150,8 @@ class AdaptiveMutation:
         if not self.enabled or len(tracker.hv) < self.window:
             return
         ma = tracker.moving_avg(self.window)
+        if ma is None:
+            return
         improved = ma > self.best_ma + 1e-9
         factor = self.down if improved else self.up      # 개선 중이면 좁히고, 정체면 넓힌다
         self.current = max(self.lo, min(self.hi, self.current * factor))

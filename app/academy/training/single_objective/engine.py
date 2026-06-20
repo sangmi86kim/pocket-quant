@@ -77,6 +77,8 @@ def prepare_data(n_gyms: int = 20, seed: int | None = None
 
     실제 (gyms, dca) 생성은 curriculum.prepare_academy_data 한 곳에 있다 — 여기선
     sweep 어댑터가 tpe/cma_es/gp/nsga3를 갈아끼울 수 있도록 같은 이름만 유지한다."""
+    if seed is None:
+        seed = 42
     return prepare_academy_data(n_gyms=n_gyms, seed=seed)
 
 

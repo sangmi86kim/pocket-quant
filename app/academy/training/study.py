@@ -6,7 +6,8 @@ from datetime import datetime
 from pathlib import Path
 
 from app.academy.curriculum import prepare_academy_data
-from app.academy.training.classroom import nsga3, gp, cma_es, tpe
+from app.academy.training.multi_objective import nsga3
+from app.academy.training.single_objective import cma_es, gp, tpe
 
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -128,12 +129,13 @@ def run_nsga_classroom(stamp: str, loaded_gyms, dca,
     )
     summary = nsga3.summarize_front(study)
     rows = []
-    for row in summary["front"]:
+    for row in summary["selected"]:
         rows.append({
             "trial": row["number"],
             "values": row["values"],
             "academy": row["academy"],
             "graduated": row["graduated"],
+            "select_score": row["select_score"],
             "params": dict(row["params"]),
         })
     return {
@@ -147,7 +149,6 @@ def run_nsga_classroom(stamp: str, loaded_gyms, dca,
         "trials": len(study.trials),
         "front_size": summary["front_size"],
         "passed": len(summary["passed"]),
-        "baselines": summary["baselines"],
         "hv_points": len(hv_cb.hv) if hv_cb else None,
         "hv_stopped": hv_cb.stopped if hv_cb else None,
         "mut_points": len(mut_cb.history) if mut_cb else None,

@@ -1,4 +1,4 @@
-"""CMA-ES 단일목적 엔진 — sampler 한 줄만 다르고 평가 경로는 _single_obj와 공유.
+"""CMA-ES 단일목적 엔진 — sampler 한 줄만 다르고 평가 경로는 single_objective.engine과 공유.
 
 [메모]
 - CMA-ES는 워밍업 단계(boundary 학습)에 N >= n_dim 트라이얼이 필요. n_startup_trials
@@ -7,7 +7,7 @@
 """
 import optuna
 
-from app.academy.training._single_obj import (
+from app.academy.training.single_objective.engine import (
     SEED_KRW,
     champion_balances,
     prepare_data,
@@ -27,7 +27,7 @@ def run_study(trials, seed=None, storage=None, study_name="cma_es_single_obj",
               on_progress=None, loaded_gyms=None, dca=None,
               extra_callbacks=None, early_stop=True,
               patience=None, min_delta_pct=None, lr_adapt=True):
-    """CMA-ES 단일목적 탐색. _single_obj.run_single_obj_study에 위임."""
+    """CMA-ES 단일목적 탐색. single_objective.engine에 위임."""
     def make_sampler(seed_):
         return _make_sampler(seed_, lr_adapt=lr_adapt)
 

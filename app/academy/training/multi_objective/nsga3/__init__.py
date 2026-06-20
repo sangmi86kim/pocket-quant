@@ -19,17 +19,17 @@
   - graduate   : 졸업 필터/라벨 (채점·선발 성격)
   - engine     : sampler 배선 + study.optimize (run_study)
 
-공개 API는 예전 단일 모듈과 동일하다 — `from ...classroom import nsga3` 후
+공개 API는 예전 단일 모듈과 동일하다 — `from ...multi_objective import nsga3` 후
 `nsga3.run_study(...)` 식 호출이 그대로 동작한다.
 """
-from app.academy.training.classroom.nsga3.callbacks import (
+from app.academy.training.multi_objective.nsga3.callbacks import (
     AdaptiveMutation,
     HVEarlyStopper,
     HVTrendTracker,
 )
-from app.academy.training.classroom.nsga3.engine import run_study
-from app.academy.training.classroom.nsga3.graduate import summarize_front
-from app.academy.training.classroom.nsga3.objectives import (
+from app.academy.training.multi_objective.nsga3.engine import run_study
+from app.academy.training.multi_objective.nsga3.graduate import summarize_front
+from app.academy.training.multi_objective.nsga3.objectives import (
     DIRECTIONS,
     OBJECTIVE_NAMES,
     SEED_KRW,

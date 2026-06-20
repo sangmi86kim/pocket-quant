@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 """
 smoke_workflow.py - 짧은 전체 워크플로우 동작 확인
 
@@ -32,7 +33,8 @@ from app.academy.curriculum import prepare_academy_split
 from app.academy.exam import all_gyms
 from app.academy.exam.grade import evaluate_balances
 from app.academy.training.candidate import decode_params
-from app.academy.training.classroom import nsga3, gp, cma_es, tpe
+from app.academy.training.multi_objective import nsga3
+from app.academy.training.single_objective import cma_es, gp, tpe
 from app.pocket.battle import fight_dca
 from app.pocket.signals import SIGNAL_NAMES
 from app.world.data_loader import load_gyms

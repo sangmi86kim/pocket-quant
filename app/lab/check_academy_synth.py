@@ -27,7 +27,7 @@ import pandas as pd
 from app.academy.curriculum import bootstrap_gyms, prepare_academy_split
 from app.academy.curriculum.textbook import DATA_END, make_world
 from app.academy.exam.grade import evaluate_balances
-from app.academy.training._single_obj import _objective
+from app.academy.training.single_objective.engine import _objective
 from app.pocket.signals import (
     SIGNAL_NAMES,
     _fetch_external,

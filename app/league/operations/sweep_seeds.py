@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 """5 시드 분산 실행 — 새 챔피언 후보 + 시드 안정성 확인 (06-13).
 
 사용자 안: trials 크게(2000), pop 100, 시드 5개 다양 + 적응형 mutation ON.
@@ -27,7 +28,7 @@ import optuna
 
 from app.academy.exam.grade import evaluate_balances
 from app.academy.training.candidate import decode_params
-from app.academy.training.classroom import nsga3
+from app.academy.training.multi_objective import nsga3
 
 SEEDS = [42, 7, 11, 19, 23]
 TRIALS = 2000

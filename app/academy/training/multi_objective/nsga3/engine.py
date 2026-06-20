@@ -5,12 +5,12 @@ objective는 objectives.make_objective, 졸업 요약은 graduate.summarize_fron
 """
 import optuna
 
-from app.academy.training.classroom.nsga3.callbacks import (
+from app.academy.training.multi_objective.nsga3.callbacks import (
     AdaptiveMutation,
     HVEarlyStopper,
     HVTrendTracker,
 )
-from app.academy.training.classroom.nsga3.objectives import (
+from app.academy.training.multi_objective.nsga3.objectives import (
     DIRECTIONS,
     OBJECTIVE_NAMES,
     make_objective,
@@ -63,7 +63,7 @@ def run_study(n_trials: int, seed: int | None = None,
     study.set_user_attr("sampler_seed", seed)
     study.set_user_attr("objectives", OBJECTIVE_NAMES)
 
-    callbacks = []
+    callbacks: list = []
     if on_progress:
         def _cb(st, _trial):
             n = len(st.trials)
@@ -75,7 +75,7 @@ def run_study(n_trials: int, seed: int | None = None,
     hv_cb = None
     mut_cb = None
     if early_stop_window or adaptive_mutation:
-        listeners = []
+        listeners: list = []
         if early_stop_window:
             listeners.append(HVEarlyStopper(
                 window=early_stop_window, patience=early_stop_window))

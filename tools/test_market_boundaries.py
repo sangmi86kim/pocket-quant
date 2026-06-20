@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 """Validate market/data boundaries between academy workflows.
 
 This is a leakage guard:
@@ -13,7 +14,8 @@ sys.path.insert(0, str(ROOT))
 
 from app.academy.exam import all_gyms
 from app.academy.training import study
-from app.academy.training.classroom import nsga3, tpe
+from app.academy.training.multi_objective import nsga3
+from app.academy.training.single_objective import tpe
 from app.league import battle_frontier, elite_four, victory_road
 
 TRAINING_DIR = ROOT / "app" / "academy" / "training"

@@ -91,4 +91,6 @@ def make_objective(loaded_gyms: list[LoadedGym]):
 def prepare_data(n_gyms: int = 20, seed: int | None = None
                  ) -> tuple[list[LoadedGym], dict]:
     """학교 합성장 + 성실이 기준선. (gyms, dca) 생성은 curriculum에 위임."""
+    if seed is None:
+        seed = 42
     return prepare_academy_data(n_gyms=n_gyms, seed=seed)

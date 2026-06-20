@@ -28,7 +28,7 @@ import numpy as np
 import optuna
 import pandas as pd
 
-from app.academy.training._single_obj import PlateauStopCallback, _objective
+from app.academy.training.single_objective.engine import PlateauStopCallback, _objective
 from app.academy.training.candidate import decode_params
 from app.lab.rs_hybrid_textbook import STATES, make_world_rs
 from app.pocket.battle import (

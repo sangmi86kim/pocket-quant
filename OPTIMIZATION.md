@@ -66,7 +66,7 @@
 ### 4-1. X — 결정변수
 가중치 전용 (`suggest_weights`, 13차원). 시그널 파라미터는 동결 — v1 과적합 회피 결정 유지.
 
-### 4-2. Y — 학교 3목적 (`app/academy/training/classroom/nsga3/objectives.py`)
+### 4-2. Y — 학교 3목적 (`app/academy/training/multi_objective/nsga3/objectives.py`)
 6 score_vs_dca를 버리고 **누적 잔고 3목적**으로 단순화했다 (합성 체육관엔 국면 키가 없어
 국면별 score 목적이 성립 안 함):
 
