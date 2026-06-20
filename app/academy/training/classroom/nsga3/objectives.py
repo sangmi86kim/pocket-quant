@@ -11,6 +11,7 @@
 """
 import secrets
 
+import numpy as np
 import optuna
 
 from app.academy.curriculum import prepare_academy_data
@@ -19,7 +20,7 @@ from app.pocket.battle import _score_position, terminal_balance
 from app.pocket.signals import combine_positions, positions_with_params
 from app.world.data_loader import LoadedGym
 
-OBJECTIVE_NAMES = ["mean_balance", "worst_balance", "turnover"]
+OBJECTIVE_NAMES = ["median_balance", "worst_balance", "turnover"]
 DIRECTIONS = ["maximize", "maximize", "minimize"]
 SEED_KRW = 1_000_000
 
@@ -50,11 +51,15 @@ def evaluate_objectives(weights: list[float], params: dict,
                         loaded_gyms: list[LoadedGym],
                         base_positions: dict | None = None,
                         seed_krw: int = SEED_KRW) -> dict:
-    """학교용 3목적 raw 지표. 체육관 이름/국면 키에 의존하지 않는다."""
+    """학교용 3목적 raw 지표. 체육관 이름/국면 키에 의존하지 않는다.
+
+    1목적은 평균이 아니라 **중앙값(median)**이다 — 평균은 한 합성장 대박이 통째로
+    끌어올려 '전형적 시장 실력'을 부풀린다(평균의 함정). median은 그 한 방에 안 휘둘린다.
+    """
     results = _candidate_results(weights, params, loaded_gyms, base_positions)
     balances = [terminal_balance(r, seed_krw) for r in results]
     return {
-        "mean_balance": sum(balances) / len(balances),
+        "median_balance": float(np.median(balances)),
         "worst_balance": min(balances),
         "turnover": sum(r.turnover for r in results) / len(results),
         "balances": balances,
@@ -65,10 +70,10 @@ def academy_metrics(values: list[float], seed_krw: int = SEED_KRW) -> dict:
     """OBJECTIVE_NAMES와 values를 묶어 졸업생 메타데이터로 변환한다."""
     obj = dict(zip(OBJECTIVE_NAMES, values))
     return {
-        "mean_balance": obj["mean_balance"],
+        "median_balance": obj["median_balance"],
         "worst_balance": obj["worst_balance"],
         "turnover": obj["turnover"],
-        "score": obj["mean_balance"] / seed_krw - 1.0,
+        "score": obj["median_balance"] / seed_krw - 1.0,
     }
 
 
@@ -79,7 +84,7 @@ def make_objective(loaded_gyms: list[LoadedGym]):
     def objective(trial: optuna.Trial):
         weights, params = suggest_candidate(trial)
         obj = evaluate_objectives(weights, params, loaded_gyms, base_positions)
-        return obj["mean_balance"], obj["worst_balance"], obj["turnover"]
+        return obj["median_balance"], obj["worst_balance"], obj["turnover"]
     return objective
 
 

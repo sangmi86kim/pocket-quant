@@ -7,6 +7,8 @@
 이건 sampler 진행이 아니라 "채점/선발" 성격의 일이다 — objectives(목적함수)·
 callbacks(튜닝)와 분리해 두면 나중에 채점 규칙을 손볼 때 엔진을 안 건드린다.
 """
+import numpy as np
+
 from app.academy.training.classroom.nsga3.objectives import (
     SEED_KRW,
     academy_metrics,
@@ -30,9 +32,9 @@ def _baseline_summary(loaded_gyms: list[LoadedGym], dca: dict,
                     for lg in loaded_gyms]
     bh_balances = [_buy_hold_balance(lg, seed_krw) for lg in loaded_gyms]
     return {
-        "dca_mean": sum(dca_balances) / len(dca_balances),
+        "dca_median": float(np.median(dca_balances)),
         "dca_worst": min(dca_balances),
-        "bh_mean": sum(bh_balances) / len(bh_balances),
+        "bh_median": float(np.median(bh_balances)),
         "bh_worst": min(bh_balances),
     }
 
@@ -45,11 +47,12 @@ def summarize_front(study, loaded_gyms: list[LoadedGym] | None = None,
     """학교 front 졸업 후보 요약.
 
     졸업 필터 (전부 기준선 상대 — "성실이/어플삭제맨을 이겼나"):
-      ① 평균 잔고가 성실이 평균보다 큼
+      ① 중앙값 잔고가 성실이 중앙값보다 큼
       ② 최악 잔고가 성실이 최악보다 큼 (최악 평행세계에서도 성실이보다 덜 잃음)
-      ③ 평균 잔고가 어플삭제맨 평균의 bh_mean_floor 이상
+      ③ 중앙값 잔고가 어플삭제맨 중앙값의 bh_mean_floor 이상
       ④ turnover cap 이하
 
+    ①③은 목적함수가 평균→중앙값으로 바뀌며 기준선도 median으로 통일됐다(엇박자 방지).
     ②는 옛 "최악 > 시드(절대 흑자)"에서 바뀜 — 성실이도 -21% 잃는 학살 평행세계에서
     흑자를 요구하던 불가능 게이트라 front 전원 탈락. 기준을 성실이 최악으로 맞춰 ①③과 일관.
     """
@@ -63,9 +66,9 @@ def summarize_front(study, loaded_gyms: list[LoadedGym] | None = None,
                "params": dict(t.params)}
         row["academy"] = academy_metrics(row["values"], seed_krw)
         row["graduated"] = (
-            row["academy"]["mean_balance"] > baselines["dca_mean"]
+            row["academy"]["median_balance"] > baselines["dca_median"]
             and row["academy"]["worst_balance"] > baselines["dca_worst"]
-            and row["academy"]["mean_balance"] >= baselines["bh_mean"] * bh_mean_floor
+            and row["academy"]["median_balance"] >= baselines["bh_median"] * bh_mean_floor
             and row["academy"]["turnover"] <= turnover_cap
         )
         front.append(row)
@@ -74,7 +77,7 @@ def summarize_front(study, loaded_gyms: list[LoadedGym] | None = None,
 
     labels = {}
     if passed:
-        labels["Rich"] = max(passed, key=lambda r: r["academy"]["mean_balance"])
+        labels["Rich"] = max(passed, key=lambda r: r["academy"]["median_balance"])
         labels["Sturdy"] = max(passed, key=lambda r: r["academy"]["worst_balance"])
         labels["Low-turnover"] = min(passed, key=lambda r: r["academy"]["turnover"])
 
