@@ -4,3 +4,4 @@ pandas>=2.0
 numpy>=1.24
 optuna>=4.0          # NSGA-III multi-objective optimization
 cmaes>=0.10
+matplotlib>=3.8      # 졸업 성적표·lab 진단 그래프 (PNG)

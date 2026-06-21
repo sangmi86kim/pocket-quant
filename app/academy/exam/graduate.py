@@ -8,21 +8,27 @@
 `params`를 디코딩해 실QQQ 6체육관에 다시 돌린다 — stale할 수 있는 점수 키엔 안 의존한다.
 
 [잣대] 후보 1명의 졸업 점수 = 6체육관 종료잔고의 **중앙값**(median 목적과 정합).
-반(교실)별로 그 점수의 분포를 박스플랏으로 그리고, 성실이(DCA)를 기준선으로 같이 둔다.
+그래프는 matplotlib PNG 딱 2장: ① 반별 종합 비교 ② 체육관별 비교(6칸 한 장). 성실이(DCA) 기준선 포함.
 
 [실행] .venv/Scripts/python.exe -m app.academy.exam.graduate
 """
 import json
-from html import escape
 from pathlib import Path
 
+import matplotlib
 import numpy as np
 
-from app.academy.exam import all_gyms, gym_key
-from app.academy.exam.grade import evaluate_balances
-from app.academy.training.candidate import decode_params
-from app.pocket.battle import fight_dca, terminal_balance
-from app.world.data_loader import load_gyms
+matplotlib.use("Agg")                                  # 헤드리스 — 파일로만 저장
+import matplotlib.pyplot as plt                         # noqa: E402
+
+matplotlib.rcParams["font.family"] = "Malgun Gothic"   # 한글 라벨(Windows)
+matplotlib.rcParams["axes.unicode_minus"] = False
+
+from app.academy.exam import all_gyms, gym_key          # noqa: E402
+from app.academy.exam.grade import evaluate_balances    # noqa: E402
+from app.academy.training.candidate import decode_params  # noqa: E402
+from app.pocket.battle import fight_dca, terminal_balance  # noqa: E402
+from app.world.data_loader import load_gyms             # noqa: E402
 
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -123,79 +129,93 @@ def run() -> dict:
     dca = {lg.gym.name: fight_dca(lg) for lg in gyms}
     payload = build_payload(top30, gyms, dca)
     stamp = payload["stamp"]
-    svg_path = _boxplot_svg(payload, stamp)
-    _write_markdown(payload, stamp, svg_path)
+
+    overall_png = _overall_png(payload, stamp)
+    by_gym_png = _by_gym_png(payload, stamp)
+    _write_markdown(payload, stamp, overall_png, by_gym_png)
     return payload
 
 
-def _boxplot_svg(payload: dict, stamp: str) -> Path:
-    # 세로 박스플랏: x축=반, y축=후보별 6체육관 median 종료잔고(만원). 성실이는 기준 점.
+def _draw_box(ax, payload: dict, value_of, dca_value: float, title: str) -> None:
+    """한 axes에 반별 박스플랏 + 성실이(DCA) 점선 기준선을 그린다.
+
+    value_of로 종합(6체육관 median)이든 한 체육관 종료잔고든 같은 틀을 재사용."""
     groups = [c["group"] for c in payload["classrooms"]]
-    values = {c["group"]: np.array([m["score"] for m in c["members"]], dtype=float) / 10000.0
-              for c in payload["classrooms"]}
-    dca_v = payload["dca_score"] / 10000.0
-    groups = groups + ["성실이"]
-    values["성실이"] = np.array([dca_v], dtype=float)
-
-    all_v = np.concatenate(list(values.values()))
-    ymin, ymax = float(np.min(all_v)), float(np.max(all_v))
-    pad = max((ymax - ymin) * 0.10, 1.0)
-    ymin -= pad
-    ymax += pad
-
-    n = len(groups)
-    col_w, top, bottom, left, right, plot_h = 118, 80, 78, 88, 36, 420
-    width = left + right + col_w * n
-    height = top + plot_h + bottom
-
-    def sy(v: float) -> float:
-        return top + (ymax - v) / (ymax - ymin) * plot_h
-
-    lines = [
-        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">',
-        '<rect width="100%" height="100%" fill="#ffffff"/>',
-        f'<text x="{left}" y="34" font-size="22" font-weight="700" fill="#1f2933">졸업 시험 — 실QQQ 6체육관 (반별 분포)</text>',
-        f'<text x="{left}" y="58" font-size="13" fill="#52606d">unit: 만원, 점수=후보별 6체육관 median 종료잔고 · box=p25/p75 · line=median · 진단 전용</text>',
-    ]
-    axis_y = top + plot_h
-    for tick in np.linspace(ymin, ymax, 6):
-        y = sy(float(tick))
-        lines.append(f'<line x1="{left}" y1="{y:.1f}" x2="{width-right}" y2="{y:.1f}" stroke="#eef2f7" stroke-width="1"/>')
-        lines.append(f'<text x="{left-12}" y="{y+4:.1f}" text-anchor="end" font-size="12" fill="#52606d">{tick:.0f}</text>')
-    # 성실이 기준선 — 가로 점선
-    yd = sy(dca_v)
-    lines.append(f'<line x1="{left}" y1="{yd:.1f}" x2="{width-right}" y2="{yd:.1f}" stroke="#c44545" stroke-width="1.5" stroke-dasharray="6 4" opacity="0.7"/>')
-    lines.append(f'<line x1="{left}" y1="{top-18}" x2="{left}" y2="{axis_y}" stroke="#9aa5b1" stroke-width="1"/>')
-    lines.append(f'<line x1="{left}" y1="{axis_y}" x2="{width-right}" y2="{axis_y}" stroke="#9aa5b1" stroke-width="1"/>')
-
-    box_w = 46
-    for i, group in enumerate(groups):
-        arr = values[group]
-        cx = left + i * col_w + col_w / 2
-        q0, q1, q2, q3, q4 = np.percentile(arr, [0, 25, 50, 75, 100])
+    data = [np.array([value_of(m) for m in c["members"]], dtype=float) / 10000.0
+            for c in payload["classrooms"]]
+    bp = ax.boxplot(data, widths=0.6, patch_artist=True,
+                    medianprops=dict(color="#1f2933", linewidth=1.6))
+    for patch, group in zip(bp["boxes"], groups):
         color = GROUP_COLORS.get(group, "#4b5563")
-        lines.append(f'<text x="{cx:.1f}" y="{axis_y+24:.1f}" text-anchor="middle" font-size="14" fill="#1f2933">{escape(group)}</text>')
-        lines.append(f'<text x="{cx:.1f}" y="{axis_y+42:.1f}" text-anchor="middle" font-size="11" fill="#7b8794">n={len(arr)}</text>')
-        lines.append(f'<line x1="{cx:.1f}" y1="{sy(q4):.1f}" x2="{cx:.1f}" y2="{sy(q0):.1f}" stroke="{color}" stroke-width="2"/>')
-        lines.append(f'<line x1="{cx-9:.1f}" y1="{sy(q4):.1f}" x2="{cx+9:.1f}" y2="{sy(q4):.1f}" stroke="{color}" stroke-width="2"/>')
-        lines.append(f'<line x1="{cx-9:.1f}" y1="{sy(q0):.1f}" x2="{cx+9:.1f}" y2="{sy(q0):.1f}" stroke="{color}" stroke-width="2"/>')
-        if len(arr) == 1 or abs(q1 - q3) < 1e-9:
-            lines.append(f'<circle cx="{cx:.1f}" cy="{sy(q2):.1f}" r="7" fill="{color}" opacity="0.88"/>')
-        else:
-            box_h = max(sy(q1) - sy(q3), 2)
-            lines.append(f'<rect x="{cx-box_w/2:.1f}" y="{sy(q3):.1f}" width="{box_w}" height="{box_h:.1f}" fill="{color}" opacity="0.24" stroke="{color}" stroke-width="2"/>')
-            lines.append(f'<line x1="{cx-box_w/2-2:.1f}" y1="{sy(q2):.1f}" x2="{cx+box_w/2+2:.1f}" y2="{sy(q2):.1f}" stroke="{color}" stroke-width="3"/>')
-        lines.append(f'<text x="{cx:.1f}" y="{sy(q4)-10:.1f}" text-anchor="middle" font-size="11" fill="#52606d">{q2:.0f}</text>')
+        patch.set_facecolor(color)
+        patch.set_alpha(0.35)
+        patch.set_edgecolor(color)
+    for ln in bp["whiskers"] + bp["caps"]:
+        ln.set_color("#52606d")
+    dca_v = dca_value / 10000.0
+    ax.axhline(dca_v, color=GROUP_COLORS["성실이"], ls="--", lw=1.4, alpha=0.85,
+               label=f"성실이(DCA) {dca_v:.0f}")
+    ax.set_xticks(range(1, len(groups) + 1))
+    ax.set_xticklabels([f"{g}\n(n={len(d)})" for g, d in zip(groups, data)], fontsize=9)
+    ax.set_ylabel("종료잔고 (만원)", fontsize=9)
+    ax.set_title(title, fontsize=12, fontweight="bold")
+    ax.grid(axis="y", color="#eef2f7", lw=1)
+    ax.set_axisbelow(True)
+    ax.legend(loc="best", fontsize=8)
 
-    lines.append("</svg>")
-    path = REPORTS_DIR / f"graduation_{stamp}_boxplot.svg"
-    path.write_text("\n".join(lines), encoding="utf-8")
+
+def _overall_png(payload: dict, stamp: str) -> Path:
+    """① 종합 비교 — 반별 6체육관 median 종료잔고 분포 한 장."""
+    fig, ax = plt.subplots(figsize=(8, 5))
+    _draw_box(ax, payload, lambda m: m["score"], payload["dca_score"],
+              "졸업 종합 — 반별 6체육관 median 종료잔고 (진단 전용)")
+    fig.tight_layout()
+    path = REPORTS_DIR / f"graduation_{stamp}_overall.png"
+    fig.savefig(path, dpi=130)
+    plt.close(fig)
     return path
 
 
-def _write_markdown(payload: dict, stamp: str, svg_path: Path) -> None:
-    gym_keys = payload["gym_keys"]
-    headers = [GYM_LABEL.get(k, k) for k in gym_keys]
+def _by_gym_png(payload: dict, stamp: str) -> Path:
+    """② 체육관별 비교 — 6체육관을 2×3 한 장에 (각 칸=한 체육관 반별 분포)."""
+    keys = payload["gym_keys"]
+    fig, axes = plt.subplots(2, 3, figsize=(15, 9))
+    for ax, k in zip(axes.flat, keys):
+        label = GYM_LABEL.get(k, k)
+        _draw_box(ax, payload, lambda m, k=k: m["per_gym"][k],
+                  payload["dca_by_gym"][k], f"{label} 체육관")
+    for ax in axes.flat[len(keys):]:    # 체육관이 6 미만이면 남는 칸 숨김
+        ax.axis("off")
+    fig.suptitle("체육관별 비교 — 반별 졸업생 종료잔고 분포 (점선=성실이)",
+                 fontsize=14, fontweight="bold")
+    fig.tight_layout(rect=(0, 0, 1, 0.97))
+    path = REPORTS_DIR / f"graduation_{stamp}_by_gym.png"
+    fig.savefig(path, dpi=130)
+    plt.close(fig)
+    return path
+
+
+def _ranked_table(lines: list[str], classrooms: list[dict], value_of, dca_value: float) -> None:
+    """반별 분포 순위표(median 내림차순) + 성실이 기준선 행을 lines에 덧붙인다."""
+    lines.append("| 반 | n | median | p25 | p75 | min | max |")
+    lines.append("|---|---:|---:|---:|---:|---:|---:|")
+    ranked = sorted(
+        classrooms,
+        key=lambda c: float(np.median([value_of(m) for m in c["members"]])),
+        reverse=True,
+    )
+    for c in ranked:
+        s = _stats([value_of(m) for m in c["members"]])
+        lines.append(
+            f"| {c['group']} | {s['n']} | {s['median']/10000:.0f} | {s['p25']/10000:.0f} | "
+            f"{s['p75']/10000:.0f} | {s['min']/10000:.0f} | {s['max']/10000:.0f} |"
+        )
+    lines.append(f"| 성실이(DCA) | 1 | {dca_value/10000:.0f} | · | · | · | · |")
+
+
+def _write_markdown(payload: dict, stamp: str, overall_png: Path,
+                    by_gym_png: Path) -> None:
+    classrooms = payload["classrooms"]
     lines = [
         "# 🎓 졸업 시험 성적표 — 실QQQ 6체육관",
         "",
@@ -203,45 +223,29 @@ def _write_markdown(payload: dict, stamp: str, svg_path: Path) -> None:
         f"top30 출처: `{Path(payload['top30_source']).name}` · 시드 100만원 · 잣대=종료잔고 median",
         f"> stamp: {stamp}",
         "",
-        f"![졸업 boxplot]({svg_path.name})",
+        "## 종합 (후보별 6체육관 median 종료잔고 분포, 만원)",
         "",
-        "## 반별 종합 (후보별 6체육관 median 종료잔고 분포, 만원)",
+        f"![종합 비교]({overall_png.name})",
         "",
-        "| 반 | n | median | p25 | p75 | min | max |",
-        "|---|---:|---:|---:|---:|---:|---:|",
     ]
-    ranked = sorted(
-        payload["classrooms"],
-        key=lambda c: float(np.median([m["score"] for m in c["members"]])),
-        reverse=True,
-    )
-    for c in ranked:
-        s = _stats([m["score"] for m in c["members"]])
-        lines.append(
-            f"| {c['group']} | {s['n']} | {s['median']/10000:.0f} | {s['p25']/10000:.0f} | "
-            f"{s['p75']/10000:.0f} | {s['min']/10000:.0f} | {s['max']/10000:.0f} |"
-        )
-    lines.append(
-        f"| 성실이(DCA) | 1 | {payload['dca_score']/10000:.0f} | · | · | · | · |"
-    )
+    _ranked_table(lines, classrooms, lambda m: m["score"], payload["dca_score"])
+
     lines += [
         "",
-        "## 반별 × 체육관 (반 median 종료잔고, 만원) — 약점 진단",
+        "## 체육관별 분석 (반별 졸업생 종료잔고 분포, 만원)",
         "",
-        "| 반 | " + " | ".join(headers) + " |",
-        "|---|" + "---:|" * len(headers),
+        f"![체육관별 비교]({by_gym_png.name})",
+        "",
+        "> 각 체육관에서 반별 졸업생 분포. 점선=그 체육관 성실이(DCA). "
+        "반 median이 성실이보다 낮으면 그 체육관이 그 반의 약점 과목.",
+        "",
     ]
-    for c in ranked:
-        cells = []
-        for k in gym_keys:
-            med = float(np.median([m["per_gym"][k] for m in c["members"]]))
-            cells.append(f"{med/10000:.0f}")
-        lines.append(f"| {c['group']} | " + " | ".join(cells) + " |")
-    dca_cells = [f"{payload['dca_by_gym'][k]/10000:.0f}" for k in gym_keys]
-    lines.append("| 성실이(DCA) | " + " | ".join(dca_cells) + " |")
-    lines.append("")
-    lines.append("> 반 median이 성실이보다 낮은 체육관 = 그 반의 약점 과목.")
-    lines.append("")
+    for k in payload["gym_keys"]:
+        label = GYM_LABEL.get(k, k)
+        lines += [f"### {label} 체육관", ""]
+        _ranked_table(lines, classrooms, lambda m, k=k: m["per_gym"][k],
+                      payload["dca_by_gym"][k])
+        lines.append("")
 
     md_path = REPORTS_DIR / f"graduation_{stamp}.md"
     md_path.write_text("\n".join(lines), encoding="utf-8")
