@@ -20,6 +20,8 @@ STAGES = [
      [sys.executable, "-m", "app.pocket.dex"], 30),
     ("gate: academy synth",
      [sys.executable, "-m", "app.lab.check_academy_synth"], 60),
+    ("gate: market boundaries",
+     [sys.executable, "tools/test_market_boundaries.py"], 60),
     ("gate: weighted combine",
      [sys.executable, "tools/test_weighted_combine.py"], 60),
     ("gate: no lookahead",

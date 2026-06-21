@@ -28,6 +28,7 @@ from app.academy.exam import all_gyms, gym_key          # noqa: E402
 from app.academy.exam.grade import evaluate_balances    # noqa: E402
 from app.academy.training.candidate import decode_params  # noqa: E402
 from app.pocket.battle import fight_dca, terminal_balance  # noqa: E402
+from app.pocket.signals import SIGNAL_NAMES             # noqa: E402
 from app.world.data_loader import load_gyms             # noqa: E402
 
 
@@ -63,11 +64,67 @@ def _latest_top30() -> Path:
     cands = sorted(TRAIN_RESULTS.glob("classroom_top30_*_v2.json"))
     if not cands:
         raise FileNotFoundError(f"top30 파일 없음: {TRAIN_RESULTS}/classroom_top30_*_v2.json")
-    return cands[-1]
+    compatible = [p for p in cands if _top30_compatible(p)]
+    if not compatible:
+        need = ", ".join(f"w_{g}" for g in SIGNAL_NAMES)
+        raise FileNotFoundError(
+            "현재 시그널 풀과 호환되는 top30 파일 없음 "
+            f"(필요 가중치: {need}). 14신호 top30 재선발 후 실행."
+        )
+    return compatible[-1]
+
+
+def _classroom_topk(classroom: dict) -> list[dict]:
+    """학기 산출물의 단일 후보 스키마(topk)를 읽는다."""
+    topk = classroom.get("topk")
+    if topk is None:
+        raise KeyError(f"{classroom.get('name', '(unknown)')} 반에 topk 없음")
+    return topk
+
+
+def _candidate_sets(classroom: dict) -> list[tuple[str, list[dict]]]:
+    """한 교실에서 졸업시험에 태울 후보 묶음들.
+
+    새 2단계 학교 산출물은 phase1.topk와 최종 topk를 모두 남긴다. 둘 다 있으면
+    1차/보충을 나란히 비교하고, 옛 파일처럼 최종 topk만 있으면 기존처럼 한 줄만 낸다.
+    """
+    name = classroom["name"].replace("NSGA-III", "NSGA")
+    phase1 = classroom.get("phase1", {}).get("topk")
+    final = _classroom_topk(classroom)
+    if phase1 is None:
+        return [(name, final)]
+    return [(f"{name}-1차", phase1), (f"{name}-보충", final)]
+
+
+def _missing_weights(item: dict) -> list[str]:
+    params = item.get("params", {})
+    return [f"w_{g}" for g in SIGNAL_NAMES if f"w_{g}" not in params]
+
+
+def _top30_compatible(path: Path) -> bool:
+    try:
+        top30 = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    try:
+        for classroom in top30.get("classrooms", []):
+            for _label, topk in _candidate_sets(classroom):
+                for item in topk:
+                    if _missing_weights(item):
+                        return False
+    except KeyError:
+        return False
+    return True
 
 
 def _candidate_gym_balances(item: dict, gyms, dca) -> dict[str, float]:
     """후보 1명을 6체육관에 응시 → {체육관키: 전략 종료잔고}."""
+    missing = _missing_weights(item)
+    if missing:
+        raise ValueError(
+            f"현재 시그널 풀({len(SIGNAL_NAMES)}마리)과 후보 params 불일치: "
+            f"누락 {missing}. 14신호 top30 재선발 필요."
+        )
     weights, params = decode_params(item["params"])
     balances = evaluate_balances(weights, params, gyms, dca, seed_krw=SEED_KRW)
     return {gym_key(name): row["strat"] for name, row in balances.items()}
@@ -97,16 +154,16 @@ def build_payload(top30: dict, gyms, dca) -> dict:
 
     classrooms = []
     for classroom in top30["classrooms"]:
-        group = classroom["name"].replace("NSGA-III", "NSGA")
-        members = []
-        for item in classroom["topk"]:
-            per_gym = _candidate_gym_balances(item, gyms, dca)
-            members.append({
-                "trial": item.get("trial"),
-                "per_gym": per_gym,
-                "score": float(np.median([per_gym[k] for k in gym_keys])),
-            })
-        classrooms.append({"group": group, "members": members})
+        for group, topk in _candidate_sets(classroom):
+            members = []
+            for item in topk:
+                per_gym = _candidate_gym_balances(item, gyms, dca)
+                members.append({
+                    "trial": item.get("trial"),
+                    "per_gym": per_gym,
+                    "score": float(np.median([per_gym[k] for k in gym_keys])),
+                })
+            classrooms.append({"group": group, "members": members})
 
     return {
         "stamp": top30.get("stamp", "latest"),

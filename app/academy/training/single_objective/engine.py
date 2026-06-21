@@ -95,6 +95,7 @@ def run_single_obj_study(
     early_stop: bool = True,
     patience: int | None = None,
     min_delta_pct: float | None = None,
+    warmstart: list[dict] | None = None,
 ) -> tuple[optuna.Study, list[LoadedGym], dict]:
     """단일목적 탐색 공통 경로.
 
@@ -118,9 +119,11 @@ def run_single_obj_study(
             # storage는 시즌 임시 영역, hall_of_fame.md 흡수 후 db 폐기.
             storage=storage, study_name=study_name, load_if_exists=False,
         )
+    for params in warmstart or []:
+        study.enqueue_trial(params)
 
-    # 재개 시 추가 분만 실행 — nsga3.run_study와 동일 의미론.
-    done = len(study.trials)
+    # 재개 시 추가 분만 실행. enqueue_trial의 WAITING trial은 아직 평가 전이므로 제외한다.
+    done = sum(1 for t in study.trials if t.state.is_finished())
     remaining = max(0, trials - done)
 
     callbacks: list = []

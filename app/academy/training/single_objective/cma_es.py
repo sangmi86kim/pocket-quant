@@ -26,7 +26,8 @@ def _make_sampler(seed: int | None,
 def run_study(trials, seed=None, storage=None, study_name="cma_es_single_obj",
               on_progress=None, loaded_gyms=None, dca=None,
               extra_callbacks=None, early_stop=True,
-              patience=None, min_delta_pct=None, lr_adapt=True):
+              patience=None, min_delta_pct=None, lr_adapt=True,
+              warmstart=None):
     """CMA-ES 단일목적 탐색. single_objective.engine에 위임."""
     def make_sampler(seed_):
         return _make_sampler(seed_, lr_adapt=lr_adapt)
@@ -35,5 +36,5 @@ def run_study(trials, seed=None, storage=None, study_name="cma_es_single_obj",
         make_sampler, trials, seed=seed, storage=storage, study_name=study_name,
         on_progress=on_progress, loaded_gyms=loaded_gyms, dca=dca,
         extra_callbacks=extra_callbacks, early_stop=early_stop,
-        patience=patience, min_delta_pct=min_delta_pct,
+        patience=patience, min_delta_pct=min_delta_pct, warmstart=warmstart,
     )

@@ -32,7 +32,8 @@ def run_study(n_trials: int, seed: int | None = None,
               on_progress=None,
               tune_params: bool = False,
               early_stop_window: int | None = None,
-              adaptive_mutation: bool = False):
+              adaptive_mutation: bool = False,
+              warmstart: list[dict] | None = None):
     """학교 NSGA-III 실행.
 
     seed는 sampler 주사위, academy_seed는 합성장 주사위다. 둘 다 None이면 매번
@@ -62,6 +63,8 @@ def run_study(n_trials: int, seed: int | None = None,
     study.set_user_attr("academy_seed", academy_seed)
     study.set_user_attr("sampler_seed", seed)
     study.set_user_attr("objectives", OBJECTIVE_NAMES)
+    for params in warmstart or []:
+        study.enqueue_trial(params)
 
     callbacks: list = []
     if on_progress:

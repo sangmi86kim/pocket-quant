@@ -26,7 +26,7 @@ import optuna
 import pandas as pd
 
 from app.academy.curriculum import bootstrap_gyms, prepare_academy_split
-from app.academy.curriculum.textbook import DATA_END, make_world
+from app.academy.curriculum.textbook import DATA_END, make_world, make_world_rs
 from app.academy.exam.grade import evaluate_balances
 from app.academy.training.single_objective.engine import _objective
 from app.pocket.signals import (
@@ -52,6 +52,9 @@ def run_check() -> bool:
     world = make_world(seed=1, n_days=300)
     prices = world.prices
     streams = prices.attrs.get("external_streams", {})
+    rs_world = make_world_rs(seed=2, n_days=300)
+    rs_prices = rs_world.prices
+    rs_streams = rs_prices.attrs.get("external_streams", {})
 
     check("합성 세계 표식: prices.attrs['synthetic'] == True",
           prices.attrs.get("synthetic") is True)
@@ -59,6 +62,8 @@ def run_check() -> bool:
           not hasattr(world, "external_streams"))
     check("야생 입력 스트림 키 고정",
           sorted(streams) == EXPECTED_STREAMS)
+    check("RS 교과서도 야생 입력 스트림 키 고정",
+          sorted(rs_streams) == EXPECTED_STREAMS)
     check("QQQ leg는 합성 prices와 동일",
           "QQQ" in streams and streams["QQQ"].equals(prices))
     check("모든 스트림 인덱스가 합성 prices와 동일",
@@ -69,6 +74,10 @@ def run_check() -> bool:
           "UUP" in streams and streams["UUP"].isna().sum() > 0)
     check("합성 재료는 hold-out 시작 전까지만 사용",
           DATA_END < "2020-07-01")
+    default_world = bootstrap_gyms(n=1, seed=8)[0]
+    check("academy.bootstrap_gyms 기본 교과서는 RS",
+          default_world.gym.name.startswith("아카데미#")
+          and default_world.prices.attrs.get("synthetic") is True)
     check("signals._fetch_external은 attrs 외부 스트림을 우선 사용",
           _fetch_external("^VIX", prices).equals(streams["^VIX"]))
     bare_synth = pd.Series(prices.to_numpy(), index=prices.index, name=prices.name)
@@ -130,7 +139,7 @@ def run_check() -> bool:
     # 목적값 = 체육관 잔고 중앙값(median). 2026-06-20 balance_sum→median 전환과 정합.
     expected = float(np.median([b["strat"] for b in train_bals.values()]))
     check("단일목적 objective는 raw balance median 유지",
-          _objective(trial, train_gyms, train_dca) == expected)
+          _objective(trial, train_gyms, train_dca) == expected)  # type: ignore[arg-type]
 
     print(f"\n=== 판정: {'PASS' if not failures else 'FAIL ' + str(failures)} ===")
     return not failures

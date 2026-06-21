@@ -10,6 +10,7 @@ exam(실QQQ 6체육관 졸업시험)은 리그가 아니라 학교 졸업 산출
 """
 import json
 from html import escape
+from collections.abc import Mapping
 from pathlib import Path
 
 import numpy as np
@@ -26,7 +27,7 @@ from app.league.operations.npcs import (
 )
 from app.pocket.battle import _score_position, terminal_balance
 from app.pocket.signals import combine_positions, positions_with_params
-from app.world.data_loader import get_prices
+from app.world.data_loader import LoadedGym, get_prices
 
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -46,7 +47,8 @@ def _uses_default_signal_params(params: dict) -> bool:
     return all(str(k).startswith("w_") for k in params)
 
 
-def _candidate_oos(weights: list[float], params: dict, oos_loaded: dict[int, object],
+def _candidate_oos(weights: list[float], params: dict,
+                   oos_loaded: Mapping[int, LoadedGym],
                    base_positions: dict[int, list] | None = None) -> int:
     total = 0
     for year in VR.OOS_YEARS:
@@ -59,7 +61,7 @@ def _candidate_oos(weights: list[float], params: dict, oos_loaded: dict[int, obj
     return int(total)
 
 
-def _candidate_world(weights: list[float], params: dict, worlds: list[object],
+def _candidate_world(weights: list[float], params: dict, worlds: list[LoadedGym],
                      base_positions: list[list] | None = None) -> int:
     balances = []
     for i, world in enumerate(worlds):
@@ -71,14 +73,15 @@ def _candidate_world(weights: list[float], params: dict, worlds: list[object],
     return int(np.mean(balances))
 
 
-def _candidate_holdout(weights: list[float], params: dict, holdout_loaded: dict[str, object],
+def _candidate_holdout(weights: list[float], params: dict,
+                       holdout_loaded: Mapping[str, LoadedGym],
                        base_positions: dict[str, list] | None = None) -> int:
     total = 0
     for name, _start, _end in EF.ROUNDS:
         loaded = holdout_loaded[name]
         positions = (base_positions[name] if _uses_default_signal_params(params)
                      and base_positions is not None else
-                     positions_with_params(loaded.prices))
+                     positions_with_params(loaded.prices, params))
         pos = combine_positions(positions, weights)
         total += terminal_balance(_score_position(pos, loaded), SEED_KRW)
     return int(total)
@@ -133,7 +136,7 @@ def _app_deletion_member_row(frac: float, oos_loaded, worlds, holdout_loaded,
     }
 
 
-def _load_worlds() -> list[object]:
+def _load_worlds() -> list[LoadedGym]:
     prices = get_prices("QQQ", BF.DATA_START, BF.DATA_END)
     full_returns = prices.pct_change().dropna()
     rng = np.random.default_rng(BF.SEED)
@@ -288,7 +291,9 @@ def _write_markdown(payload: dict) -> None:
     lines.append("| arena | name | group | balance | label |")
     lines.append("|---|---|---|---:|---|")
     for arena, _title in ARENAS:
-        best = max(payload["rows"], key=lambda row, a=arena: row[a])
+        def arena_value(row: dict, key: str = arena):
+            return row[key]
+        best = max(payload["rows"], key=arena_value)
         lines.append(
             f"| {arena} | {best['name']} | {best['group']} | "
             f"{best[arena]:.0f} | {best.get('label', '')} |"

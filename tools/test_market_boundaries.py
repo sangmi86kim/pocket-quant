@@ -8,10 +8,13 @@ This is a leakage guard:
 """
 from pathlib import Path
 import sys
+import tempfile
+import types
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+import numpy as np
 import pandas as pd
 
 from app.academy.exam import all_gyms
@@ -19,7 +22,8 @@ from app.academy.training import study
 from app.academy.training.multi_objective import nsga3
 from app.academy.training.single_objective import tpe
 from app.league import battle_frontier, elite_four, victory_road
-from app.world.data_loader import FUTURE_SEAL_DATE, get_prices
+from app.world import data_loader
+from app.world.data_loader import FUTURE_SEAL_DATE
 
 TRAINING_DIR = ROOT / "app" / "academy" / "training"
 
@@ -81,6 +85,63 @@ def _print_rows(rows: list[dict]) -> None:
         )
 
 
+def _check_future_seal_offline() -> None:
+    """캐시/네트워크 없이 get_prices의 SEAL 절단 계약만 검증한다."""
+    print("\n=== Future Seal (DLC hold-out) ===")
+    print(f"FUTURE_SEAL_DATE = {FUTURE_SEAL_DATE}")
+    if FUTURE_SEAL_DATE <= "2020-07-01":
+        raise AssertionError("FUTURE_SEAL_DATE가 사천왕 hold-out 경계보다 이르다")
+
+    calls = []
+
+    def fake_download(ticker, start, end, auto_adjust, progress):
+        calls.append({"ticker": ticker, "start": start, "end": end})
+        last = pd.Timestamp(end) - pd.Timedelta(days=1)
+        idx = pd.bdate_range(start, last)
+        if idx.empty:
+            idx = pd.DatetimeIndex([last])
+        return pd.DataFrame({"Close": np.linspace(100.0, 101.0, len(idx))},
+                            index=idx)
+
+    fake_yf = types.ModuleType("yfinance")
+    setattr(fake_yf, "set_tz_cache_location", lambda _path: None)
+    setattr(fake_yf, "download", fake_download)
+    old_yf = sys.modules.get("yfinance")
+    old_cache = data_loader.CACHE_DIR
+    old_no_data = set(data_loader._NO_DATA_WINDOWS)
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            data_loader.CACHE_DIR = tmp
+            data_loader._NO_DATA_WINDOWS.clear()
+            sys.modules["yfinance"] = fake_yf
+
+            seal_ts = pd.Timestamp(FUTURE_SEAL_DATE)
+            sealed = data_loader.get_prices("QQQ", "2026-06-01", "2099-12-31")
+            if calls[-1]["end"] != "2026-06-20":
+                raise AssertionError(f"봉인 절단 실패: yfinance end={calls[-1]['end']}")
+            if sealed.index.max() > seal_ts:
+                raise AssertionError(
+                    f"봉인 누수: 기본 get_prices가 {sealed.index.max().date()} "
+                    f"(> SEAL {FUTURE_SEAL_DATE})를 반환")
+            print(f"  기본(allow_future=False) 마지막 {sealed.index.max().date()} ≤ SEAL ✓")
+
+            opened = data_loader.get_prices(
+                "QQQ", "2026-06-01", "2099-12-31", allow_future=True)
+            if calls[-1]["end"] != "2100-01-01":
+                raise AssertionError("allow_future=True 경로가 요청 종료일을 절단함")
+            if opened.empty:
+                raise AssertionError("allow_future=True(DLC 개봉) 경로가 빈 시계열 반환")
+            print(f"  DLC 개봉(allow_future=True) 호출 가능 · 마지막 {opened.index.max().date()}")
+    finally:
+        data_loader.CACHE_DIR = old_cache
+        data_loader._NO_DATA_WINDOWS.clear()
+        data_loader._NO_DATA_WINDOWS.update(old_no_data)
+        if old_yf is None:
+            sys.modules.pop("yfinance", None)
+        else:
+            sys.modules["yfinance"] = old_yf
+
+
 def main() -> int:
     rows = []
 
@@ -122,24 +183,7 @@ def main() -> int:
     if elite_four.HOLDOUT_START < "2020-07-01":
         raise AssertionError("elite_four starts before hold-out boundary")
 
-    # 미래 봉인(DLC hold-out) — 챔피언 결정전용으로 적립 중인 미래 데이터를 학습/검증이 못 보게
-    # get_prices가 기본으로 SEAL 이후를 잘라내는지 잠근다. 지금은 실데이터가 SEAL에 못 미쳐
-    # 자명히 통과하지만, 달이 쌓여 SEAL 이후 데이터가 생겨도 이 불변식이 봉인을 강제한다.
-    print("\n=== Future Seal (DLC hold-out) ===")
-    print(f"FUTURE_SEAL_DATE = {FUTURE_SEAL_DATE}")
-    if FUTURE_SEAL_DATE <= "2020-07-01":
-        raise AssertionError("FUTURE_SEAL_DATE가 사천왕 hold-out 경계보다 이르다")
-    seal_ts = pd.Timestamp(FUTURE_SEAL_DATE)
-    sealed = get_prices("QQQ", "1999-03-10", "2099-12-31")          # 봉인 너머까지 요청
-    if sealed.index.max() > seal_ts:
-        raise AssertionError(
-            f"봉인 누수: 기본 get_prices가 {sealed.index.max().date()} "
-            f"(> SEAL {FUTURE_SEAL_DATE})를 반환")
-    print(f"  기본(allow_future=False) 마지막 {sealed.index.max().date()} ≤ SEAL ✓")
-    opened = get_prices("QQQ", "1999-03-10", "2099-12-31", allow_future=True)  # DLC 개봉 경로
-    if opened.empty:
-        raise AssertionError("allow_future=True(DLC 개봉) 경로가 빈 시계열 반환")
-    print(f"  DLC 개봉(allow_future=True) 호출 가능 · 마지막 {opened.index.max().date()}")
+    _check_future_seal_offline()
 
     hits = _scan_training_for_exam_leaks()
     if hits:
@@ -149,6 +193,10 @@ def main() -> int:
 
     print("\n=== Verdict: PASS ===")
     return 0
+
+
+def test_market_boundaries_contract():
+    assert main() == 0
 
 
 if __name__ == "__main__":

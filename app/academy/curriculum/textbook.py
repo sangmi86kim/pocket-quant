@@ -17,6 +17,7 @@ import pandas as pd
 
 from app.world.data_loader import LoadedGym, get_prices, get_volume
 from app.pocket.models import Gym
+from app.world.regime import classify_daily
 
 
 # 학습 자료 범위 — battle_frontier와 동일 (사천왕 봉인 2020-07 이후 사용 금지)
@@ -51,6 +52,9 @@ DEFAULT_EXTERNAL_STREAMS = (
     ("DIA", "price"),      # 다우
     ("QQQ_volume", "volume"),  # VOL_SPIKE용 QQQ 거래량
 )
+
+REGIME_STATES = ["bull", "bear", "sideways", "volatile"]
+REGIME_INDEX = {s: i for i, s in enumerate(REGIME_STATES)}
 
 
 def _to_block_unit(series: pd.Series, stream_type: str) -> pd.Series:
@@ -110,13 +114,45 @@ def _sample_block_indices(n_days: int, total_days: int, rng) -> np.ndarray:
     같은 시점으로 잘라야 cross-asset correlation (여러 자산이 같이 움직이는 정도)
     보존: 닷컴 패닉 블록에 VIX 폭증·금리 하락도 같이 들어감.
     """
-    indices = []
+    indices: list[int] = []
     total = 0
     while total < n_days:
         i = rng.integers(0, total_days - BLOCK_DAYS + 1)
         indices.extend(range(i, i + BLOCK_DAYS))
         total += BLOCK_DAYS
     return np.array(indices[:n_days])
+
+
+def _block_pools_and_chain(qqq_raw: pd.Series, common_idx: pd.Index):
+    """국면별 진짜 토막 풀과 블록 단위 전이행렬(P), 초기분포(pi)를 추정한다."""
+    labels = classify_daily(qqq_raw).reindex(common_idx)
+    lab = labels.to_numpy()
+    total = len(common_idx)
+
+    pools: dict[str, list[int]] = {s: [] for s in REGIME_STATES}
+    for i in range(total - BLOCK_DAYS + 1):
+        end = lab[i + BLOCK_DAYS - 1]
+        if isinstance(end, str) and end in pools:
+            pools[end].append(i)
+
+    seq = np.array([
+        REGIME_INDEX[lab[s + BLOCK_DAYS - 1]]
+        for s in range(0, total - BLOCK_DAYS + 1, BLOCK_DAYS)
+        if isinstance(lab[s + BLOCK_DAYS - 1], str)
+        and lab[s + BLOCK_DAYS - 1] in REGIME_INDEX
+    ])
+
+    P = np.zeros((len(REGIME_STATES), len(REGIME_STATES)))
+    for a, b in zip(seq[:-1], seq[1:]):
+        P[a, b] += 1
+    for r in range(len(REGIME_STATES)):
+        if P[r].sum() == 0:
+            P[r] = 1.0
+    P = P / P.sum(axis=1, keepdims=True)
+    pi = (np.array([np.mean(seq == i) for i in range(len(REGIME_STATES))])
+          if len(seq) else np.ones(len(REGIME_STATES)) / len(REGIME_STATES))
+    pi = pi / pi.sum()
+    return pools, P, pi
 
 
 def _load_external(streams_spec, start: str, end: str,
@@ -201,6 +237,65 @@ def make_world(seed: int = 42,
 
     eval_start = prices.index[WARMUP_TDAYS] if n_days > WARMUP_TDAYS else prices.index[0]
     gym = Gym("세계공장#합성", difficulty=0, volatility=0, ticker="SYNTH",
+              start=eval_start.strftime("%Y-%m-%d"),
+              end=prices.index[-1].strftime("%Y-%m-%d"))
+    return LoadedGym(gym=gym, prices=prices)
+
+
+def make_world_rs(seed: int = 42,
+                  external_streams=DEFAULT_EXTERNAL_STREAMS,
+                  start: str = DATA_START, end: str = DATA_END,
+                  ticker: str = "QQQ",
+                  n_days: int | None = None,
+                  skew: dict | None = None) -> LoadedGym:
+    """RS 교과서 1권 — 국면 순서를 먼저 뽑고, 그 국면의 진짜 21일 토막을 끼운다.
+
+    skew: {국면: 배수}. 예: {"bear": 3.0}이면 하락장 토막 출제 확률을 높인다.
+    """
+    if n_days is None:
+        n_days = WARMUP_TDAYS + EVAL_TDAYS
+
+    qqq_raw = get_prices(ticker, start, end)
+    qqq_returns = (qqq_raw / qqq_raw.shift(1)).apply(np.log).dropna()
+    common_idx = qqq_returns.index
+    aligned = _load_external(external_streams, start, end, common_idx)
+    pools, P, pi = _block_pools_and_chain(qqq_raw, common_idx)
+
+    if skew:
+        m = np.array([skew.get(s, 1.0) for s in REGIME_STATES])
+        pi = pi * m
+        pi = pi / pi.sum()
+        P = P * m[None, :]
+        P = P / P.sum(axis=1, keepdims=True)
+
+    rng = np.random.default_rng(seed)
+    n_blocks = (n_days + BLOCK_DAYS - 1) // BLOCK_DAYS
+    state = int(rng.choice(len(REGIME_STATES), p=pi))
+    indices: list[int] = []
+    for _ in range(n_blocks):
+        pool = pools[REGIME_STATES[state]]
+        i0 = (int(pool[rng.integers(0, len(pool))]) if pool
+              else int(rng.integers(0, len(common_idx) - BLOCK_DAYS + 1)))
+        indices.extend(range(i0, i0 + BLOCK_DAYS))
+        state = int(rng.choice(len(REGIME_STATES), p=P[state]))
+    sample_indices = np.array(indices[:n_days])
+
+    qqq_synth = _from_block_unit(np.asarray(qqq_returns.values)[sample_indices],
+                                 "price", init=100.0)
+    synth_dates = pd.bdate_range("2001-01-01", periods=n_days)
+    prices = pd.Series(qqq_synth, index=synth_dates, name=ticker)
+
+    external_synth = {ticker: prices.copy()}
+    for ext_ticker, (block_unit, stream_type) in aligned.items():
+        values = np.asarray(block_unit.values)[sample_indices]
+        external_synth[ext_ticker] = pd.Series(_from_block_unit(values, stream_type),
+                                               index=synth_dates)
+
+    prices.attrs["synthetic"] = True
+    prices.attrs["external_streams"] = external_synth
+
+    eval_start = prices.index[WARMUP_TDAYS] if n_days > WARMUP_TDAYS else prices.index[0]
+    gym = Gym("세계공장#RS합성", difficulty=0, volatility=0, ticker="SYNTH",
               start=eval_start.strftime("%Y-%m-%d"),
               end=prices.index[-1].strftime("%Y-%m-%d"))
     return LoadedGym(gym=gym, prices=prices)
