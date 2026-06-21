@@ -388,6 +388,9 @@ def run_all() -> Path:
     loaded_gyms, dca = prepare_school_data(seed=academy_seed)
     diagnostic = remedial.make_diagnostic_gyms(seed=academy_seed + 50_000)
     json_path = RESULTS_DIR / f"classroom_studies_{stamp}.json"
+    # 소비자(graduate·리그·signal analysis)는 classroom_top30_*_v2.json을 글롭한다.
+    # 2단계 산출물의 topk가 곧 선발이라, 같은 payload를 그 이름으로도 남겨 생산자↔소비자를 잇는다.
+    top30_path = RESULTS_DIR / f"classroom_top30_{stamp}_v2.json"
     results: list[dict] = []
     failed: list[str] = []
 
@@ -402,10 +405,9 @@ def run_all() -> Path:
             "failed": failed,
             "classrooms": results,
         }
-        json_path.write_text(
-            json.dumps(payload, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
+        text = json.dumps(payload, ensure_ascii=False, indent=2)
+        json_path.write_text(text, encoding="utf-8")
+        top30_path.write_text(text, encoding="utf-8")
 
     def study_one(name: str, run) -> None:
         # 한 반의 실패가 학기 전체를 죽이지 않게 격리한다 (예: GP는 torch 필요).
@@ -434,6 +436,7 @@ def run_all() -> Path:
     if failed:
         print(f"[WARN] 실패한 반: {failed} — 완료된 {len(results)}개는 저장됨",
               flush=True)
+    print(f"top30_results={top30_path}", flush=True)
     return json_path
 
 
