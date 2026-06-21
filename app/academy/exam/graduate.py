@@ -21,7 +21,7 @@ import numpy as np
 from app.academy.exam import all_gyms, gym_key
 from app.academy.exam.grade import evaluate_balances
 from app.academy.training.candidate import decode_params
-from app.pocket.battle import fight_dca
+from app.pocket.battle import fight_dca, terminal_balance
 from app.world.data_loader import load_gyms
 
 
@@ -79,18 +79,13 @@ def _stats(values: list[float]) -> dict:
     }
 
 
-def run() -> dict:
-    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-    top30_path = _latest_top30()
-    top30 = json.loads(top30_path.read_text(encoding="utf-8"))
-    stamp = top30.get("stamp", "latest")
+def build_payload(top30: dict, gyms, dca) -> dict:
+    """top30(파일이든 메모리든) + 응시할 체육관/성실이 → 졸업 성적표 payload.
 
-    gyms = load_gyms(all_gyms())
-    dca = {lg.gym.name: fight_dca(lg) for lg in gyms}
+    파일 I/O·차트 생성과 분리해 둔다 — 스모크가 방금 키운 졸업생을 메모리째
+    넘겨 이 조립(디코드→6체육관 채점→median)만 태울 수 있게(점검 그물)."""
     gym_keys = [gym_key(lg.gym.name) for lg in gyms]   # all_gyms 순서 유지
-
     # 성실이(DCA)는 후보와 무관하게 체육관마다 한 값 — 한 번만 잰다.
-    from app.pocket.battle import terminal_balance
     dca_by_gym = {gym_key(lg.gym.name): terminal_balance(dca[lg.gym.name], SEED_KRW)
                   for lg in gyms}
 
@@ -107,15 +102,27 @@ def run() -> dict:
             })
         classrooms.append({"group": group, "members": members})
 
-    payload = {
-        "stamp": stamp,
-        "top30_source": str(top30_path),
+    return {
+        "stamp": top30.get("stamp", "latest"),
+        "top30_source": top30.get("_source", "(in-memory)"),
         "seed_krw": SEED_KRW,
         "gym_keys": gym_keys,
         "dca_by_gym": dca_by_gym,
         "dca_score": float(np.median([dca_by_gym[k] for k in gym_keys])),
         "classrooms": classrooms,
     }
+
+
+def run() -> dict:
+    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    top30_path = _latest_top30()
+    top30 = json.loads(top30_path.read_text(encoding="utf-8"))
+    top30["_source"] = str(top30_path)
+
+    gyms = load_gyms(all_gyms())
+    dca = {lg.gym.name: fight_dca(lg) for lg in gyms}
+    payload = build_payload(top30, gyms, dca)
+    stamp = payload["stamp"]
     svg_path = _boxplot_svg(payload, stamp)
     _write_markdown(payload, stamp, svg_path)
     return payload

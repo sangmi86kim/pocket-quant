@@ -1,8 +1,8 @@
 """Project-wide validation smoke.
 
 Runs compile/import gates, regression validators, diagnostics, and a short
-NSGA-III smoke. For the shorter academy -> gym -> league workflow check, run
-`python tools/smoke_workflow.py`.
+NSGA-III smoke. For the shorter workflow checks, run
+`python tools/smoke_academy.py` (학교) and `python tools/smoke_league.py` (리그).
 """
 import subprocess
 import sys
