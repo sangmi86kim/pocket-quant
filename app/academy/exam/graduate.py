@@ -20,6 +20,8 @@ import numpy as np
 
 matplotlib.use("Agg")                                  # 헤드리스 — 파일로만 저장
 import matplotlib.pyplot as plt                         # noqa: E402
+from matplotlib.lines import Line2D                     # noqa: E402
+from matplotlib.patches import Patch                    # noqa: E402
 
 matplotlib.rcParams["font.family"] = "Malgun Gothic"   # 한글 라벨(Windows)
 matplotlib.rcParams["axes.unicode_minus"] = False
@@ -49,13 +51,28 @@ GYM_LABEL = {
     "bull": "상승",
     "chop": "횡보",
 }
+# 교실 고유색 — Spotfire 계열 카테고리 팔레트. 1차/보충은 같은 교실색에 채움만 달리한다
+# (1차=빗금·연하게 / 보충=솔리드). 그룹명이 "TPE-1차"여도 베이스명 "TPE"로 색을 찾는다.
 GROUP_COLORS = {
-    "TPE": "#2f6fdd",
-    "CMA-ES": "#2c9c69",
-    "GP": "#9a6ad6",
-    "NSGA": "#d48a1f",
-    "성실이": "#c44545",
+    "TPE": "#2e6db4",      # blue
+    "CMA-ES": "#3fa34d",   # green
+    "GP": "#7e5ca8",       # purple
+    "NSGA": "#e58a1f",     # amber
+    "성실이": "#c0392b",    # red (기준선)
 }
+
+
+def _base_name(group: str) -> str:
+    """'TPE-1차'·'TPE-보충' → 'TPE' (색 조회용 베이스명)."""
+    return group.replace("-1차", "").replace("-보충", "")
+
+
+def _box_style(group: str) -> dict:
+    """교실 고유색 + 단계 구분. 1차=빗금·연하게, 보충/단일=솔리드."""
+    color = GROUP_COLORS.get(_base_name(group), "#7a8290")
+    if group.endswith("-1차"):
+        return dict(facecolor=color, alpha=0.30, edgecolor=color, hatch="////")
+    return dict(facecolor=color, alpha=0.72, edgecolor=color, hatch=None)
 
 
 def _latest_top30() -> Path:
@@ -203,29 +220,49 @@ def _draw_box(ax, payload: dict, value_of, dca_value: float, title: str) -> None
     bp = ax.boxplot(data, widths=0.6, patch_artist=True,
                     medianprops=dict(color="#1f2933", linewidth=1.6))
     for patch, group in zip(bp["boxes"], groups):
-        color = GROUP_COLORS.get(group, "#4b5563")
-        patch.set_facecolor(color)
-        patch.set_alpha(0.35)
-        patch.set_edgecolor(color)
+        style = _box_style(group)
+        patch.set_facecolor(style["facecolor"])
+        patch.set_alpha(style["alpha"])
+        patch.set_edgecolor(style["edgecolor"])
+        if style["hatch"]:
+            patch.set_hatch(style["hatch"])
     for ln in bp["whiskers"] + bp["caps"]:
         ln.set_color("#52606d")
     dca_v = dca_value / 10000.0
-    ax.axhline(dca_v, color=GROUP_COLORS["성실이"], ls="--", lw=1.4, alpha=0.85,
-               label=f"성실이(DCA) {dca_v:.0f}")
+    ax.axhline(dca_v, color=GROUP_COLORS["성실이"], ls="--", lw=1.4, alpha=0.85)
     ax.set_xticks(range(1, len(groups) + 1))
     ax.set_xticklabels([f"{g}\n(n={len(d)})" for g, d in zip(groups, data)], fontsize=9)
     ax.set_ylabel("종료잔고 (만원)", fontsize=9)
     ax.set_title(title, fontsize=12, fontweight="bold")
     ax.grid(axis="y", color="#eef2f7", lw=1)
     ax.set_axisbelow(True)
-    ax.legend(loc="best", fontsize=8)
+
+
+def _has_phases(payload: dict) -> bool:
+    return any(c["group"].endswith(("-1차", "-보충")) for c in payload["classrooms"])
+
+
+def _legend_handles(payload: dict) -> list:
+    """범례 — 성실이 점선 + (2단계면) 1차=빗금 / 보충=솔리드 설명."""
+    handles = [Line2D([0], [0], color=GROUP_COLORS["성실이"], ls="--", lw=1.4,
+                      label="성실이(DCA)")]
+    if _has_phases(payload):
+        handles += [
+            Patch(facecolor="#7a8290", alpha=0.30, edgecolor="#7a8290",
+                  hatch="////", label="1차 (보충 전)"),
+            Patch(facecolor="#7a8290", alpha=0.72, edgecolor="#7a8290",
+                  label="보충 (1차+보충)"),
+        ]
+    return handles
 
 
 def _overall_png(payload: dict, stamp: str) -> Path:
     """① 종합 비교 — 반별 6체육관 median 종료잔고 분포 한 장."""
-    fig, ax = plt.subplots(figsize=(8, 5))
+    fig, ax = plt.subplots(figsize=(9, 5.2))
     _draw_box(ax, payload, lambda m: m["score"], payload["dca_score"],
               "졸업 종합 — 반별 6체육관 median 종료잔고 (진단 전용)")
+    ax.legend(handles=_legend_handles(payload), loc="lower left", fontsize=8,
+              framealpha=0.9)
     fig.tight_layout()
     path = REPORTS_DIR / f"graduation_{stamp}_overall.png"
     fig.savefig(path, dpi=130)
@@ -243,9 +280,11 @@ def _by_gym_png(payload: dict, stamp: str) -> Path:
                   payload["dca_by_gym"][k], f"{label} 체육관")
     for ax in axes.flat[len(keys):]:    # 체육관이 6 미만이면 남는 칸 숨김
         ax.axis("off")
-    fig.suptitle("체육관별 비교 — 반별 졸업생 종료잔고 분포 (점선=성실이)",
+    fig.suptitle("체육관별 비교 — 반별 졸업생 종료잔고 분포",
                  fontsize=14, fontweight="bold")
-    fig.tight_layout(rect=(0, 0, 1, 0.97))
+    fig.legend(handles=_legend_handles(payload), loc="upper right",
+               ncol=3, fontsize=10, framealpha=0.9)
+    fig.tight_layout(rect=(0, 0, 1, 0.96))
     path = REPORTS_DIR / f"graduation_{stamp}_by_gym.png"
     fig.savefig(path, dpi=130)
     plt.close(fig)
