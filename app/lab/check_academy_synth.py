@@ -21,6 +21,7 @@ check_academy_synth.py - 아카데미 합성세계(textbook + curriculum) 산출
 
 실행: 프로젝트 루트에서  python -m app.lab.check_academy_synth
 """
+import numpy as np
 import optuna
 import pandas as pd
 
@@ -36,7 +37,7 @@ from app.pocket.signals import (
     signal_VOL_SPIKE,
 )
 
-EXPECTED_STREAMS = ["DIA", "QQQ", "QQQ_volume", "SPY", "TLT", "UUP", "^TNX", "^VIX"]
+EXPECTED_STREAMS = ["DIA", "QQQ", "QQQ_volume", "SPY", "TLT", "UUP", "^TNX", "^VIX", "^VXN"]
 
 
 def run_check() -> bool:
@@ -126,8 +127,9 @@ def run_check() -> bool:
           and sum(b["strat"] for b in val_bals.values()) > 0)
     fixed_params = {f"w_{g}": 1.0 for g in SIGNAL_NAMES}
     trial = optuna.trial.FixedTrial(fixed_params)
-    expected = sum(b["strat"] for b in train_bals.values())
-    check("단일목적 objective는 raw balance sum 유지",
+    # 목적값 = 체육관 잔고 중앙값(median). 2026-06-20 balance_sum→median 전환과 정합.
+    expected = float(np.median([b["strat"] for b in train_bals.values()]))
+    check("단일목적 objective는 raw balance median 유지",
           _objective(trial, train_gyms, train_dca) == expected)
 
     print(f"\n=== 판정: {'PASS' if not failures else 'FAIL ' + str(failures)} ===")
