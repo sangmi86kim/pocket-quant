@@ -1,9 +1,10 @@
 """v2 리그 재경기 — 교실별 top30 분포 + 기준선.
 
-사천왕 hold-out은 호출하지 않는다. 아레나는 세 곳만 본다:
-  1) 공식 6체육관 exam 합산
-  2) victory_road OOS 11년 합산
-  3) battle_frontier 전천후 200세계 평균잔고
+exam(실QQQ 6체육관 졸업시험)은 리그가 아니라 학교 졸업 산출물로 분리했다
+(`app/academy/exam/graduate.py`, 진단 전용). 리그 아레나는:
+  1) victory_road OOS 11년 합산  (핵심 잣대)
+  2) battle_frontier 전천후 200세계 평균잔고
+  3) 사천왕 hold-out 합산  (오염됨 — 진단 참고)
 
 출력은 app/league/results/에 저장한다.
 """
@@ -13,22 +14,19 @@ from pathlib import Path
 
 import numpy as np
 
-from app.academy.exam import all_gyms
-from app.academy.exam.grade import evaluate_balances
 from app.academy.training.candidate import decode_params
 from app.league import battle_frontier as BF
 from app.league import elite_four as EF
 from app.league import victory_road as VR
 from app.league.operations.npcs import (
     _BH_ENTRY_FRACS,
-    _app_deletion_squad,
     _dca,
     _piggy_bank,
     _savings,
 )
-from app.pocket.battle import _score_position, fight_dca, terminal_balance
+from app.pocket.battle import _score_position, terminal_balance
 from app.pocket.signals import combine_positions, positions_with_params
-from app.world.data_loader import get_prices, load_gyms
+from app.world.data_loader import get_prices
 
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -38,7 +36,6 @@ JSON_OUT = RESULTS_DIR / "season_v2_top30_league.json"
 MD_OUT = RESULTS_DIR / "season_v2_top30_league.md"
 SEED_KRW = 1_000_000
 ARENAS = (
-    ("exam", "공식 6체육관 합산"),
     ("oos", "OOS 11년 합산"),
     ("world", "평행세계 200세계 평균"),
     ("holdout", "사천왕 hold-out 합산"),
@@ -47,18 +44,6 @@ ARENAS = (
 
 def _uses_default_signal_params(params: dict) -> bool:
     return all(str(k).startswith("w_") for k in params)
-
-
-def _candidate_exam(weights: list[float], params: dict, gyms, dca,
-                    base_positions: dict[str, list] | None = None) -> int:
-    if not _uses_default_signal_params(params) or base_positions is None:
-        rows = evaluate_balances(weights, params, gyms, dca, seed_krw=SEED_KRW)
-        return int(sum(row["strat"] for row in rows.values()))
-    total = 0
-    for loaded in gyms:
-        pos = combine_positions(base_positions[loaded.gym.name], weights)
-        total += terminal_balance(_score_position(pos, loaded), SEED_KRW)
-    return int(total)
 
 
 def _candidate_oos(weights: list[float], params: dict, oos_loaded: dict[int, object],
@@ -99,9 +84,8 @@ def _candidate_holdout(weights: list[float], params: dict, holdout_loaded: dict[
     return int(total)
 
 
-def _baseline_row(name: str, label: str, evaluator, exam_gyms, oos_loaded, worlds,
+def _baseline_row(name: str, label: str, evaluator, oos_loaded, worlds,
                   holdout_loaded) -> dict:
-    exam = sum(evaluator(loaded, SEED_KRW)[1] for loaded in exam_gyms)
     oos = sum(evaluator(oos_loaded[year], SEED_KRW)[1] for year in VR.OOS_YEARS)
     world = int(np.mean([evaluator(world, SEED_KRW)[1] for world in worlds]))
     holdout = sum(evaluator(holdout_loaded[name], SEED_KRW)[1]
@@ -111,14 +95,13 @@ def _baseline_row(name: str, label: str, evaluator, exam_gyms, oos_loaded, world
         "group": name,
         "kind": "baseline",
         "label": label,
-        "exam": int(exam),
         "oos": int(oos),
         "world": int(world),
         "holdout": int(holdout),
     }
 
 
-def _app_deletion_member_row(frac: float, exam_gyms, oos_loaded, worlds, holdout_loaded,
+def _app_deletion_member_row(frac: float, oos_loaded, worlds, holdout_loaded,
                              idx: int) -> dict:
     # _app_deletion_squad는 300명 중앙값 대표를 돌려주는 함수라, 멤버별 분포는
     # 같은 랜덤 진입일 배열을 쓰되 각 멤버의 frac으로 직접 계산한다.
@@ -136,7 +119,6 @@ def _app_deletion_member_row(frac: float, exam_gyms, oos_loaded, worlds, holdout
         arr[entry] -= TRADE_COST
         return SEED_KRW * float(np.prod(1.0 + arr))
 
-    exam = sum(term(loaded) for loaded in exam_gyms)
     oos = sum(term(oos_loaded[year]) for year in VR.OOS_YEARS)
     world = int(np.mean([term(world) for world in worlds]))
     holdout = sum(term(holdout_loaded[name]) for name, _s, _e in EF.ROUNDS)
@@ -145,7 +127,6 @@ def _app_deletion_member_row(frac: float, exam_gyms, oos_loaded, worlds, holdout
         "group": "어플삭제단",
         "kind": "baseline_member",
         "label": "B&H random entry",
-        "exam": float(exam),
         "oos": float(oos),
         "world": int(world),
         "holdout": float(holdout),
@@ -279,7 +260,8 @@ def _write_markdown(payload: dict) -> None:
     lines = ["# Season v2 Top30 League", ""]
     lines.append(f"- top30: `{payload['top30_source']}`")
     lines.append(f"- worlds: {payload['worlds']} / seed={BF.SEED}")
-    lines.append("- hold-out: not used")
+    lines.append("- exam(졸업시험): 학교 졸업 산출물로 분리 (app/academy/exam/graduate.py)")
+    lines.append("- hold-out(사천왕): 오염됨 — 진단 참고")
     lines.append("")
     for arena, title in ARENAS:
         lines.append(f"## {title}")
@@ -319,15 +301,11 @@ def run() -> dict:
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     top30 = json.loads(TOP30_PATH.read_text(encoding="utf-8"))
 
-    exam_gyms = load_gyms(all_gyms())
-    exam_dca = {loaded.gym.name: fight_dca(loaded) for loaded in exam_gyms}
     prices = get_prices(VR.TICKER, "1999-03-10", "2026-06-09")
     oos_loaded = {year: VR._loaded_window(prices, year) for year in VR.OOS_YEARS}
     holdout_loaded = {name: EF._loaded_window(prices, start, end)
                       for name, start, end in EF.ROUNDS}
     worlds = _load_worlds()
-    exam_positions = {loaded.gym.name: positions_with_params(loaded.prices)
-                      for loaded in exam_gyms}
     oos_positions = {year: positions_with_params(loaded.prices)
                      for year, loaded in oos_loaded.items()}
     holdout_positions = {name: positions_with_params(loaded.prices)
@@ -344,8 +322,6 @@ def run() -> dict:
                 "kind": "candidate",
                 "trial": item["trial"],
                 "label": item["weights"],
-                "exam": _candidate_exam(weights, params, exam_gyms, exam_dca,
-                                        exam_positions),
                 "oos": _candidate_oos(weights, params, oos_loaded,
                                       oos_positions),
                 "world": _candidate_world(weights, params, worlds,
@@ -355,13 +331,13 @@ def run() -> dict:
             })
 
     for idx, frac in enumerate(_BH_ENTRY_FRACS, start=1):
-        rows.append(_app_deletion_member_row(frac, exam_gyms, oos_loaded, worlds,
+        rows.append(_app_deletion_member_row(frac, oos_loaded, worlds,
                                              holdout_loaded, idx))
 
     rows.extend([
-        _baseline_row("성실이", "DCA", _dca, exam_gyms, oos_loaded, worlds, holdout_loaded),
-        _baseline_row("저축왕", "연3%", _savings, exam_gyms, oos_loaded, worlds, holdout_loaded),
-        _baseline_row("돼지저금통", "현금0%", _piggy_bank, exam_gyms, oos_loaded, worlds, holdout_loaded),
+        _baseline_row("성실이", "DCA", _dca, oos_loaded, worlds, holdout_loaded),
+        _baseline_row("저축왕", "연3%", _savings, oos_loaded, worlds, holdout_loaded),
+        _baseline_row("돼지저금통", "현금0%", _piggy_bank, oos_loaded, worlds, holdout_loaded),
     ])
 
     payload = {
