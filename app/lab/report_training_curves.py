@@ -94,6 +94,40 @@ def fig_convergence(stamp, phase1, phase2, academy_seed):
     return out
 
 
+def fig_nsga_hv(stamp, phase1, phase2):
+    """NSGA 하이퍼볼륨(HV) 학습 트렌드 — 다목적의 진짜 수렴곡선. DB의 hv_trend에서.
+
+    목적별 best-so-far는 극단 1점만 본다. HV는 파레토 프론트 전체의 부피라, 프론트가
+    촘촘·넓어지는 것까지 잡는 다목적 수렴의 정식 잣대다(조기종료 판정도 이걸로 한다).
+    """
+    fig, axes = plt.subplots(1, 2, figsize=(13, 5))
+    for ax, (label, ref) in zip(axes, [("1차 (RS)", phase1), ("2차 보충", phase2)]):
+        if ref is None:
+            ax.axis("off")
+            continue
+        tr = _load(*ref).user_attrs.get("hv_trend")
+        if not tr:
+            ax.set_title(f"{label} — hv_trend 없음")
+            ax.axis("off")
+            continue
+        xs = [r[0] for r in tr]
+        ax.plot(xs, [r[1] for r in tr], color="#bbb", lw=1, alpha=0.7, label="raw HV")
+        ax.plot(xs, [r[2] for r in tr], color="#d1495b", lw=2, label="HV 이동평균(5세대)")
+        ax.set_title(f"{label} 하이퍼볼륨 ({len(tr)}세대)")
+        ax.set_xlabel("trial 번호")
+        ax.set_ylabel("정규화 HV (↑좋음)")
+        ax.grid(alpha=0.25)
+        ax.legend(fontsize=8, loc="lower right")
+    fig.suptitle(f"NSGA-III 하이퍼볼륨(HV) 학습 트렌드 (stamp={stamp})\n"
+                 f"다목적 수렴의 정식 잣대 — 프론트 전체 부피가 커질수록 HV↑ (조기종료 기준)",
+                 fontsize=12)
+    fig.tight_layout(rect=(0, 0, 1, 0.92))
+    out = REPORTS / f"training_curves_{stamp}_nsga_hv.png"
+    fig.savefig(out, dpi=110)
+    plt.close(fig)
+    return out
+
+
 def fig_front(stamp, phase1, phase2):
     """최종 파레토 프론트: 중앙 vs 최악 잔고, 색=회전율."""
     fig, axes = plt.subplots(1, 2, figsize=(13, 5.2))
@@ -228,6 +262,7 @@ def main():
     phase1, phase2 = _nsga_dbs(stamp)
 
     conv = fig_convergence(stamp, phase1, phase2, academy_seed)
+    hv = fig_nsga_hv(stamp, phase1, phase2)
     front = fig_front(stamp, phase1, phase2)
     sel = fig_selection(stamp, classrooms)
     single = fig_single_convergence(stamp)
@@ -240,6 +275,12 @@ TPE·CMA-ES·GP도 storage 보존 후 학습이라 수렴곡선 확인 가능.""
                  if single else
                  "_이 학기는 storage 보존 전 학습이라 단일목적 수렴곡선 없음 "
                  "(다음 학습부터 생성)._")
+    limit_md = ("- **4교실 전부 학습 이력 DB 보존** — NSGA(목적별 best-so-far + HV) · "
+                "TPE·CMA-ES·GP(best-so-far) 모두 수렴곡선 검증 가능. GP는 seed리그라 n=5(표본 작음)."
+                if single else
+                "- **학습 이력 보존 = NSGA뿐.** TPE·CMA-ES·GP는 storage 없이 메모리 study라 trial별\n"
+                "  수렴곡선이 **유실**됨 → 최종 선발 후보 분포만 표시. GP는 seed리그라 n=5(표본 작음).\n"
+                "- 재발방지: AGENTS #20 '단일목적도 storage 붙여 학습 이력 보존' — 다음 학습부터 해소.")
     md = REPORTS / f"training_verification_{stamp}.md"
     md.write_text(f"""# 학습 과정 검증 레포트 — {stamp}
 
@@ -251,6 +292,13 @@ TPE·CMA-ES·GP도 storage 보존 후 학습이라 수렴곡선 확인 가능.""
 
 - 1차 {n1} trial · 2차(보충) {n2} trial. 빨강 best-so-far가 우상향 후 평탄 = 수렴 성공.
 - 목적 3개: 중앙 종료잔고(↑)·최악 종료잔고(↑)·회전율(↓).
+
+### 하이퍼볼륨(HV) 트렌드 — 다목적 수렴의 정식 잣대
+
+![HV](training_curves_{stamp}_nsga_hv.png)
+
+- best-so-far가 극단 1점만 본다면, HV는 **파레토 프론트 전체 부피**라 프론트가 촘촘·넓어지는
+  것까지 잡는다. 빨강(이동평균)이 우상향 후 평탄 = 진짜 수렴. 조기종료도 이 HV로 판정한다.
 
 ![파레토](training_curves_{stamp}_nsga_front.png)
 
@@ -264,13 +312,11 @@ TPE·CMA-ES·GP도 storage 보존 후 학습이라 수렴곡선 확인 가능.""
 
 ## 4. 정직한 한계
 
-- **학습 이력 보존 = NSGA뿐.** TPE·CMA-ES·GP는 storage 없이 메모리 study라 trial별
-  수렴곡선이 **유실**됨 → 최종 선발 후보 분포만 표시. GP는 seed리그라 n=5(표본 작음).
-- 재발방지: AGENTS #20에 "단일목적도 storage 붙여 학습 이력 보존" 추가 — 다음 학습부터
-  4교실 전부 수렴곡선 검증 가능하게.
+{limit_md}
 """, encoding="utf-8")
 
-    print(f"[저장] {conv.name}\n[저장] {front.name}\n[저장] {sel.name}\n[저장] {md.name}")
+    print(f"[저장] {conv.name}\n[저장] {hv.name}\n[저장] {front.name}\n"
+          f"[저장] {sel.name}\n[저장] {md.name}")
     if single:
         print(f"[저장] {single.name}")
     else:
