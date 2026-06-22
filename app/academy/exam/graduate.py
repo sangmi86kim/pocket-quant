@@ -14,6 +14,7 @@
 """
 import json
 from pathlib import Path
+from typing import Any
 
 import matplotlib
 import numpy as np
@@ -77,6 +78,8 @@ def _box_style(group: str) -> dict:
 
 def _latest_top30() -> Path:
     if TOP30_PATH is not None:
+        if not _top30_compatible(TOP30_PATH):
+            raise ValueError(f"top30 파일 사용 불가: {TOP30_PATH}")
         return TOP30_PATH
     cands = sorted(TRAIN_RESULTS.glob("classroom_top30_*_v2.json"))
     if not cands:
@@ -86,9 +89,15 @@ def _latest_top30() -> Path:
         need = ", ".join(f"w_{g}" for g in SIGNAL_NAMES)
         raise FileNotFoundError(
             "현재 시그널 풀과 호환되는 top30 파일 없음 "
-            f"(필요 가중치: {need}). 14신호 top30 재선발 후 실행."
+            f"(필요 가중치: {need}) 또는 비용 모델 메타데이터 없음. "
+            "슬리피지/No-trade band 반영 후 top30 재선발 필요."
         )
     return compatible[-1]
+
+
+def _cost_model_ready(top30: dict) -> bool:
+    cost_model = top30.get("cost_model")
+    return isinstance(cost_model, dict) and cost_model.get("complete") is True
 
 
 def _classroom_topk(classroom: dict) -> list[dict]:
@@ -122,6 +131,8 @@ def _top30_compatible(path: Path) -> bool:
     try:
         top30 = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
+        return False
+    if not _cost_model_ready(top30):
         return False
     try:
         for classroom in top30.get("classrooms", []):
@@ -242,10 +253,12 @@ def _has_phases(payload: dict) -> bool:
     return any(c["group"].endswith(("-1차", "-보충")) for c in payload["classrooms"])
 
 
-def _legend_handles(payload: dict) -> list:
+def _legend_handles(payload: dict) -> list[Any]:
     """범례 — 성실이 점선 + (2단계면) 1차=빗금 / 보충=솔리드 설명."""
-    handles = [Line2D([0], [0], color=GROUP_COLORS["성실이"], ls="--", lw=1.4,
-                      label="성실이(DCA)")]
+    handles: list[Any] = [
+        Line2D([0], [0], color=GROUP_COLORS["성실이"], ls="--", lw=1.4,
+               label="성실이(DCA)")
+    ]
     if _has_phases(payload):
         handles += [
             Patch(facecolor="#7a8290", alpha=0.30, edgecolor="#7a8290",

@@ -37,6 +37,34 @@ SAVINGS_RATE_ANNUAL = 0.03
 #   예) 현금(0) → 풀매수(1) 진입 = 자본의 100% 거래 = 0.1% 비용.
 # 평가 구간 안의 매매만 과금한다(워밍업 중 진입한 초기 포지션은 무료 = 구간 철학과 일치).
 TRADE_COST = 0.001
+SLIPPAGE_COST = 0.0
+NO_TRADE_BAND = 0.0
+COST_MODEL_VERSION = "commission_only_legacy"
+COST_MODEL_COMPLETE = False
+
+
+def cost_model_metadata() -> dict:
+    """학습 산출물에 박을 비용 모델 계약. complete=False면 최종 선발 금지."""
+    return {
+        "version": COST_MODEL_VERSION,
+        "complete": COST_MODEL_COMPLETE,
+        "commission_cost": TRADE_COST,
+        "slippage_cost": SLIPPAGE_COST,
+        "no_trade_band": NO_TRADE_BAND,
+        "dca_commission_cost": 0.0,
+        "dca_slippage_applies": False,
+    }
+
+
+def assert_training_cost_model_ready() -> None:
+    """긴 학습 시작 전 비용 모델 미완이면 즉시 중단한다."""
+    meta = cost_model_metadata()
+    if not meta["complete"]:
+        raise RuntimeError(
+            "비용 모델 미완: 수수료만 반영된 legacy 모델입니다. "
+            "슬리피지(성실이 포함 전원 공통)와 No-trade band 계약을 구현한 뒤 "
+            "학습을 다시 시작하세요."
+        )
 
 # ── 스탯 정규화 구간 (이 양 끝값이 0점 / 100점) — 튜닝 포인트 ──
 # [퇴화 방지 재설계] 예전 스케일(-25%~+25%)에선 '전부 현금'(CAGR 0%)이 ATK 50점을

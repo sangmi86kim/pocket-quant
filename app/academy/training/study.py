@@ -12,6 +12,7 @@ from app.academy.curriculum import prepare_academy_data
 from app.academy.training import remedial
 from app.academy.training.multi_objective import nsga3
 from app.academy.training.single_objective import cma_es, gp, tpe
+from app.pocket.battle import assert_training_cost_model_ready, cost_model_metadata
 
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -461,6 +462,7 @@ def run_nsga_classroom_2phase(stamp: str, phase1_gyms, phase1_dca,
 def run_all() -> Path:
     # 진행 로그가 깨끗하게 보이도록 optuna의 실험적 기능 경고(lr_adapt·GPSampler·
     # NSGAIIISampler·set_metric_names 등)를 학습 세션 동안만 숨긴다. 기능은 그대로 켜져 있다.
+    assert_training_cost_model_ready()
     warnings.filterwarnings("ignore", category=optuna.exceptions.ExperimentalWarning)
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -480,6 +482,7 @@ def run_all() -> Path:
         payload = {
             "stamp": stamp,
             "source": "app.academy.training.study",
+            "cost_model": cost_model_metadata(),
             "academy_seed": academy_seed,
             "academy_textbook": "rs_2phase",
             "academy_gyms": len(loaded_gyms),
