@@ -70,16 +70,35 @@ def run_single_classroom(name: str, engine, loaded_gyms, dca,
     }
 
 
+def _stage_storage(slug: str, stamp: str | None, phase: str) -> str | None:
+    """학습 이력 보존용 sqlite 경로. stamp 없으면(스모크) None=메모리 study.
+
+    [왜] 단일목적·GP가 메모리에서 돌면 학습이 끝나는 순간 trial 이력이 증발해
+    "정말 수렴했나"를 사후에 검증할 수 없다. stamp(학기 도장)가 있으면 NSGA와 같이
+    교실별 sqlite에 남겨 학습곡선을 그릴 수 있게 한다.
+    """
+    if stamp is None:
+        return None
+    path = RESULTS_DIR / f"classroom_{slug}_{stamp}_{phase}.db"
+    return f"sqlite:///{path.as_posix()}"
+
+
 def run_single_classroom_2phase(name: str, engine, phase1_gyms, phase1_dca,
-                                diagnostic: dict, trials: int | None = None) -> dict:
+                                diagnostic: dict, trials: int | None = None,
+                                stamp: str | None = None) -> dict:
     """단일목적 교실 2단계 학습 — RS 1차 → 약점 보충 2차."""
     target = trials or SINGLE_TRIALS[name]
+    slug = name.lower().replace("-", "_")           # "CMA-ES" → "cma_es"
     seed1 = roll_seed()
+    storage1 = _stage_storage(slug, stamp, "phase1")
+    study_name1 = f"classroom_{slug}_{stamp}_phase1"
     study1, _, _ = engine.run_study(
         trials=target,
         seed=seed1,
         loaded_gyms=phase1_gyms,
         dca=phase1_dca,
+        storage=storage1,
+        study_name=study_name1,
     )
     phase1_topk = single_trials(study1)
     weak, regime_score = remedial.diagnose_weak_regime(phase1_topk, diagnostic)
@@ -87,11 +106,15 @@ def run_single_classroom_2phase(name: str, engine, phase1_gyms, phase1_dca,
     phase2_gyms, phase2_dca, phase2_meta = remedial.make_phase2_gyms(
         phase1_gyms, phase2_academy_seed, weak, len(phase1_gyms))
     seed2 = roll_seed()
+    storage2 = _stage_storage(slug, stamp, "phase2")
+    study_name2 = f"classroom_{slug}_{stamp}_phase2"
     study2, _, _ = engine.run_study(
         trials=target,
         seed=seed2,
         loaded_gyms=phase2_gyms,
         dca=phase2_dca,
+        storage=storage2,
+        study_name=study_name2,
         warmstart=remedial.warmstart_params(phase1_topk),
     )
     return {
@@ -103,6 +126,8 @@ def run_single_classroom_2phase(name: str, engine, phase1_gyms, phase1_dca,
         "regime_score": regime_score,
         "phase1": {
             "seed": seed1,
+            "storage": storage1,
+            "study_name": study_name1 if storage1 else None,
             "trials": len(study1.trials),
             "early_stop": study1.user_attrs.get("early_stop"),
             "topk": phase1_topk,
@@ -110,6 +135,8 @@ def run_single_classroom_2phase(name: str, engine, phase1_gyms, phase1_dca,
         "phase2": {
             "seed": seed2,
             "academy_seed": phase2_academy_seed,
+            "storage": storage2,
+            "study_name": study_name2 if storage2 else None,
             "trials": len(study2.trials),
             "early_stop": study2.user_attrs.get("early_stop"),
             **phase2_meta,
@@ -159,17 +186,25 @@ def run_gp_seedleague(loaded_gyms, dca, trials: int | None = None,
 
 def run_gp_seedleague_2phase(phase1_gyms, phase1_dca, diagnostic: dict,
                              trials: int | None = None,
-                             n_seeds: int = GP_SEED_LEAGUE) -> dict:
-    """GP seedleague 2단계 학습 — seed별 대표를 유지한다."""
+                             n_seeds: int = GP_SEED_LEAGUE,
+                             stamp: str | None = None) -> dict:
+    """GP seedleague 2단계 학습 — seed별 대표를 유지한다.
+
+    학습 이력 보존(stamp): seed별 study를 한 phase당 sqlite 한 파일
+    (classroom_gp_{stamp}_phaseN.db)에 study_name=...seed{i}로 나눠 남긴다.
+    """
     target = trials or SINGLE_TRIALS["GP"]
+    storage1 = _stage_storage("gp", stamp, "phase1")
+    storage2 = _stage_storage("gp", stamp, "phase2")
     seeds1 = [roll_seed() for _ in range(n_seeds)]
     studies1 = []
     phase1_topk = []
     total_trials = 0
-    for seed in seeds1:
+    for i, seed in enumerate(seeds1):
         study, _, _ = gp.run_study(
             trials=target, seed=seed,
             loaded_gyms=phase1_gyms, dca=phase1_dca, early_stop=True,
+            storage=storage1, study_name=f"gp_{stamp}_phase1_seed{i}",
         )
         studies1.append(study)
         total_trials += len(study.trials)
@@ -189,10 +224,11 @@ def run_gp_seedleague_2phase(phase1_gyms, phase1_dca, diagnostic: dict,
         phase1_gyms, phase2_academy_seed, weak, len(phase1_gyms))
     seeds2 = [roll_seed() for _ in range(n_seeds)]
     final_topk = []
-    for seed, study1 in zip(seeds2, studies1):
+    for i, (seed, study1) in enumerate(zip(seeds2, studies1)):
         study2, _, _ = gp.run_study(
             trials=target, seed=seed,
             loaded_gyms=phase2_gyms, dca=phase2_dca, early_stop=True,
+            storage=storage2, study_name=f"gp_{stamp}_phase2_seed{i}",
             warmstart=remedial.warmstart_params(
                 [{"params": p} for p in _topk_params(study1, remedial.WARMSTART_K)],
                 remedial.WARMSTART_K),
@@ -218,11 +254,13 @@ def run_gp_seedleague_2phase(phase1_gyms, phase1_dca, diagnostic: dict,
         "regime_score": regime_score,
         "phase1": {
             "seeds": seeds1,
+            "storage": storage1,
             "trials": sum(t["study_trials"] for t in phase1_topk),
             "topk": phase1_topk,
         },
         "phase2": {
             "seeds": seeds2,
+            "storage": storage2,
             "trials": sum(t["study_trials"] for t in final_topk),
             "academy_seed": phase2_academy_seed,
             **phase2_meta,
@@ -300,7 +338,10 @@ def run_nsga_classroom_2phase(stamp: str, phase1_gyms, phase1_dca,
                               use_storage: bool = True) -> dict:
     """NSGA-III 2단계 학습 — 1차 selected로 진단·웜스타트한다."""
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    seed1 = roll_seed()
+    # [재발방지] 모든 seed를 academy_seed에서 결정적으로 파생한다. academy_seed는 payload에
+    # 저장되므로, phase2가 도중에 죽어도(절전·harness reap) 교과서·표본을 그대로 재생성해
+    # resume할 수 있다. random roll_seed면 학습 전 저장 못 한 seed가 유실돼 복구 불가였다.
+    seed1 = academy_seed + 60_000
     storage_path1 = RESULTS_DIR / f"classroom_nsga3_{stamp}_phase1.db"
     storage1 = f"sqlite:///{storage_path1.as_posix()}" if use_storage else None
     study_name1 = f"classroom_nsga3_{stamp}_phase1"
@@ -321,10 +362,10 @@ def run_nsga_classroom_2phase(stamp: str, phase1_gyms, phase1_dca,
     phase1_topk = nsga_topk(summary1)
     weak, regime_score = remedial.diagnose_weak_regime(phase1_topk, diagnostic)
 
-    phase2_academy_seed = roll_seed()
+    phase2_academy_seed = academy_seed + 70_000     # 결정적 — 교과서 재현·resume 가능
     phase2_gyms, phase2_dca, phase2_meta = remedial.make_phase2_gyms(
         phase1_gyms, phase2_academy_seed, weak, len(phase1_gyms))
-    seed2 = roll_seed()
+    seed2 = academy_seed + 80_000                   # 결정적 — phase2 sampler 재현
     storage_path2 = RESULTS_DIR / f"classroom_nsga3_{stamp}_phase2.db"
     storage2 = f"sqlite:///{storage_path2.as_posix()}" if use_storage else None
     study_name2 = f"classroom_nsga3_{stamp}_phase2"
@@ -427,8 +468,10 @@ def run_all() -> Path:
 
     for name, engine in (("TPE", tpe), ("CMA-ES", cma_es)):
         study_one(name, lambda e=engine, n=name:
-                  run_single_classroom_2phase(n, e, loaded_gyms, dca, diagnostic))
-    study_one("GP", lambda: run_gp_seedleague_2phase(loaded_gyms, dca, diagnostic))
+                  run_single_classroom_2phase(n, e, loaded_gyms, dca, diagnostic,
+                                              stamp=stamp))
+    study_one("GP", lambda: run_gp_seedleague_2phase(loaded_gyms, dca, diagnostic,
+                                                     stamp=stamp))
     study_one("NSGA-III",
               lambda: run_nsga_classroom_2phase(
                   stamp, loaded_gyms, dca, diagnostic, academy_seed))

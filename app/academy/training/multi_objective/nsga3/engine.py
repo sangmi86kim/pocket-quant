@@ -33,7 +33,8 @@ def run_study(n_trials: int, seed: int | None = None,
               tune_params: bool = False,
               early_stop_window: int | None = None,
               adaptive_mutation: bool = False,
-              warmstart: list[dict] | None = None):
+              warmstart: list[dict] | None = None,
+              load_if_exists: bool = False):
     """학교 NSGA-III 실행.
 
     seed는 sampler 주사위, academy_seed는 합성장 주사위다. 둘 다 None이면 매번
@@ -57,7 +58,7 @@ def run_study(n_trials: int, seed: int | None = None,
     study = optuna.create_study(
         directions=DIRECTIONS, sampler=sampler,
         storage=storage, study_name=study_name if storage else None,
-        load_if_exists=False,
+        load_if_exists=load_if_exists,   # 청크 resume용 — 기본 False(기존 동작 불변)
     )
     study.set_metric_names(OBJECTIVE_NAMES)
     study.set_user_attr("academy_seed", academy_seed)
