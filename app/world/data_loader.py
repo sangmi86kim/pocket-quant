@@ -39,6 +39,12 @@ WARMUP_DAYS = 400
 # 확정된 모델 1개를 판정하고 결과 보고 재조정 금지(보는 순간 소진).
 FUTURE_SEAL_DATE = "2026-06-19"
 
+# 상장 전 구간은 네트워크를 찔러도 빈 데이터다. 즉시 기권시키면 졸업시험 때
+# UUP 닷컴 구간 같은 정상 기권이 yfinance 경고로 보이지 않는다.
+KNOWN_FIRST_DATE = {
+    "UUP": "2007-03-01",
+}
+
 # 이 프로세스에서 yfinance가 "데이터 없음"을 돌려준 (ticker,start,end) 기억.
 # UUP(2007년~) 같은 외부 시그널을 닷컴(2000~02) 등 상장 이전 구간에 후보·trial마다 다시
 # 요청하면 야후에 헛콜을 수천 번 날려 멈춘다 — 한 번 빈 걸 확인하면 그 프로세스 동안은
@@ -83,6 +89,12 @@ def get_prices(ticker: str, start: str, end: str,
         end = FUTURE_SEAL_DATE          # 미래 봉인 — SEAL 이후 학습/검증 유입 차단
     path = _cache_path(ticker, start, end)
     key = (ticker, start, end)
+    first_date = KNOWN_FIRST_DATE.get(ticker)
+    if first_date is not None and pd.Timestamp(end) < pd.Timestamp(first_date):
+        _NO_DATA_WINDOWS.add(key)
+        raise RuntimeError(
+            f"[data] '{ticker}' {start}~{end} 데이터 없음 (상장 전 구간)."
+        )
 
     # (0) 이미 이 프로세스에서 빈 구간으로 확인됨 — 네트워크 재시도 생략 (UUP 상장 이전 등)
     if key in _NO_DATA_WINDOWS:

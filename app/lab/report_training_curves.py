@@ -1,11 +1,9 @@
 """학습 과정 검증 레포트 — 각 학습 단계가 제대로 수렴했는지 그래프로 확인한다.
 
 [무엇] ① NSGA 1차·2차의 목적별 best-so-far 수렴곡선(+ 탐색 구름) ② NSGA 최종 파레토
-프론트 ③ 4교실 선발 후보(1차 vs 보충)의 학습 종료잔고 분포.
+프론트 ③ 교실별 선발 후보(1차 vs 보충)의 학습 종료잔고 분포.
 
-[정직한 한계] 학습 이력(trial별)이 sqlite로 보존된 교실은 **NSGA뿐**이다. TPE·CMA-ES·GP는
-storage 없이 메모리에서 돌아 trial 이력이 유실됐다 — 그래서 수렴곡선은 NSGA만 그리고, 나머지
-3교실은 json에 남은 최종 선발 분포만 보인다. (AGENTS #20: 단일목적도 storage 붙여 이력 보존 숙제.)
+[정직한 한계] 시즌3부터 단일목적 교실도 sqlite storage를 남긴다. GP는 seed리그라 표본 수가 작다.
 
 실행: .venv/Scripts/python.exe -m app.lab.report_training_curves
 산출: app/academy/reports/training_curves_{stamp}_*.png + training_verification_{stamp}.md
@@ -174,7 +172,7 @@ def _single_series(db: Path, study_name: str):
 
 
 def fig_single_convergence(stamp):
-    """TPE·CMA-ES·GP 수렴곡선 (storage 보존 후 생기는 DB에서). 없으면 None."""
+    """단일목적·GP 수렴곡선 (storage 보존 후 생기는 DB에서). 없으면 None."""
     singles = [("TPE", "tpe"), ("CMA-ES", "cma_es")]
     present = []
     for nm, slug in singles:
@@ -233,7 +231,7 @@ def _median_val(item):
 
 
 def fig_selection(stamp, classrooms):
-    """4교실 선발 후보(1차 vs 보충)의 학습 종료잔고 분포 — 단일목적은 곡선 대신 이것뿐."""
+    """교실별 선발 후보(1차 vs 보충)의 학습 종료잔고 분포."""
     labels, data, colors = [], [], []
     cmap = {"TPE": "#4e79a7", "CMA-ES": "#59a14f", "NSGA-III": "#e15759", "GP": "#b07aa1"}
     for c in classrooms:
@@ -257,7 +255,7 @@ def fig_selection(stamp, classrooms):
     ax.set_xticklabels(labels, fontsize=9)
     ax.set_ylabel("선발 후보 중앙 종료잔고 (백만)")
     ax.set_title(f"교실별 선발 후보 분포 (stamp={stamp}) — 학습 합성장 내부 점수\n"
-                 f"※ TPE·CMA-ES·GP는 storage 없어 수렴곡선 불가, 최종 선발만 표시 (GP는 n=5)",
+                 f"※ 시즌3은 3교실(CMA-ES·GP·NSGA-III), GP는 seed리그라 n=5",
                  fontsize=11)
     ax.grid(alpha=0.25, axis="y")
     fig.tight_layout()
@@ -284,16 +282,20 @@ def main():
 
     n1 = len(_series(_load(*phase1)))
     n2 = len(_series(_load(*phase2)))
+    classroom_names = [c["name"] for c in classrooms]
+    single_names = [name for name in classroom_names if name != "NSGA-III"]
+    single_label = "·".join(single_names) if single_names else "단일목적"
     single_md = (f"""![단일목적 수렴](training_curves_{stamp}_single_convergence.png)
 
-TPE·CMA-ES·GP도 storage 보존 후 학습이라 수렴곡선 확인 가능."""
+{single_label}도 storage 보존 후 학습이라 수렴곡선 확인 가능."""
                  if single else
                  "_이 학기는 storage 보존 전 학습이라 단일목적 수렴곡선 없음 "
                  "(다음 학습부터 생성)._")
-    limit_md = ("- **4교실 전부 학습 이력 DB 보존** — NSGA(목적별 best-so-far + HV) · "
-                "TPE·CMA-ES·GP(best-so-far) 모두 수렴곡선 검증 가능. GP는 seed리그라 n=5(표본 작음)."
+    limit_md = (f"- **{len(classroom_names)}교실 전부 학습 이력 DB 보존** — "
+                f"NSGA(목적별 best-so-far + HV) · {single_label}(best-so-far) "
+                "모두 수렴곡선 검증 가능. GP는 seed리그라 n=5(표본 작음)."
                 if single else
-                "- **학습 이력 보존 = NSGA뿐.** TPE·CMA-ES·GP는 storage 없이 메모리 study라 trial별\n"
+                f"- **학습 이력 보존 = NSGA뿐.** {single_label}는 storage 없이 메모리 study라 trial별\n"
                 "  수렴곡선이 **유실**됨 → 최종 선발 후보 분포만 표시. GP는 seed리그라 n=5(표본 작음).\n"
                 "- 재발방지: AGENTS #20 '단일목적도 storage 붙여 학습 이력 보존' — 다음 학습부터 해소.")
     md = REPORTS / f"training_verification_{stamp}.md"
@@ -317,11 +319,11 @@ TPE·CMA-ES·GP도 storage 보존 후 학습이라 수렴곡선 확인 가능.""
 
 ![파레토](training_curves_{stamp}_nsga_front.png)
 
-## 2. 단일목적·GP 수렴 (TPE·CMA-ES·GP)
+## 2. 단일목적·GP 수렴 ({single_label})
 
 {single_md}
 
-## 3. 4교실 선발 분포
+## 3. {len(classroom_names)}교실 선발 분포
 
 ![선발](training_curves_{stamp}_selection.png)
 
