@@ -5,14 +5,15 @@ battle.py - 전투(백테스트)를 '계산'하는 파일, 게임의 엔진
 흐름:
   fight()        : 전략 1명 vs 미리 로딩된 체육관 1곳 -> 그 시장에서의 스탯블록
   challenge()    : 전략 1명 vs 여러 체육관            -> 종합 성적표(Report)
-  fight_dca()    : 라이벌 '성실이'(일별 DCA, 무비용) 소환 -> 같은 체육관 성적
+  fight_dca()    : 라이벌 '성실이'(일별 DCA, 수수료 0원) 소환 -> 같은 체육관 성적
   score_vs_dca() : 그 체육관에서 성실이 대비 얼마나 나았나 (NSGA-III 목적 재료)
 스탯(0~100)은 사람 읽기용, 최적화는 BattleResult의 raw 지표(sharpe/turnover 등)를 쓴다.
 
 [핵심 계산] (가격은 이미 LoadedGym으로 받아둔 상태)
   1) signals.combined_position 으로 일별 포지션(0~1)을 만든다
-  2) 포지션을 하루 lag(shift 1)해서 다음날 수익에 적용 (룩어헤드 방지)
-     + 포지션 변화량(턴오버) × TRADE_COST(토스 0.1%)를 거래비용으로 차감
+  2) No-trade band로 목표 포지션을 실제 체결 포지션으로 바꾼 뒤 하루 lag(shift 1)
+     해서 다음날 수익에 적용 (룩어헤드 방지)
+     + 실제 포지션 변화량(턴오버) × 비용(수수료+슬리피지)을 차감
   3) 워밍업 버퍼를 잘라내고 평가 구간만 남긴다
   4) 자산곡선에서 CAGR / 최대낙폭 / 샤프 / 평균현금 을 뽑는다
   5) 그 원시값들을 0~100 스탯(HP/ATK/DEF/SKILL)으로 정규화한다
@@ -37,10 +38,10 @@ SAVINGS_RATE_ANNUAL = 0.03
 #   예) 현금(0) → 풀매수(1) 진입 = 자본의 100% 거래 = 0.1% 비용.
 # 평가 구간 안의 매매만 과금한다(워밍업 중 진입한 초기 포지션은 무료 = 구간 철학과 일치).
 TRADE_COST = 0.001
-SLIPPAGE_COST = 0.0
-NO_TRADE_BAND = 0.0
-COST_MODEL_VERSION = "commission_only_legacy"
-COST_MODEL_COMPLETE = False
+SLIPPAGE_COST = 0.0001
+NO_TRADE_BAND = 0.05
+COST_MODEL_VERSION = "season3_flat_1bp_band5"
+COST_MODEL_COMPLETE = True
 
 
 def cost_model_metadata() -> dict:
@@ -52,7 +53,8 @@ def cost_model_metadata() -> dict:
         "slippage_cost": SLIPPAGE_COST,
         "no_trade_band": NO_TRADE_BAND,
         "dca_commission_cost": 0.0,
-        "dca_slippage_applies": False,
+        "dca_slippage_applies": True,
+        "dca_no_trade_band": 0.0,
     }
 
 
@@ -65,6 +67,29 @@ def assert_training_cost_model_ready() -> None:
             "슬리피지(성실이 포함 전원 공통)와 No-trade band 계약을 구현한 뒤 "
             "학습을 다시 시작하세요."
         )
+
+
+def apply_no_trade_band(target_position: pd.Series,
+                        band: float = NO_TRADE_BAND) -> pd.Series:
+    """목표 비중을 실제 체결 비중으로 변환한다.
+
+    target과 현재 actual의 차이가 band 미만이면 거래하지 않고, band 이상이면
+    target으로 점프한다. 비용과 turnover는 이 actual 변화량에만 붙는다.
+    """
+    if band <= 0:
+        return target_position.copy()
+
+    actual = []
+    current = 0.0
+    for value in target_position.astype(float):
+        if pd.isna(value):
+            actual.append(current)
+            continue
+        target = float(min(1.0, max(0.0, value)))
+        if abs(target - current) >= band:
+            current = target
+        actual.append(current)
+    return pd.Series(actual, index=target_position.index)
 
 # ── 스탯 정규화 구간 (이 양 끝값이 0점 / 100점) — 튜닝 포인트 ──
 # [퇴화 방지 재설계] 예전 스케일(-25%~+25%)에선 '전부 현금'(CAGR 0%)이 ATK 50점을
@@ -94,20 +119,26 @@ def fight(strategy: Strategy, loaded: LoadedGym) -> BattleResult:
 
 
 def _score_position(position, loaded: LoadedGym,
-                    trade_cost: float | None = None) -> BattleResult:
+                    trade_cost: float | None = None,
+                    no_trade_band: float | None = None) -> BattleResult:
     """일별 포지션(0~1) 시계열 하나를 채점한다 — fight와 DCA 기준선이 공유하는 엔진.
     실행 모델(하루 lag, 턴오버 과금, 워밍업 컷)이 모든 참가자에게 동일해야 공정 비교다.
 
-    trade_cost: None이면 모듈 전역 TRADE_COST를 쓴다.
+    trade_cost: None이면 전략 수수료 TRADE_COST를 쓴다.
     DCA 기준선만 0.0을 넘긴다 — 토스 '주식 자동 모으기'는 매수 수수료 0원이라
-    실제 비용 구조가 비대칭이기 때문(전략의 타이밍 매매는 0.1% 그대로)."""
+    수수료 구조가 비대칭이다. 단 슬리피지는 전원 공통으로 붙는다.
+    no_trade_band: None이면 전략 기본 NO_TRADE_BAND를 쓴다. DCA는 매일 적립이
+    정체성이므로 0.0을 넘겨 band 없이 실행한다."""
     gym = loaded.gym
     prices = loaded.prices          # 이미 워밍업 버퍼 포함해 받아둔 가격
 
-    cost = TRADE_COST if trade_cost is None else trade_cost
+    commission_cost = TRADE_COST if trade_cost is None else trade_cost
+    cost = commission_cost + SLIPPAGE_COST
+    band = NO_TRADE_BAND if no_trade_band is None else no_trade_band
 
     # (2) 하루 lag 적용한 전략/시장 수익
-    effective_position = position.shift(1)
+    actual_position = apply_no_trade_band(position, band)
+    effective_position = actual_position.shift(1)
     market_ret = prices.pct_change()
     turnover = effective_position.diff().abs()              # 그날 매매한 자본 비율
     strat_ret = effective_position * market_ret - turnover * cost
@@ -193,8 +224,9 @@ def fight_dca(loaded: LoadedGym) -> BattleResult:
     """라이벌 '성실이'(DCA 기준선)의 성적 — 한 체육관을 매일 1/N 적립으로 통과한 결과.
     수수료 0원: 토스 '주식 자동 모으기'는 매수 수수료 면제(사용자 실계좌 확인,
     2026-06-11). 전략은 타이밍 매매라 면제 대상이 아님 = 비대칭이 현실이고,
-    그만큼 DCA를 이기는 기준이 높아진다."""
-    return _score_position(_dca_position(loaded), loaded, trade_cost=0.0)
+    슬리피지는 체결 비용이라 성실이도 부담한다."""
+    return _score_position(_dca_position(loaded), loaded,
+                           trade_cost=0.0, no_trade_band=0.0)
 
 
 def fight_savings(loaded: LoadedGym) -> BattleResult:

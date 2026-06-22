@@ -75,18 +75,20 @@ def _loaded_window(prices: pd.Series, start: str, end: str) -> LoadedGym:
 
 def _champion_returns(loaded: LoadedGym) -> pd.Series:
     """챔피언의 구간 일별 수익 (battle._score_position과 동일 공식, 비용 0.1%)."""
-    pos = combine_positions(positions_with_params(loaded.prices),
-                            CHAMPION_WEIGHTS).shift(1)
-    ret = pos * loaded.prices.pct_change() - pos.diff().abs() * battle.TRADE_COST
+    target = combine_positions(positions_with_params(loaded.prices),
+                               CHAMPION_WEIGHTS)
+    pos = battle.apply_no_trade_band(target).shift(1)
+    cost = battle.TRADE_COST + battle.SLIPPAGE_COST
+    ret = pos * loaded.prices.pct_change() - pos.diff().abs() * cost
     mask = (ret.index >= pd.Timestamp(loaded.gym.start)) \
          & (ret.index <= pd.Timestamp(loaded.gym.end))
     return ret[mask].dropna()
 
 
 def _dca_returns(loaded: LoadedGym) -> pd.Series:
-    """성실이의 구간 일별 수익 (무비용 — 토스 자동 모으기)."""
+    """성실이의 구간 일별 수익 (수수료 0원, 슬리피지는 공통)."""
     pos = _dca_position(loaded).shift(1)
-    ret = pos * loaded.prices.pct_change()
+    ret = pos * loaded.prices.pct_change() - pos.diff().abs() * battle.SLIPPAGE_COST
     mask = (ret.index >= pd.Timestamp(loaded.gym.start)) \
          & (ret.index <= pd.Timestamp(loaded.gym.end))
     return ret[mask].dropna()

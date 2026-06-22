@@ -27,8 +27,7 @@ RESULTS = ROOT / "app" / "academy" / "training" / "results"
 REPORTS = ROOT / "app" / "academy" / "reports"
 
 OBJS = [("median_balance", "중앙 종료잔고 (↑좋음)", "max"),
-        ("worst_balance", "최악 종료잔고 (↑좋음)", "max"),
-        ("turnover", "회전율 (↓좋음)", "min")]
+        ("worst_balance", "최악 종료잔고 (↑좋음)", "max")]
 
 
 def _load(db: Path, name: str):
@@ -36,9 +35,23 @@ def _load(db: Path, name: str):
 
 
 def _series(study):
-    """COMPLETE trial을 번호순으로 → (번호, [median, worst, turnover]) 목록."""
+    """COMPLETE trial을 번호순으로 → (번호, [median, worst], turnover) 목록."""
     rows = [(t.number, list(t.values)) for t in study.trials
-            if t.values is not None and len(t.values) == 3]
+            if t.values is not None and len(t.values) >= 2]
+    rows.sort(key=lambda r: r[0])
+    return rows
+
+
+def _turnovers(study):
+    rows = []
+    for t in study.trials:
+        if t.values is None:
+            continue
+        metrics = t.user_attrs.get("academy_metrics")
+        if isinstance(metrics, dict) and "turnover" in metrics:
+            rows.append((t.number, float(metrics["turnover"])))
+        elif len(t.values) >= 3:
+            rows.append((t.number, float(t.values[2])))
     rows.sort(key=lambda r: r[0])
     return rows
 
@@ -67,9 +80,9 @@ def _nsga_dbs(stamp):
 
 
 def fig_convergence(stamp, phase1, phase2, academy_seed):
-    """2행(1차/2차) × 3열(목적) best-so-far 수렴곡선 + 탐색 구름."""
+    """2행(1차/2차) × 2열(목적) best-so-far 수렴곡선 + 탐색 구름."""
     stages = [("1차 (RS 교과서)", phase1), ("2차 (약점 보충)", phase2)]
-    fig, axes = plt.subplots(2, 3, figsize=(15, 8))
+    fig, axes = plt.subplots(2, 2, figsize=(12, 8))
     for r, (label, ref) in enumerate(stages):
         rows = _series(_load(*ref))
         xs = [n for n, _ in rows]
@@ -129,13 +142,15 @@ def fig_nsga_hv(stamp, phase1, phase2):
 
 
 def fig_front(stamp, phase1, phase2):
-    """최종 파레토 프론트: 중앙 vs 최악 잔고, 색=회전율."""
+    """최종 파레토 프론트: 중앙 vs 최악 잔고, 색=회전율 진단값."""
     fig, axes = plt.subplots(1, 2, figsize=(13, 5.2))
     for ax, (label, ref) in zip(axes, [("1차", phase1), ("2차 보충", phase2)]):
-        rows = _series(_load(*ref))
+        study = _load(*ref)
+        rows = _series(study)
+        turns = dict(_turnovers(study))
         med = [v[0] / 1e6 for _, v in rows]
         wor = [v[1] / 1e6 for _, v in rows]
-        tn = [v[2] for _, v in rows]
+        tn = [turns.get(n, 0.0) for n, _ in rows]
         sc = ax.scatter(med, wor, c=tn, cmap="viridis", s=10, alpha=0.6)
         ax.set_title(f"{label} 프론트 (n={len(rows)})")
         ax.set_xlabel("중앙 종료잔고 (백만)")
@@ -291,7 +306,7 @@ TPE·CMA-ES·GP도 storage 보존 후 학습이라 수렴곡선 확인 가능.""
 ![수렴](training_curves_{stamp}_nsga_convergence.png)
 
 - 1차 {n1} trial · 2차(보충) {n2} trial. 빨강 best-so-far가 우상향 후 평탄 = 수렴 성공.
-- 목적 3개: 중앙 종료잔고(↑)·최악 종료잔고(↑)·회전율(↓).
+- 목적 2개: 중앙 종료잔고(↑)·최악 종료잔고(↑). 회전율은 turnover cap 스펙으로 별도 필터.
 
 ### 하이퍼볼륨(HV) 트렌드 — 다목적 수렴의 정식 잣대
 

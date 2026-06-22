@@ -1,9 +1,9 @@
-"""NSGA-III 학교 목적함수 — 가중치 후보 → 3목적 raw 지표.
+"""NSGA-III 학교 목적함수 — 가중치 후보 → 2목적 raw 지표 + turnover 진단.
 
 [책임]
   - 목적 상수(OBJECTIVE_NAMES/DIRECTIONS)와 학기 주사위(roll_seed)
   - 후보 제시(suggest_candidate) → 체육관 백테스트(_candidate_results)
-  - 3목적 환산(evaluate_objectives) + 졸업생 메타(academy_metrics)
+  - 2목적 환산(evaluate_objectives) + 졸업생 메타(academy_metrics)
   - Optuna objective 클로저(make_objective)
   - 학교 합성장 준비(prepare_data)
 
@@ -20,8 +20,8 @@ from app.pocket.battle import _score_position, terminal_balance
 from app.pocket.signals import combine_positions, positions_with_params
 from app.world.data_loader import LoadedGym
 
-OBJECTIVE_NAMES = ["median_balance", "worst_balance", "turnover"]
-DIRECTIONS = ["maximize", "maximize", "minimize"]
+OBJECTIVE_NAMES = ["median_balance", "worst_balance"]
+DIRECTIONS = ["maximize", "maximize"]
 SEED_KRW = 1_000_000
 
 
@@ -51,10 +51,11 @@ def evaluate_objectives(weights: list[float], params: dict,
                         loaded_gyms: list[LoadedGym],
                         base_positions: dict | None = None,
                         seed_krw: int = SEED_KRW) -> dict:
-    """학교용 3목적 raw 지표. 체육관 이름/국면 키에 의존하지 않는다.
+    """학교용 raw 지표. 체육관 이름/국면 키에 의존하지 않는다.
 
     1목적은 평균이 아니라 **중앙값(median)**이다 — 평균은 한 합성장 대박이 통째로
     끌어올려 '전형적 시장 실력'을 부풀린다(평균의 함정). median은 그 한 방에 안 휘둘린다.
+    turnover는 돈 버는 목적이 아니라 운용 스펙이므로 목적함수에서 빼고 진단/필터로만 쓴다.
     """
     results = _candidate_results(weights, params, loaded_gyms, base_positions)
     balances = [terminal_balance(r, seed_krw) for r in results]
@@ -72,7 +73,6 @@ def academy_metrics(values: list[float], seed_krw: int = SEED_KRW) -> dict:
     return {
         "median_balance": obj["median_balance"],
         "worst_balance": obj["worst_balance"],
-        "turnover": obj["turnover"],
         "score": obj["median_balance"] / seed_krw - 1.0,
     }
 
@@ -84,7 +84,14 @@ def make_objective(loaded_gyms: list[LoadedGym]):
     def objective(trial: optuna.Trial):
         weights, params = suggest_candidate(trial)
         obj = evaluate_objectives(weights, params, loaded_gyms, base_positions)
-        return obj["median_balance"], obj["worst_balance"], obj["turnover"]
+        trial.set_user_attr("academy_metrics", {
+            "median_balance": obj["median_balance"],
+            "worst_balance": obj["worst_balance"],
+            "turnover": obj["turnover"],
+            "score": obj["median_balance"] / SEED_KRW - 1.0,
+            "balances": obj["balances"],
+        })
+        return obj["median_balance"], obj["worst_balance"]
     return objective
 
 

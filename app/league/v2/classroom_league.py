@@ -108,7 +108,7 @@ def _app_deletion_member_row(frac: float, oos_loaded, worlds, holdout_loaded,
                              idx: int) -> dict:
     # _app_deletion_squad는 300명 중앙값 대표를 돌려주는 함수라, 멤버별 분포는
     # 같은 랜덤 진입일 배열을 쓰되 각 멤버의 frac으로 직접 계산한다.
-    from app.league.operations.npcs import TRADE_COST
+    from app.league.operations.npcs import SLIPPAGE_COST, TRADE_COST
 
     def term(loaded) -> float:
         prices = loaded.prices.loc[loaded.gym.start:loaded.gym.end]
@@ -119,7 +119,7 @@ def _app_deletion_member_row(frac: float, oos_loaded, worlds, holdout_loaded,
         arr = rets.to_numpy().copy()
         entry = min(int(frac * n), n - 1)
         arr[:entry] = 0.0
-        arr[entry] -= TRADE_COST
+        arr[entry] -= TRADE_COST + SLIPPAGE_COST
         return SEED_KRW * float(np.prod(1.0 + arr))
 
     oos = sum(term(oos_loaded[year]) for year in VR.OOS_YEARS)

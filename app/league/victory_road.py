@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 """
 victory_road.py - 챔피언로드: 리그 졸업생의 검증 관문 (사천왕 직전 동굴)
 
@@ -33,6 +34,7 @@ victory_road.py - 챔피언로드: 리그 졸업생의 검증 관문 (사천왕 
 실행: 단독 실행 불가 — 시즌 어댑터가 graduates를 준비해 본 코어를 호출한다.
 """
 import sys
+from typing import Any
 
 # Windows cp949 콘솔에서 이모지 크래시 방지 (3.7+)
 for _s in (sys.stdout, sys.stderr):
@@ -76,8 +78,10 @@ def _loaded_window(prices: pd.Series, year: int) -> LoadedGym:
 
 def _daily_returns(loaded: LoadedGym, weights, params) -> pd.Series:
     """OOS 구간 일별 수익 (이어붙임용) — battle._score_position과 동일 공식."""
-    pos = combine_positions(positions_with_params(loaded.prices, params), weights).shift(1)
-    ret = pos * loaded.prices.pct_change() - pos.diff().abs() * battle.TRADE_COST
+    target = combine_positions(positions_with_params(loaded.prices, params), weights)
+    pos = battle.apply_no_trade_band(target).shift(1)
+    cost = battle.TRADE_COST + battle.SLIPPAGE_COST
+    ret = pos * loaded.prices.pct_change() - pos.diff().abs() * cost
     mask = (ret.index >= pd.Timestamp(loaded.gym.start)) \
          & (ret.index <= pd.Timestamp(loaded.gym.end))
     return ret[mask].dropna()
@@ -196,7 +200,7 @@ def run_gate1(graduates: list) -> bool:
     balances["성실이"] = dca_bals
 
     # ── 연도별 1등 + 국면 → gate1_oos (Regime Scanner 입력원) ──
-    gate1 = []
+    gate1: list[dict[str, Any]] = []
     for y in OOS_YEARS:
         regime_en = dominant_regime(prices, f"{y}-01-01", f"{y}-12-31")
         regime = REGIME_LABELS[regime_en]

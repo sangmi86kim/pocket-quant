@@ -21,7 +21,7 @@ class HVTrendTracker:
 
     HV는 "front가 더 커지나"만 보는 단조 증가 추세 지수다 — 1.0 캡은 없다.
       - 첫 scale_warmup 세대: 목적값만 모은다(스케일 박스 확보), HV 미계산.
-      - 이후: scale_warmup 세대 누적 min/max로 축 단위 통일(잔고 ~백만 vs turnover ~0.04)
+      - 이후: scale_warmup 세대 누적 min/max로 축 단위 통일(잔고 원 단위 2목적)
         → optuna 내장 HV. 좋은 쪽은 무제한, ref보다 나쁜 쪽만 HV 유효성을 위해 컷한다.
       - 세대 경계(= population_size trial)에서만 측정한다 (현업 관행: 세대 단위).
 

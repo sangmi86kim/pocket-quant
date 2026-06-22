@@ -29,8 +29,8 @@ graduate dict는 본래 `{"name", "label", "weights", "params", ...}` — 시그
 import numpy as np
 import pandas as pd
 
-from app.pocket.battle import (SAVINGS_RATE_ANNUAL, TRADE_COST, TRADING_DAYS,
-                               _dca_position)
+from app.pocket.battle import (SAVINGS_RATE_ANNUAL, SLIPPAGE_COST, TRADE_COST,
+                               TRADING_DAYS, _dca_position)
 from app.world.data_loader import LoadedGym
 
 
@@ -65,13 +65,13 @@ def _app_deletion_squad(loaded: LoadedGym, seed_krw: int) -> tuple[pd.Series, in
         e = min(int(f * n), n - 1)
         a = arr.copy()
         a[:e] = 0.0              # 진입 전 현금
-        a[e] -= TRADE_COST       # 진입일 매수 비용 0.1%
+        a[e] -= TRADE_COST + SLIPPAGE_COST  # 진입일 매수 비용 + 슬리피지
         members.append((seed_krw * float(np.prod(1.0 + a)), e))
     members.sort()
     med_term, med_e = members[len(members) // 2]   # 중앙값 단원 = 대표
     rets = base.copy()
     rets.iloc[:med_e] = 0.0
-    rets.iloc[med_e] -= TRADE_COST
+    rets.iloc[med_e] -= TRADE_COST + SLIPPAGE_COST
     return rets, int(med_term)
 
 
@@ -95,9 +95,9 @@ def _piggy_bank(loaded: LoadedGym, seed_krw: int) -> tuple[pd.Series, int]:
 
 
 def _dca(loaded: LoadedGym, seed_krw: int) -> tuple[pd.Series, int]:
-    """성실이 — 일별 DCA, 무비용. _dca_position을 워밍업 포함 전체에서 만들고 구간 슬라이스."""
+    """성실이 — 일별 DCA, 수수료 0원. 슬리피지는 전원 공통으로 붙인다."""
     pos = _dca_position(loaded).shift(1)
-    rets = pos * loaded.prices.pct_change()
+    rets = pos * loaded.prices.pct_change() - pos.diff().abs() * SLIPPAGE_COST
     _, start, end = _slice(loaded)
     mask = (rets.index >= start) & (rets.index <= end)
     rets = rets[mask].dropna()

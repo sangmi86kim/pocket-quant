@@ -11,7 +11,7 @@ import optuna
 from app.academy.curriculum import prepare_academy_data
 from app.academy.training import remedial
 from app.academy.training.multi_objective import nsga3
-from app.academy.training.single_objective import cma_es, gp, tpe
+from app.academy.training.single_objective import cma_es, gp
 from app.pocket.battle import assert_training_cost_model_ready, cost_model_metadata
 
 
@@ -19,12 +19,11 @@ ROOT = Path(__file__).resolve().parents[3]
 RESULTS_DIR = ROOT / "app" / "academy" / "training" / "results"
 
 SINGLE_TRIALS = {
-    "TPE": 5000,
     "CMA-ES": 5000,
     "GP": 1500,
 }
 GP_SEED_LEAGUE = 5       # GP는 단일 study top-k가 한 전략으로 도배되므로 독립 seed별 대표 1명씩 뽑는다
-SINGLE_TOPK = 30         # TPE/CMA-ES 단일목적은 점수(median) 순 top-k 선발 (GP는 seedleague 예외)
+SINGLE_TOPK = 30         # CMA-ES 단일목적은 점수(median) 순 top-k 선발 (GP는 seedleague 예외)
 NSGA_TRIALS = 10000
 NSGA_GYMS = 20
 POPULATION = 30          # 3목적 reference-point 정합(≈28점) + trial당 수렴 빠름 (pop 30 vs 50 실측)
@@ -357,6 +356,8 @@ def run_nsga_classroom(stamp: str, loaded_gyms, dca,
         "trials": len(study.trials),
         "front_size": summary["front_size"],
         "passed": len(summary["passed"]),
+        "turnover_cap": summary["turnover_cap"],
+        "turnover_cap_sweep": summary["turnover_cap_sweep"],
         "hv_points": len(hv_cb.hv) if hv_cb else None,
         "hv_stopped": hv_cb.stopped if hv_cb else None,
         "mut_points": len(mut_cb.history) if mut_cb else None,
@@ -437,6 +438,8 @@ def run_nsga_classroom_2phase(stamp: str, phase1_gyms, phase1_dca,
             "trials": len(study1.trials),
             "front_size": summary1["front_size"],
             "passed": len(summary1["passed"]),
+            "turnover_cap": summary1["turnover_cap"],
+            "turnover_cap_sweep": summary1["turnover_cap_sweep"],
             "hv_points": len(hv1.hv) if hv1 else None,
             "hv_stopped": hv1.stopped if hv1 else None,
             "mut_points": len(mut1.history) if mut1 else None,
@@ -450,6 +453,8 @@ def run_nsga_classroom_2phase(stamp: str, phase1_gyms, phase1_dca,
             "trials": len(study2.trials),
             "front_size": summary2["front_size"],
             "passed": len(summary2["passed"]),
+            "turnover_cap": summary2["turnover_cap"],
+            "turnover_cap_sweep": summary2["turnover_cap_sweep"],
             "hv_points": len(hv2.hv) if hv2 else None,
             "hv_stopped": hv2.stopped if hv2 else None,
             "mut_points": len(mut2.history) if mut2 else None,
@@ -509,7 +514,7 @@ def run_all() -> Path:
         flush()
         print(f"Done {name}: trials={result['trials']}", flush=True)
 
-    for name, engine in (("TPE", tpe), ("CMA-ES", cma_es)):
+    for name, engine in (("CMA-ES", cma_es),):
         study_one(name, lambda e=engine, n=name:
                   run_single_classroom_2phase(n, e, loaded_gyms, dca, diagnostic,
                                               stamp=stamp))

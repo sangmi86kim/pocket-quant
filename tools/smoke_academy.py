@@ -31,7 +31,7 @@ for _stream in (sys.stdout, sys.stderr):
 
 from app.academy.exam import all_gyms, graduate
 from app.academy.training import study
-from app.academy.training.single_objective import cma_es, gp, tpe
+from app.academy.training.single_objective import cma_es, gp
 from app.pocket.battle import fight_dca
 from app.pocket.signals import SIGNAL_NAMES
 from app.world.data_loader import load_gyms
@@ -91,7 +91,7 @@ def _run_optional_single_obj(label, engine, loaded_gyms, dca, diagnostic,
 
 
 def _check_training():
-    """① 합성장 학습 — 4반 짧은 trial. 졸업시험에 넘길 반별 졸업생을 모은다."""
+    """① 합성장 학습 — 3반 짧은 trial. 졸업시험에 넘길 반별 졸업생을 모은다."""
     print("\n=== ① 합성장 학습 smoke ===")
     t0 = time.perf_counter()
     train_gyms, train_dca = study.prepare_school_data(n_gyms=ACADEMY_N_TRAIN, seed=SEED)
@@ -101,8 +101,7 @@ def _check_training():
         raise RuntimeError("합성장 synthetic attrs 누락")
 
     classrooms = []
-    for name, engine, req in (("TPE", tpe, None), ("CMA-ES", cma_es, ["cmaes"]),
-                              ("GP", gp, [])):
+    for name, engine, req in (("CMA-ES", cma_es, ["cmaes"]), ("GP", gp, [])):
         if name == "GP":
             result = study.run_gp_seedleague_2phase(
                 train_gyms, train_dca, diagnostic,

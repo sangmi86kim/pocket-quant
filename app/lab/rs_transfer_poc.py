@@ -32,7 +32,8 @@ from app.academy.training.single_objective.engine import PlateauStopCallback, _o
 from app.academy.training.candidate import decode_params
 from app.lab.rs_hybrid_textbook import STATES, make_world_rs
 from app.pocket.battle import (
-    TRADE_COST, _dca_position, _score_position, fight_dca, score_vs_dca,
+    SLIPPAGE_COST, TRADE_COST, _dca_position, _score_position,
+    apply_no_trade_band, fight_dca, score_vs_dca,
 )
 from app.pocket.signals import combine_positions, positions_with_params
 from app.pocket.models import Gym
@@ -113,10 +114,10 @@ def _regime_edges(params: dict, oos_lg: LoadedGym) -> dict:
     position = combine_positions(positions, weights)
     prices = oos_lg.prices
     mret = prices.pct_change()
-    eff = position.shift(1)
-    strat_ret = eff * mret - eff.diff().abs() * TRADE_COST
+    eff = apply_no_trade_band(position).shift(1)
+    strat_ret = eff * mret - eff.diff().abs() * (TRADE_COST + SLIPPAGE_COST)
     deff = _dca_position(oos_lg).shift(1)
-    dca_ret = deff * mret                                   # 성실이는 수수료 0
+    dca_ret = deff * mret - deff.diff().abs() * SLIPPAGE_COST
     excess = strat_ret - dca_ret
     labels = classify_daily(prices)
     start, end = pd.Timestamp(oos_lg.gym.start), pd.Timestamp(oos_lg.gym.end)
