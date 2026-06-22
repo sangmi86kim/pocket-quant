@@ -51,21 +51,22 @@ def _best_so_far(vals, mode):
     return out
 
 
-def _nsga_dbs():
-    p1 = [p for p in RESULTS.glob("classroom_nsga3_*_phase1.db") if "redo" not in p.name]
-    redo = RESULTS / "classroom_nsga3_redo_phase2.db"
-    p2_std = [p for p in RESULTS.glob("classroom_nsga3_*_phase2.db") if "redo" not in p.name]
-    phase1 = (p1[0], optuna.study.get_all_study_names(f"sqlite:///{p1[0].as_posix()}")[0]) if p1 else None
-    if redo.exists():
-        phase2 = (redo, "nsga_redo_phase2")
-    elif p2_std:
-        phase2 = (p2_std[0], optuna.study.get_all_study_names(f"sqlite:///{p2_std[0].as_posix()}")[0])
-    else:
-        phase2 = None
+def _nsga_dbs(stamp):
+    """이 stamp의 NSGA phase1/phase2 DB만 정확히 고른다(옛 stamp·redo 혼입 금지)."""
+    def ref(db):
+        if not db.exists():
+            return None
+        names = optuna.study.get_all_study_names(f"sqlite:///{db.as_posix()}")
+        return (db, names[0]) if names else None
+    phase1 = ref(RESULTS / f"classroom_nsga3_{stamp}_phase1.db")
+    phase2 = ref(RESULTS / f"classroom_nsga3_{stamp}_phase2.db")
+    # 옛 복구분(stamp별 phase2가 없을 때만) redo DB 폴백 — 정상 run엔 안 탐.
+    if phase2 is None:
+        phase2 = ref(RESULTS / "classroom_nsga3_redo_phase2.db")
     return phase1, phase2
 
 
-def fig_convergence(stamp, phase1, phase2):
+def fig_convergence(stamp, phase1, phase2, academy_seed):
     """2행(1차/2차) × 3열(목적) best-so-far 수렴곡선 + 탐색 구름."""
     stages = [("1차 (RS 교과서)", phase1), ("2차 (약점 보충)", phase2)]
     fig, axes = plt.subplots(2, 3, figsize=(15, 8))
@@ -84,7 +85,7 @@ def fig_convergence(stamp, phase1, phase2):
             ax.grid(alpha=0.25)
             if r == 0 and c == 0:
                 ax.legend(fontsize=8, loc="lower right")
-    fig.suptitle(f"NSGA-III 학습 수렴 (academy_seed=40183981, stamp={stamp})\n"
+    fig.suptitle(f"NSGA-III 학습 수렴 (academy_seed={academy_seed}, stamp={stamp})\n"
                  f"빨강=지금까지 최고치, 회색=각 시도 — 우상향/평탄화면 수렴 성공", fontsize=12)
     fig.tight_layout(rect=(0, 0, 1, 0.95))
     out = REPORTS / f"training_curves_{stamp}_nsga_convergence.png"
@@ -222,10 +223,11 @@ def main():
     top30 = sorted(RESULTS.glob("classroom_top30_*_v2.json"))[-1]
     data = json.loads(top30.read_text(encoding="utf-8"))
     stamp = data["stamp"]
+    academy_seed = data.get("academy_seed")
     classrooms = data["classrooms"]
-    phase1, phase2 = _nsga_dbs()
+    phase1, phase2 = _nsga_dbs(stamp)
 
-    conv = fig_convergence(stamp, phase1, phase2)
+    conv = fig_convergence(stamp, phase1, phase2, academy_seed)
     front = fig_front(stamp, phase1, phase2)
     sel = fig_selection(stamp, classrooms)
     single = fig_single_convergence(stamp)
@@ -241,7 +243,7 @@ TPE·CMA-ES·GP도 storage 보존 후 학습이라 수렴곡선 확인 가능.""
     md = REPORTS / f"training_verification_{stamp}.md"
     md.write_text(f"""# 학습 과정 검증 레포트 — {stamp}
 
-> 생성: `app/lab/report_training_curves.py` · academy_seed=40183981
+> 생성: `app/lab/report_training_curves.py` · academy_seed={academy_seed}
 
 ## 1. NSGA-III 수렴 (학습 이력 보존됨 — DB)
 
