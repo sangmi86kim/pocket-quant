@@ -121,6 +121,9 @@ def run_single_classroom_2phase(name: str, engine, phase1_gyms, phase1_dca,
     )
     phase1_topk = single_trials(study1)
     weak, regime_score = remedial.diagnose_weak_regime(phase1_topk, diagnostic)
+    if VERBOSE:
+        print(f"  [{name}] ── 1차 완료 ({len(study1.trials)} trial) · "
+              f"약점 진단={weak} → 2차 보충 학습 시작 ──", flush=True)
     phase2_academy_seed = roll_seed()
     phase2_gyms, phase2_dca, phase2_meta = remedial.make_phase2_gyms(
         phase1_gyms, phase2_academy_seed, weak, len(phase1_gyms))
@@ -240,6 +243,9 @@ def run_gp_seedleague_2phase(phase1_gyms, phase1_dca, diagnostic: dict,
         })
 
     weak, regime_score = remedial.diagnose_weak_regime(phase1_topk, diagnostic)
+    if VERBOSE:
+        print(f"  [GP] ── 1차 완료 ({total_trials} trial, {n_seeds}seed) · "
+              f"약점 진단={weak} → 2차 보충 학습 시작 ──", flush=True)
     phase2_academy_seed = roll_seed()
     phase2_gyms, phase2_dca, phase2_meta = remedial.make_phase2_gyms(
         phase1_gyms, phase2_academy_seed, weak, len(phase1_gyms))
@@ -384,6 +390,10 @@ def run_nsga_classroom_2phase(stamp: str, phase1_gyms, phase1_dca,
     summary1 = nsga3.summarize_front(study1)
     phase1_topk = nsga_topk(summary1)
     weak, regime_score = remedial.diagnose_weak_regime(phase1_topk, diagnostic)
+    if VERBOSE:
+        print(f"  [NSGA] ── 1차 완료 ({len(study1.trials)} trial, 프론트 "
+              f"{summary1['front_size']}명) · 약점 진단={weak} → 2차 보충 학습 시작 ──",
+              flush=True)
 
     phase2_academy_seed = academy_seed + 70_000     # 결정적 — 교과서 재현·resume 가능
     phase2_gyms, phase2_dca, phase2_meta = remedial.make_phase2_gyms(
