@@ -71,7 +71,7 @@ def run_study(n_trials: int, seed: int | None = None,
     if on_progress:
         def _cb(st, _trial):
             n = len(st.trials)
-            if n % 200 == 0 or n >= n_trials:
+            if n % 100 == 0 or n >= n_trials:
                 on_progress(n, n_trials, len(st.best_trials))
         callbacks.append(_cb)
 
