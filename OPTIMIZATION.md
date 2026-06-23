@@ -158,9 +158,9 @@ NSGA-1차 30명 + NSGA-보충 30명
 정식 산출물:
 
 ```text
-app/lab/reports/season3_league/season3_league.md
-app/lab/reports/season3_league/season3_league.json
-app/lab/reports/season3_league/*.png
+app/lab/reports/season/season3_league/season3_league.md
+app/lab/reports/season/season3_league/season3_league.json
+app/lab/reports/season/season3_league/graph/*.png
 ```
 
 시즌3 중앙값 결과:
@@ -188,8 +188,8 @@ app/lab/reports/season3_league/*.png
 
 ### 4-6. 하락장 평단가 분석
 
-`app/lab/season3_bear_accumulation.py`는 하락장 매수분이 다음 상승장에서 얼마나 회복되는지 본다.
-산출물은 `app/lab/reports/season3_bear_accumulation/` 아래에 둔다.
+`app/lab/season/season3_bear_accumulation.py`는 하락장 매수분이 다음 상승장에서 얼마나 회복되는지 본다.
+산출물은 `app/lab/reports/season/season3_bear_accumulation/` 아래에 둔다.
 
 핵심 결과:
 

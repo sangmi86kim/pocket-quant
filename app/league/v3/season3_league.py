@@ -49,7 +49,7 @@ TRAIN_RESULTS = ROOT / "app" / "academy" / "training" / "results"
 # `reports/포켓퀀트리그/hall_of_fame_v3.md`가 챔피언/표 단위로 따로 들고,
 # 본 코드가 매 실행마다 덮어쓰는 md/json/png는 lab/reports 패턴
 # 그래프는 보고서 본문과 분리해 둔다. lab 산출물도 정식 보고서와 같은 상대참조 규칙을 따른다.
-REPORTS_DIR = ROOT / "app" / "lab" / "reports" / "season3_league"
+REPORTS_DIR = ROOT / "app" / "lab" / "reports" / "season" / "season3_league"
 GRAPH_DIR = REPORTS_DIR / "graph"
 
 SEED_KRW = 1_000_000

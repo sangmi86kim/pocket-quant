@@ -1,6 +1,6 @@
 # 학습 과정 검증 레포트 — 20260622_195214
 
-> 생성: `app/lab/report_training_curves.py` · academy_seed=798344776
+> 생성: `app/lab/optimization/report_training_curves.py` · academy_seed=798344776
 
 ## 1. NSGA-III 수렴 (학습 이력 보존됨 — DB)
 

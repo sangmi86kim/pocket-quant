@@ -233,7 +233,7 @@ NPC_CARDS = {
 }
 
 
-# ── 도감 출력 — `python -m app.lab.dex` 또는 main 분기 없이 직접 호출 ──
+# ── 도감 출력 — `python -m app.pocket.dex` 또는 main 분기 없이 직접 호출 ──
 def print_pokedex() -> None:
     """포켓퀀트(시그널) 카드 + 체육관 관장 + NPC를 콘솔에 출력."""
     print("=== PocketQuant 도감 ===\n")
