@@ -2,7 +2,7 @@
 
 [출처] 자매 프로젝트 Regime_Scanner 의 backend (signals.py + config.py)
 [배경] 사용자 안 (06-13): PocketQuant 시험장(시험장·평행세계·사천왕)의 각
-구간마다 우세 국면을 라벨링해 reports/regime_picks.json에 저장 → 추후
+구간마다 우세 국면을 라벨링해 app/league/results/regime_picks.json에 저장 → 추후
 Regime_Scanner가 같은 정의로 추론하면 학습 데이터(여기서 만든 picks)와
 추론 입력이 호환된다.
 

@@ -6,7 +6,7 @@
 
 [데이터]
   - 리그 결과: app/league/results/season_v2_top30_league.json (후보별 4아레나 종료잔고)
-  - 가중치 원본: app/academy/training/results/classroom_top30_20260615_v2.json (params=13신호 가중치)
+  - 가중치 원본: app/academy/training/db/classroom_top30_20260615_v2.json (params=13신호 가중치)
   후보 120명(TPE/CMA-ES/GP/NSGA ×30)을 (그룹, trial)로 매칭.
 
 [방법]
@@ -36,7 +36,7 @@ plt.rcParams["font.family"] = "Malgun Gothic"
 plt.rcParams["axes.unicode_minus"] = False
 
 LEAGUE_JSON = "app/league/results/season_v2_top30_league.json"
-WEIGHTS_JSON = "app/academy/training/results/classroom_top30_20260615_v2.json"
+WEIGHTS_JSON = "app/academy/training/db/classroom_top30_20260615_v2.json"
 
 ARENAS = ["exam", "oos", "world", "holdout"]
 ARENA_KR = {"exam": "졸업시험", "oos": "빅토리 로드 (OOS)", "world": "평행세계", "holdout": "사천왕"}

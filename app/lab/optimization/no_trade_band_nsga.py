@@ -20,7 +20,7 @@ from app.world.data_loader import load_gyms  # noqa: E402
 
 
 ROOT = Path(__file__).resolve().parents[3]
-NSGA_TOP30 = (ROOT / "app" / "academy" / "training" / "results"
+NSGA_TOP30 = (ROOT / "app" / "academy" / "training" / "db"
               / "invalid_cost_model" / "20260622_115015"
               / "nsga_top30_20260622_115015_v2.json")
 OUT_DIR = ROOT / "app" / "lab" / "reports" / "optimization" / "no_trade_band_nsga"

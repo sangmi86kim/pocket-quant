@@ -22,7 +22,7 @@ from app.world.regime import classify_daily  # noqa: E402
 
 
 ROOT = Path(__file__).resolve().parents[3]
-TOP30_PATH = (ROOT / "app" / "academy" / "training" / "results"
+TOP30_PATH = (ROOT / "app" / "academy" / "training" / "db"
               / "classroom_top30_20260622_195214_v2.json")
 OUT_DIR = ROOT / "app" / "lab" / "reports" / "season" / "season3_bear_accumulation"
 SEED_KRW = 1_000_000

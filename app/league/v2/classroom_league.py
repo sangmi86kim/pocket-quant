@@ -31,7 +31,7 @@ from app.world.data_loader import LoadedGym, get_prices
 
 
 ROOT = Path(__file__).resolve().parents[3]
-TOP30_PATH = ROOT / "app" / "academy" / "training" / "results" / "classroom_top30_20260615_v2.json"
+TOP30_PATH = ROOT / "app" / "academy" / "training" / "db" / "classroom_top30_20260615_v2.json"
 RESULTS_DIR = ROOT / "app" / "league" / "results"
 JSON_OUT = RESULTS_DIR / "season_v2_top30_league.json"
 MD_OUT = RESULTS_DIR / "season_v2_top30_league.md"
