@@ -6,7 +6,8 @@
 [정직한 한계] 시즌3부터 단일목적 교실도 sqlite storage를 남긴다. GP는 seed리그라 표본 수가 작다.
 
 실행: .venv/Scripts/python.exe -m app.lab.optimization.report_training_curves
-산출: app/academy/reports/training_curves_{stamp}_*.png + training_verification_{stamp}.md
+산출: app/academy/exam/results/season3/training_verification_{stamp}.md
+      + app/academy/exam/results/season3/graph/training_curves_{stamp}_*.png
 """
 import json
 from pathlib import Path
@@ -22,7 +23,8 @@ optuna.logging.set_verbosity(optuna.logging.WARNING)
 
 ROOT = Path(__file__).resolve().parents[3]
 RESULTS = ROOT / "app" / "academy" / "training" / "results"
-REPORTS = ROOT / "app" / "academy" / "reports"
+REPORTS = ROOT / "app" / "academy" / "exam" / "results" / "season3"
+GRAPH_DIR = REPORTS / "graph"
 
 OBJS = [("median_balance", "중앙 종료잔고 (↑좋음)", "max"),
         ("worst_balance", "최악 종료잔고 (↑좋음)", "max")]
@@ -99,7 +101,7 @@ def fig_convergence(stamp, phase1, phase2, academy_seed):
     fig.suptitle(f"NSGA-III 학습 수렴 (academy_seed={academy_seed}, stamp={stamp})\n"
                  f"빨강=지금까지 최고치, 회색=각 시도 — 우상향/평탄화면 수렴 성공", fontsize=12)
     fig.tight_layout(rect=(0, 0, 1, 0.95))
-    out = REPORTS / f"training_curves_{stamp}_nsga_convergence.png"
+    out = GRAPH_DIR / f"training_curves_{stamp}_nsga_convergence.png"
     fig.savefig(out, dpi=110)
     plt.close(fig)
     return out
@@ -133,7 +135,7 @@ def fig_nsga_hv(stamp, phase1, phase2):
                  f"다목적 수렴의 정식 잣대 — 프론트 전체 부피가 커질수록 HV↑ (조기종료 기준)",
                  fontsize=12)
     fig.tight_layout(rect=(0, 0, 1, 0.92))
-    out = REPORTS / f"training_curves_{stamp}_nsga_hv.png"
+    out = GRAPH_DIR / f"training_curves_{stamp}_nsga_hv.png"
     fig.savefig(out, dpi=110)
     plt.close(fig)
     return out
@@ -157,7 +159,7 @@ def fig_front(stamp, phase1, phase2):
         fig.colorbar(sc, ax=ax, label="회전율(↓좋음)")
     fig.suptitle(f"NSGA-III 최종 파레토 프론트 (stamp={stamp}) — 우상단일수록 강함", fontsize=12)
     fig.tight_layout(rect=(0, 0, 1, 0.94))
-    out = REPORTS / f"training_curves_{stamp}_nsga_front.png"
+    out = GRAPH_DIR / f"training_curves_{stamp}_nsga_front.png"
     fig.savefig(out, dpi=110)
     plt.close(fig)
     return out
@@ -218,7 +220,7 @@ def fig_single_convergence(stamp):
     fig.suptitle(f"단일목적·GP 학습 수렴 (stamp={stamp}) — best-so-far 우상향/평탄=수렴\n"
                  f"GP는 seed별 대표(seed리그)", fontsize=12)
     fig.tight_layout(rect=(0, 0, 1, 0.95))
-    out = REPORTS / f"training_curves_{stamp}_single_convergence.png"
+    out = GRAPH_DIR / f"training_curves_{stamp}_single_convergence.png"
     fig.savefig(out, dpi=110)
     plt.close(fig)
     return out
@@ -259,14 +261,14 @@ def fig_selection(stamp, classrooms):
                  fontsize=11)
     ax.grid(alpha=0.25, axis="y")
     fig.tight_layout()
-    out = REPORTS / f"training_curves_{stamp}_selection.png"
+    out = GRAPH_DIR / f"training_curves_{stamp}_selection.png"
     fig.savefig(out, dpi=110)
     plt.close(fig)
     return out
 
 
 def main():
-    REPORTS.mkdir(parents=True, exist_ok=True)
+    GRAPH_DIR.mkdir(parents=True, exist_ok=True)
     top30 = sorted(RESULTS.glob("classroom_top30_*_v2.json"))[-1]
     data = json.loads(top30.read_text(encoding="utf-8"))
     stamp = data["stamp"]
@@ -285,7 +287,7 @@ def main():
     classroom_names = [c["name"] for c in classrooms]
     single_names = [name for name in classroom_names if name != "NSGA-III"]
     single_label = "·".join(single_names) if single_names else "단일목적"
-    single_md = (f"""![단일목적 수렴](training_curves_{stamp}_single_convergence.png)
+    single_md = (f"""![단일목적 수렴](graph/training_curves_{stamp}_single_convergence.png)
 
 {single_label}도 storage 보존 후 학습이라 수렴곡선 확인 가능."""
                  if single else
@@ -305,19 +307,19 @@ def main():
 
 ## 1. NSGA-III 수렴 (학습 이력 보존됨 — DB)
 
-![수렴](training_curves_{stamp}_nsga_convergence.png)
+![수렴](graph/training_curves_{stamp}_nsga_convergence.png)
 
 - 1차 {n1} trial · 2차(보충) {n2} trial. 빨강 best-so-far가 우상향 후 평탄 = 수렴 성공.
 - 목적 2개: 중앙 종료잔고(↑)·최악 종료잔고(↑). 회전율은 turnover cap 스펙으로 별도 필터.
 
 ### 하이퍼볼륨(HV) 트렌드 — 다목적 수렴의 정식 잣대
 
-![HV](training_curves_{stamp}_nsga_hv.png)
+![HV](graph/training_curves_{stamp}_nsga_hv.png)
 
 - best-so-far가 극단 1점만 본다면, HV는 **파레토 프론트 전체 부피**라 프론트가 촘촘·넓어지는
   것까지 잡는다. 빨강(이동평균)이 우상향 후 평탄 = 진짜 수렴. 조기종료도 이 HV로 판정한다.
 
-![파레토](training_curves_{stamp}_nsga_front.png)
+![파레토](graph/training_curves_{stamp}_nsga_front.png)
 
 ## 2. 단일목적·GP 수렴 ({single_label})
 
@@ -325,7 +327,7 @@ def main():
 
 ## 3. {len(classroom_names)}교실 선발 분포
 
-![선발](training_curves_{stamp}_selection.png)
+![선발](graph/training_curves_{stamp}_selection.png)
 
 ## 4. 정직한 한계
 

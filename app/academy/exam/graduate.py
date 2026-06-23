@@ -37,7 +37,8 @@ from app.world.data_loader import load_gyms             # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[3]
 TRAIN_RESULTS = ROOT / "app" / "academy" / "training" / "results"
-REPORTS_DIR = ROOT / "app" / "academy" / "reports"
+REPORTS_DIR = ROOT / "app" / "academy" / "exam" / "results" / "season3"
+GRAPH_DIR = REPORTS_DIR / "graph"
 SEED_KRW = 1_000_000
 
 # 실행 옵션은 모듈 상수로 둔다(argparse 없이). None이면 가장 최근 top30 파일을 자동 선택.
@@ -205,7 +206,7 @@ def build_payload(top30: dict, gyms, dca) -> dict:
 
 
 def run() -> dict:
-    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    GRAPH_DIR.mkdir(parents=True, exist_ok=True)
     top30_path = _latest_top30()
     top30 = json.loads(top30_path.read_text(encoding="utf-8"))
     top30["_source"] = str(top30_path)
@@ -277,7 +278,7 @@ def _overall_png(payload: dict, stamp: str) -> Path:
     ax.legend(handles=_legend_handles(payload), loc="lower left", fontsize=8,
               framealpha=0.9)
     fig.tight_layout()
-    path = REPORTS_DIR / f"graduation_{stamp}_overall.png"
+    path = GRAPH_DIR / f"graduation_{stamp}_overall.png"
     fig.savefig(path, dpi=130)
     plt.close(fig)
     return path
@@ -298,7 +299,7 @@ def _by_gym_png(payload: dict, stamp: str) -> Path:
     fig.legend(handles=_legend_handles(payload), loc="upper right",
                ncol=3, fontsize=10, framealpha=0.9)
     fig.tight_layout(rect=(0, 0, 1, 0.96))
-    path = REPORTS_DIR / f"graduation_{stamp}_by_gym.png"
+    path = GRAPH_DIR / f"graduation_{stamp}_by_gym.png"
     fig.savefig(path, dpi=130)
     plt.close(fig)
     return path
@@ -334,7 +335,7 @@ def _write_markdown(payload: dict, stamp: str, overall_png: Path,
         "",
         "## 종합 (후보별 6체육관 median 종료잔고 분포, 만원)",
         "",
-        f"![종합 비교]({overall_png.name})",
+        f"![종합 비교](graph/{overall_png.name})",
         "",
     ]
     _ranked_table(lines, classrooms, lambda m: m["score"], payload["dca_score"])
@@ -343,7 +344,7 @@ def _write_markdown(payload: dict, stamp: str, overall_png: Path,
         "",
         "## 체육관별 분석 (반별 졸업생 종료잔고 분포, 만원)",
         "",
-        f"![체육관별 비교]({by_gym_png.name})",
+        f"![체육관별 비교](graph/{by_gym_png.name})",
         "",
         "> 각 체육관에서 반별 졸업생 분포. 점선=그 체육관 성실이(DCA). "
         "반 median이 성실이보다 낮으면 그 체육관이 그 반의 약점 과목.",
