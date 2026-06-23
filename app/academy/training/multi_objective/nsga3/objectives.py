@@ -14,7 +14,7 @@ import secrets
 import numpy as np
 import optuna
 
-from app.academy.curriculum import prepare_academy_data
+from app.academy.curriculum.course import prepare_academy_data
 from app.academy.training.candidate import suggest_weights
 from app.pocket.battle import _score_position, terminal_balance
 from app.pocket.signals import combine_positions, positions_with_params

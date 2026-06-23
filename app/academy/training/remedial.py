@@ -1,7 +1,7 @@
 """2단계 보충학습 helper — 약점 진단 + 보충 교과서 구성."""
 import numpy as np
 
-from app.academy.curriculum import prepare_academy_data
+from app.academy.curriculum.course import prepare_academy_data
 from app.academy.curriculum.textbook import REGIME_STATES
 from app.academy.training.candidate import decode_params
 from app.pocket.battle import _score_position, fight_dca, score_vs_dca

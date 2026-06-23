@@ -9,7 +9,7 @@
 일별 국면(bull/bear/sideways/volatile)을 라벨링 → 전체·시대별·hold-out 기준으로 집계.
 분류기는 리그/시험장 라벨링과 같은 단일 소스(regime.py)를 그대로 쓴다 = 정의 일관.
 
-[출력] 콘솔 표 + app/lab/reports/textbook/qqq_regime_distribution.{md,png}.
+[출력] app/lab/outputs/textbook/regime_distribution/ 에 png 1장 + md 리포트.
 
 실행: .venv/Scripts/python.exe -m app.lab.textbook.regime_distribution
 """
@@ -48,8 +48,9 @@ ERAS = [
     ("post-COVID", "2020-07-01", DATA_END),
 ]
 
-OUT_DIR = os.path.join(os.path.dirname(__file__), "..", "reports", "textbook")
-OUT_MD = os.path.join(OUT_DIR, "qqq_regime_distribution.md")
+OUT_DIR = os.path.join(os.path.dirname(__file__), "..", "outputs", "textbook",
+                       "regime_distribution")
+OUT_MD = os.path.join(OUT_DIR, "report.md")
 OUT_PNG = os.path.join(OUT_DIR, "qqq_regime_distribution.png")
 PNG_NAME = "qqq_regime_distribution.png"   # md에서 상대경로 링크
 

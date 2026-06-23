@@ -2,7 +2,7 @@
 check_academy_synth.py - 아카데미 합성세계(textbook + curriculum) 산출물 검증
 
 [검증 범위]
-`app/academy/curriculum/textbook.py`(평행세계 1권)와 `curriculum/__init__.py`
+`app/academy/curriculum/textbook.py`(평행세계 1권)와 `curriculum/course.py`
 (N권 학기 코스 + train/validation split) 계약을 고정한다.
 
   ① LoadedGym 확장 없이 prices.attrs만 사용
@@ -25,7 +25,7 @@ import numpy as np
 import optuna
 import pandas as pd
 
-from app.academy.curriculum import bootstrap_gyms, prepare_academy_split
+from app.academy.curriculum.course import bootstrap_gyms, prepare_academy_split
 from app.academy.curriculum.textbook import DATA_END, make_world, make_world_rs
 from app.academy.exam.grade import evaluate_balances
 from app.academy.training.single_objective.engine import _objective

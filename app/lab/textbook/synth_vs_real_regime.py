@@ -10,7 +10,7 @@
 
 분류기는 리그와 같은 `world/regime.py`(단일 소스). 합성장은 `curriculum/textbook.make_world`.
 
-[출력] 콘솔 + app/lab/reports/textbook/synth_vs_real_regime.{md,png}(그룹 막대 비교).
+[출력] app/lab/outputs/textbook/synth_vs_real_regime/ 에 png 1장 + md 리포트.
 실행: .venv/Scripts/python.exe -m app.lab.textbook.synth_vs_real_regime
 """
 
@@ -35,9 +35,10 @@ LABEL_COLOR = {"bull": "#2e7d32", "bear": "#c62828",
                "sideways": "#9e9e9e", "volatile": "#f9a825"}
 N_WORLDS = 80   # 합성 교과서 권수 (분포 안정용)
 
-OUT_DIR = os.path.join(os.path.dirname(__file__), "..", "reports", "textbook")
+OUT_DIR = os.path.join(os.path.dirname(__file__), "..", "outputs", "textbook",
+                       "synth_vs_real_regime")
 OUT_PNG = os.path.join(OUT_DIR, "synth_vs_real_regime.png")
-OUT_MD = os.path.join(OUT_DIR, "synth_vs_real_regime.md")
+OUT_MD = os.path.join(OUT_DIR, "report.md")
 PNG_NAME = "synth_vs_real_regime.png"
 
 

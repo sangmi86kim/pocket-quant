@@ -8,7 +8,7 @@ from pathlib import Path
 
 import optuna
 
-from app.academy.curriculum import prepare_academy_data
+from app.academy.curriculum.course import prepare_academy_data
 from app.academy.training import remedial
 from app.academy.training.multi_objective import nsga3
 from app.academy.training.single_objective import cma_es, gp

@@ -19,7 +19,7 @@ from typing import Callable
 import numpy as np
 import optuna
 
-from app.academy.curriculum import prepare_academy_data
+from app.academy.curriculum.course import prepare_academy_data
 from app.academy.exam.grade import evaluate_balances
 from app.academy.training.candidate import decode_params, suggest_weights
 from app.world.data_loader import LoadedGym

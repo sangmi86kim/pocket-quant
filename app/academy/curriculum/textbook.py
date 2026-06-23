@@ -5,7 +5,7 @@
 인덱스로 동시에 잘라** 평행세계 1권을 반환한다. 닷컴 패닉 블록에는 VIX 폭증·금리
 하락이 같이 들어감 → 야생 시그널이 합성 세계에서도 정상 작동.
 
-N권을 묶어 학기 코스로 엮는 일은 패키지 상위(`curriculum.__init__`)의 책임이다.
+N권을 묶어 학기 코스로 엮는 일은 `curriculum.course`의 책임이다.
 
 [규칙]
 - 스트림별 데이터 부재 구간은 NaN 유지 (UUP 2007년 이전 등 — 상장 전 역사 발명 금지)
@@ -55,6 +55,7 @@ DEFAULT_EXTERNAL_STREAMS = (
 
 REGIME_STATES = ["bull", "bear", "sideways", "volatile"]
 REGIME_INDEX = {s: i for i, s in enumerate(REGIME_STATES)}
+SYNTH_START = "2001-01-01"
 
 
 def _to_block_unit(series: pd.Series, stream_type: str) -> pd.Series:
@@ -160,7 +161,7 @@ def _load_external(streams_spec, start: str, end: str,
     """야생 정보원 시계열을 받아서 같은 거래일 인덱스로 정렬.
 
     UUP는 2007년부터, TLT는 2002년부터 — 그 이전 날짜는 NaN으로 유지
-    (코덱스 연구원 권장: "없는 역사 만들지 마라, NaN은 그대로 NaN").
+    없는 역사는 만들지 않는다. NaN은 그대로 NaN으로 둔다.
     데이터 fetch 자체 실패 시 전체 NaN 시리즈.
     """
     aligned = {}
@@ -179,6 +180,40 @@ def _load_external(streams_spec, start: str, end: str,
         # 공통 인덱스에 맞춤 — 없던 날짜는 NaN 유지 (백필 금지)
         aligned[ticker] = (block_unit.reindex(common_idx), stream_type)
     return aligned
+
+
+def _synth_dates(n_days: int) -> pd.DatetimeIndex:
+    return pd.bdate_range(SYNTH_START, periods=n_days)
+
+
+def _build_external_synth(ticker: str, prices: pd.Series, synth_dates: pd.DatetimeIndex,
+                          aligned: dict, sample_indices: np.ndarray) -> dict:
+    """attrs에 붙일 합성 외부 스트림 묶음."""
+    external_synth = {ticker: prices.copy()}
+    for ext_ticker, (block_unit, stream_type) in aligned.items():
+        values = np.asarray(block_unit.values)[sample_indices]
+        synth = _from_block_unit(values, stream_type)
+        external_synth[ext_ticker] = pd.Series(synth, index=synth_dates)
+    return external_synth
+
+
+def _loaded_world(name: str, ticker: str, qqq_returns: pd.Series, aligned: dict,
+                  sample_indices: np.ndarray, n_days: int) -> LoadedGym:
+    """샘플링된 블록 인덱스를 LoadedGym 1권으로 조립한다."""
+    qqq_synth_rets = np.asarray(qqq_returns.values)[sample_indices]
+    qqq_synth_prices = _from_block_unit(qqq_synth_rets, "price", init=100.0)
+    synth_dates = _synth_dates(n_days)
+    prices = pd.Series(qqq_synth_prices, index=synth_dates, name=ticker)
+
+    prices.attrs["synthetic"] = True
+    prices.attrs["external_streams"] = _build_external_synth(
+        ticker, prices, synth_dates, aligned, sample_indices)
+
+    eval_start = prices.index[WARMUP_TDAYS] if n_days > WARMUP_TDAYS else prices.index[0]
+    gym = Gym(name, difficulty=0, volatility=0, ticker="SYNTH",
+              start=eval_start.strftime("%Y-%m-%d"),
+              end=prices.index[-1].strftime("%Y-%m-%d"))
+    return LoadedGym(gym=gym, prices=prices)
 
 
 def make_world(seed: int = 42,
@@ -218,28 +253,9 @@ def make_world(seed: int = 42,
     rng = np.random.default_rng(seed)
     sample_indices = _sample_block_indices(n_days, len(common_idx), rng)
 
-    # 4~5. QQQ 합성가격
-    qqq_synth_rets = np.asarray(qqq_returns.values)[sample_indices]
-    qqq_synth_prices = _from_block_unit(qqq_synth_rets, "price", init=100.0)
-    synth_dates = pd.bdate_range("2001-01-01", periods=n_days)
-    prices = pd.Series(qqq_synth_prices, index=synth_dates, name=ticker)
-
-    # 야생 정보원 합성
-    external_synth = {ticker: prices.copy()}
-    for ext_ticker, (block_unit, stream_type) in aligned.items():
-        values = np.asarray(block_unit.values)[sample_indices]
-        synth = _from_block_unit(values, stream_type)
-        external_synth[ext_ticker] = pd.Series(synth, index=synth_dates)
-
-    # 6. attrs 부착 — 코덱스 연구원 권장: LoadedGym 필드 확장 NO, prices.attrs로만
-    prices.attrs["synthetic"] = True
-    prices.attrs["external_streams"] = external_synth
-
-    eval_start = prices.index[WARMUP_TDAYS] if n_days > WARMUP_TDAYS else prices.index[0]
-    gym = Gym("세계공장#합성", difficulty=0, volatility=0, ticker="SYNTH",
-              start=eval_start.strftime("%Y-%m-%d"),
-              end=prices.index[-1].strftime("%Y-%m-%d"))
-    return LoadedGym(gym=gym, prices=prices)
+    # 4~6. QQQ와 야생 정보원을 같은 블록 순서로 조립하고 attrs에 부착.
+    return _loaded_world("세계공장#합성", ticker, qqq_returns, aligned,
+                         sample_indices, n_days)
 
 
 def make_world_rs(seed: int = 42,
@@ -280,22 +296,5 @@ def make_world_rs(seed: int = 42,
         state = int(rng.choice(len(REGIME_STATES), p=P[state]))
     sample_indices = np.array(indices[:n_days])
 
-    qqq_synth = _from_block_unit(np.asarray(qqq_returns.values)[sample_indices],
-                                 "price", init=100.0)
-    synth_dates = pd.bdate_range("2001-01-01", periods=n_days)
-    prices = pd.Series(qqq_synth, index=synth_dates, name=ticker)
-
-    external_synth = {ticker: prices.copy()}
-    for ext_ticker, (block_unit, stream_type) in aligned.items():
-        values = np.asarray(block_unit.values)[sample_indices]
-        external_synth[ext_ticker] = pd.Series(_from_block_unit(values, stream_type),
-                                               index=synth_dates)
-
-    prices.attrs["synthetic"] = True
-    prices.attrs["external_streams"] = external_synth
-
-    eval_start = prices.index[WARMUP_TDAYS] if n_days > WARMUP_TDAYS else prices.index[0]
-    gym = Gym("세계공장#RS합성", difficulty=0, volatility=0, ticker="SYNTH",
-              start=eval_start.strftime("%Y-%m-%d"),
-              end=prices.index[-1].strftime("%Y-%m-%d"))
-    return LoadedGym(gym=gym, prices=prices)
+    return _loaded_world("세계공장#RS합성", ticker, qqq_returns, aligned,
+                         sample_indices, n_days)

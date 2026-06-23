@@ -63,7 +63,7 @@ def assert_training_cost_model_ready() -> None:
     meta = cost_model_metadata()
     if not meta["complete"]:
         raise RuntimeError(
-            "비용 모델 미완: 수수료만 반영된 legacy 모델입니다. "
+            "비용 모델 미완: 수수료만 반영된 구형 모델입니다. "
             "슬리피지(성실이 포함 전원 공통)와 No-trade band 계약을 구현한 뒤 "
             "학습을 다시 시작하세요."
         )
@@ -234,7 +234,7 @@ def fight_savings(loaded: LoadedGym) -> BattleResult:
 
     가격과 무관하게 해석적으로 계산한다 (거래일 252일 기준 일복리, 낙폭 0).
     ⚠️ 무낙폭 + 양수 수익이라 스탯 엔진에선 DEF(Calmar)가 만점 — 적합도로
-    줄 세우면 챔피언보다 높게 보이는 착시가 있다. 그래서 저축왕은 게이트/GA
+    줄 세우면 챔피언보다 높게 보이는 착시가 있다. 그래서 저축왕은 게이트/선발
     순위엔 안 넣고 기준선 '표시 전용'이다."""
     gym = loaded.gym
     mask = (loaded.prices.index >= pd.Timestamp(gym.start)) \

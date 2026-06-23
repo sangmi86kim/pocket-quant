@@ -6,7 +6,7 @@
 US10Y/FEAR 같은 '평균 대비 급락/급등' 신호가 이 가짜 경계 점프를 진짜 이벤트로 착각해 발동 →
 합성장 오학습(GP가 그 가짜에 맞춰 US10Y=1을 정답으로 외운 게 'GP 무죄'의 증거).
 
-[그림 2장]
+[출력] app/lab/outputs/textbook/block_shuffle_explainer/ 에 그림 2장.
   - textbook_current.png : 현재 교과서의 현실 — 가격형(연속 OK) vs 레벨형(경계 점프, 짝퉁)
   - textbook_fixed.png   : 고친 교과서 — 가격형(그대로) vs 레벨형(변화량+평균회귀 → 연속 & 밴드 유지)
 
@@ -27,7 +27,8 @@ plt.rcParams["axes.unicode_minus"] = False
 
 BLOCK = 21
 SEAMS = [BLOCK, 2 * BLOCK]
-RDIR = os.path.join(os.path.dirname(__file__), "..", "reports", "textbook")
+RDIR = os.path.join(os.path.dirname(__file__), "..", "outputs", "textbook",
+                    "block_shuffle_explainer")
 OUT_CURRENT = os.path.join(RDIR, "textbook_current.png")
 OUT_FIXED = os.path.join(RDIR, "textbook_fixed.png")
 
