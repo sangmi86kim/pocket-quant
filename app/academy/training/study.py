@@ -16,7 +16,7 @@ from app.pocket.battle import assert_training_cost_model_ready, cost_model_metad
 
 
 ROOT = Path(__file__).resolve().parents[3]
-RESULTS_DIR = ROOT / "app" / "academy" / "training" / "results"
+RESULTS_DIR = ROOT / "app" / "academy" / "training" / "db"
 
 SINGLE_TRIALS = {
     "CMA-ES": 5000,

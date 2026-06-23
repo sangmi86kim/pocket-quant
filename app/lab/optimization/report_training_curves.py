@@ -6,8 +6,8 @@
 [정직한 한계] 시즌3부터 단일목적 교실도 sqlite storage를 남긴다. GP는 seed리그라 표본 수가 작다.
 
 실행: .venv/Scripts/python.exe -m app.lab.optimization.report_training_curves
-산출: app/academy/exam/results/season3/training_verification_{stamp}.md
-      + app/academy/exam/results/season3/graph/training_curves_{stamp}_*.png
+산출: app/academy/training/results/season3/training_verification_{stamp}.md
+      + app/academy/training/results/season3/graph/training_curves_{stamp}_*.png
 """
 import json
 from pathlib import Path
@@ -22,8 +22,8 @@ plt.rcParams["axes.unicode_minus"] = False
 optuna.logging.set_verbosity(optuna.logging.WARNING)
 
 ROOT = Path(__file__).resolve().parents[3]
-RESULTS = ROOT / "app" / "academy" / "training" / "results"
-REPORTS = ROOT / "app" / "academy" / "exam" / "results" / "season3"
+RESULTS = ROOT / "app" / "academy" / "training" / "db"
+REPORTS = ROOT / "app" / "academy" / "training" / "results" / "season3"
 GRAPH_DIR = REPORTS / "graph"
 
 OBJS = [("median_balance", "중앙 종료잔고 (↑좋음)", "max"),

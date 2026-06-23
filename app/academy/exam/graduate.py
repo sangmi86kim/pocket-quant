@@ -36,7 +36,7 @@ from app.world.data_loader import load_gyms             # noqa: E402
 
 
 ROOT = Path(__file__).resolve().parents[3]
-TRAIN_RESULTS = ROOT / "app" / "academy" / "training" / "results"
+TRAIN_RESULTS = ROOT / "app" / "academy" / "training" / "db"
 REPORTS_DIR = ROOT / "app" / "academy" / "exam" / "results" / "season3"
 GRAPH_DIR = REPORTS_DIR / "graph"
 SEED_KRW = 1_000_000
