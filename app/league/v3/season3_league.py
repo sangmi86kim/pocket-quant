@@ -9,8 +9,8 @@
   battle_frontier(평행세계 200)는 시즌3 리그에서 일단 뺀다.
 
 [출전 범위]
-각 교실의 최종 `topk`만 출전한다. phase1.topk는 졸업 진단 비교용이다.
-CMA-ES 30명 + GP 5명 + NSGA-III 30명 = 65명.
+각 교실의 `phase1.topk`와 최종 `topk`를 모두 출전시켜 1차/보충 수업 효과를 비교한다.
+CMA-ES 60명 + GP 10명 + NSGA-III 60명 = 130명.
 
 [레포트 구조]
 - 종합 비교: OOS 11년 + 사천왕 7라운드 전체 median.
@@ -30,9 +30,10 @@ import matplotlib.pyplot as plt                         # noqa: E402
 from matplotlib.patches import Patch                    # noqa: E402
 
 from app.academy.training.candidate import decode_params  # noqa: E402
+from app.pocket import battle                           # noqa: E402
 from app.league import elite_four as EF                  # noqa: E402
 from app.league import victory_road as VR                # noqa: E402
-from app.league.operations.npcs import npc_graduates     # noqa: E402
+from app.league.operations import npcs                  # noqa: E402
 from app.pocket.battle import _score_position, terminal_balance  # noqa: E402
 from app.pocket.signals import SIGNAL_NAMES, combine_positions, positions_with_params  # noqa: E402
 from app.world.data_loader import LoadedGym, get_prices  # noqa: E402
@@ -60,13 +61,27 @@ MD_OUT = REPORTS_DIR / "season3_league.md"
 
 GROUP_COLORS = {
     "CMA-ES": "#2c9c69",
+    "CMA-ES-1차": "#8fd19e",
+    "CMA-ES-보충": "#2c9c69",
     "GP": "#7e5ca8",
+    "GP-1차": "#c1a9df",
+    "GP-보충": "#7e5ca8",
     "NSGA": "#d48a1f",
+    "NSGA-1차": "#f1bd75",
+    "NSGA-보충": "#d48a1f",
     "성실이": "#c44545",
     "어플삭제단": "#58606a",
     "저축왕": "#4a8f9f",
     "돼지저금통": "#777777",
 }
+
+REGIME_ORDER = ["bull", "bear", "sideways", "volatile"]
+GROUP_ORDER = [
+    "CMA-ES-1차", "CMA-ES-보충",
+    "GP-1차", "GP-보충",
+    "NSGA-1차", "NSGA-보충",
+    "어플삭제단", "성실이", "저축왕", "돼지저금통",
+]
 
 
 def _missing_weights(item: dict) -> list[str]:
@@ -112,36 +127,99 @@ def _group_name(name: str) -> str:
 def _load_candidates(top30: dict) -> list[dict]:
     out = []
     for classroom in top30.get("classrooms", []):
-        group = _group_name(classroom["name"])
-        topk = classroom.get("topk") or []
-        for rank, item in enumerate(topk, start=1):
-            missing = _missing_weights(item)
-            if missing:
-                raise ValueError(f"{group} 후보 가중치 누락: {missing}")
-            weights, params = decode_params(item["params"])
-            out.append({
-                "name": f"{group}-t{item.get('trial', rank)}",
-                "group": group,
-                "kind": "candidate",
-                "trial": item.get("trial"),
-                "rank": rank,
-                "weights": weights,
-                "params": params,
-            })
+        base_group = _group_name(classroom["name"])
+        candidate_sets = [
+            ("1차", classroom.get("phase1", {}).get("topk") or []),
+            ("보충", classroom.get("topk") or []),
+        ]
+        for phase, topk in candidate_sets:
+            group = f"{base_group}-{phase}"
+            for rank, item in enumerate(topk, start=1):
+                missing = _missing_weights(item)
+                if missing:
+                    raise ValueError(f"{group} 후보 가중치 누락: {missing}")
+                weights, params = decode_params(item["params"])
+                out.append({
+                    "name": f"{group}-t{item.get('trial', rank)}",
+                    "group": group,
+                    "kind": "candidate",
+                    "trial": item.get("trial"),
+                    "rank": rank,
+                    "phase": phase,
+                    "weights": weights,
+                    "params": params,
+                })
     if not out:
         raise ValueError("최종 topk 후보가 비어 있음")
     return out
 
 
-def _candidate_balance(player: dict, loaded: LoadedGym) -> int:
+def _terminal(returns) -> int:
+    if len(returns) == 0:
+        return SEED_KRW
+    return int(SEED_KRW * float(np.prod(1.0 + returns.to_numpy())))
+
+
+def _candidate_returns(player: dict, loaded: LoadedGym):
     positions = positions_with_params(loaded.prices, player["params"])
-    position = combine_positions(positions, player["weights"])
-    return terminal_balance(_score_position(position, loaded), SEED_KRW)
+    target = combine_positions(positions, player["weights"])
+    actual = battle.apply_no_trade_band(target).shift(1)
+    cost = battle.TRADE_COST + battle.SLIPPAGE_COST
+    returns = actual * loaded.prices.pct_change() - actual.diff().abs() * cost
+    mask = (returns.index >= loaded.gym.start) & (returns.index <= loaded.gym.end)
+    return returns[mask].dropna()
+
+
+def _candidate_balance(player: dict, loaded: LoadedGym) -> int:
+    return terminal_balance(
+        _score_position(
+            combine_positions(positions_with_params(loaded.prices, player["params"]),
+                              player["weights"]),
+            loaded,
+        ),
+        SEED_KRW,
+    )
 
 
 def _baseline_balance(player: dict, loaded: LoadedGym) -> int:
     _returns, balance = player["evaluator"](loaded, SEED_KRW)
     return int(balance)
+
+
+def _app_deletion_member(loaded: LoadedGym, seed_krw: int, frac: float) -> tuple[object, int]:
+    prices = loaded.prices.loc[loaded.gym.start:loaded.gym.end]
+    returns = prices.pct_change().dropna()
+    n = len(returns)
+    if n == 0:
+        return returns, seed_krw
+    arr = returns.to_numpy().copy()
+    entry = min(int(frac * n), n - 1)
+    arr[:entry] = 0.0
+    arr[entry] -= npcs.TRADE_COST + npcs.SLIPPAGE_COST
+    terminal = seed_krw * float(np.prod(1.0 + arr))
+    adjusted = returns.copy()
+    adjusted.iloc[:] = arr
+    return adjusted, int(terminal)
+
+
+def _baseline_players() -> list[dict]:
+    players = []
+    for idx, frac in enumerate(npcs._BH_ENTRY_FRACS, start=1):
+        def evaluator(loaded, seed_krw, f=frac):
+            return _app_deletion_member(loaded, seed_krw, float(f))
+        players.append({
+            "name": f"어플삭제단-{idx:03d}",
+            "group": "어플삭제단",
+            "kind": "baseline",
+            "evaluator": evaluator,
+        })
+    for baseline in npcs.npc_graduates():
+        if baseline["name"] == "어플삭제단":
+            continue
+        baseline["group"] = baseline["name"]
+        baseline["kind"] = "baseline"
+        players.append(baseline)
+    return players
 
 
 def _regime_profile(prices, start: str, end: str) -> dict:
@@ -171,6 +249,12 @@ def _regime_profile(prices, start: str, end: str) -> dict:
     }
 
 
+def _regime_daily(prices, start: str, end: str):
+    daily = classify_daily(prices)
+    mask = (daily.index >= start) & (daily.index <= end)
+    return daily[mask]
+
+
 def _rounds(prices) -> list[dict]:
     out = []
     for year in VR.OOS_YEARS:
@@ -181,6 +265,7 @@ def _rounds(prices) -> list[dict]:
             "label": str(year),
             "loaded": loaded,
             "regime": _regime_profile(loaded.prices, loaded.gym.start, loaded.gym.end),
+            "regime_daily": _regime_daily(loaded.prices, loaded.gym.start, loaded.gym.end),
         })
     for name, start, end in EF.ROUNDS:
         loaded = EF._loaded_window(prices, start, end)
@@ -190,6 +275,7 @@ def _rounds(prices) -> list[dict]:
             "label": name,
             "loaded": loaded,
             "regime": _regime_profile(loaded.prices, start, end),
+            "regime_daily": _regime_daily(loaded.prices, start, end),
         })
     return out
 
@@ -210,31 +296,65 @@ def _score_players(players: list[dict], rounds: list[dict]) -> list[dict]:
     rows = []
     for player in players:
         balances = {}
+        regime_returns: dict[str, list] = {key: [] for key in REGIME_ORDER}
+        stage_regime_returns: dict[str, dict[str, list]] = {
+            stage: {key: [] for key in REGIME_ORDER}
+            for stage, _title, _src in STAGES
+        }
         for round_info in rounds:
             loaded = round_info["loaded"]
             if "evaluator" in player:
-                balance = _baseline_balance(player, loaded)
+                returns, balance = player["evaluator"](loaded, SEED_KRW)
             else:
-                balance = _candidate_balance(player, loaded)
+                returns = _candidate_returns(player, loaded)
+                balance = _terminal(returns)
             balances[round_info["key"]] = balance
+            daily = round_info["regime_daily"]
+            aligned = returns.reindex(daily.index).dropna()
+            labels = daily.reindex(aligned.index)
+            for regime_key in REGIME_ORDER:
+                selected = aligned[labels == regime_key]
+                if len(selected):
+                    regime_returns[regime_key].append(selected)
+                    stage_regime_returns[round_info["stage"]][regime_key].append(selected)
         oos = [balances[r["key"]] for r in rounds if r["stage"] == "oos"]
         holdout = [balances[r["key"]] for r in rounds if r["stage"] == "holdout"]
+        regime_balances = {}
+        for regime_key, parts in regime_returns.items():
+            if parts:
+                combined = np.concatenate([part.to_numpy() for part in parts])
+                regime_balances[regime_key] = int(SEED_KRW * float(np.prod(1.0 + combined)))
+            else:
+                regime_balances[regime_key] = SEED_KRW
+        stage_regime_balances: dict[str, dict[str, int]] = {}
+        for stage, by_regime in stage_regime_returns.items():
+            stage_regime_balances[stage] = {}
+            for regime_key, parts in by_regime.items():
+                if parts:
+                    combined = np.concatenate([part.to_numpy() for part in parts])
+                    value = int(SEED_KRW * float(np.prod(1.0 + combined)))
+                else:
+                    value = SEED_KRW
+                stage_regime_balances[stage][regime_key] = value
         rows.append({
             "name": player["name"],
             "group": player["group"],
             "kind": player["kind"],
             "trial": player.get("trial"),
             "rank": player.get("rank"),
+            "phase": player.get("phase"),
             "overall": float(np.median(list(balances.values()))),
             "oos": float(np.median(oos)),
             "holdout": float(np.median(holdout)),
+            "regime": regime_balances,
+            "stage_regime": stage_regime_balances,
             "balances": balances,
         })
     return rows
 
 
 def _summary(rows: list[dict]) -> dict:
-    groups = sorted(set(row["group"] for row in rows))
+    groups = [group for group in GROUP_ORDER if any(row["group"] == group for row in rows)]
     out = {}
     for group in groups:
         subset = [row for row in rows if row["group"] == group]
@@ -245,8 +365,35 @@ def _summary(rows: list[dict]) -> dict:
     return out
 
 
+def _regime_summary(rows: list[dict]) -> dict:
+    groups = [group for group in GROUP_ORDER if any(row["group"] == group for row in rows)]
+    out = {}
+    for group in groups:
+        subset = [row for row in rows if row["group"] == group]
+        out[group] = {
+            regime_key: _stats([row["regime"][regime_key] for row in subset])
+            for regime_key in REGIME_ORDER
+        }
+    return out
+
+
+def _stage_regime_summary(rows: list[dict]) -> dict:
+    groups = [group for group in GROUP_ORDER if any(row["group"] == group for row in rows)]
+    out: dict = {}
+    for group in groups:
+        subset = [row for row in rows if row["group"] == group]
+        out[group] = {}
+        for stage, _title, _src in STAGES:
+            out[group][stage] = {
+                regime_key: _stats([row["stage_regime"][stage][regime_key] for row in subset])
+                for regime_key in REGIME_ORDER
+            }
+    return out
+
+
 def _candidate_groups(rows: list[dict]) -> list[str]:
-    return sorted({row["group"] for row in rows if row["kind"] == "candidate"})
+    return [group for group in GROUP_ORDER
+            if any(row["group"] == group and row["kind"] == "candidate" for row in rows)]
 
 
 def _baseline_rows(rows: list[dict]) -> list[dict]:
@@ -341,6 +488,35 @@ def _plot_stage_by_round(payload: dict, stage: str, path: Path) -> None:
     plt.close(fig)
 
 
+def _plot_regime_category(payload: dict, stage: str, regime_key: str, path: Path) -> None:
+    rows = payload["rows"]
+    groups = [group for group in GROUP_ORDER if any(row["group"] == group for row in rows)]
+    data = [
+        [row["stage_regime"][stage][regime_key] / 10000
+         for row in rows if row["group"] == group]
+        for group in groups
+    ]
+    fig, ax = plt.subplots(figsize=(13, 5.5))
+    bp = ax.boxplot(data, patch_artist=True, showmeans=True, showfliers=False)
+    for patch, group in zip(bp["boxes"], groups):
+        color = GROUP_COLORS.get(group, "#777777")
+        patch.set_facecolor(color)
+        patch.set_alpha(0.45)
+        patch.set_edgecolor(color)
+    for i, vals in enumerate(data, start=1):
+        ax.scatter([i] * len(vals), vals, s=12, color="#222", alpha=0.35, zorder=3)
+    ax.set_xticks(range(1, len(groups) + 1))
+    ax.set_xticklabels([f"{group}\n(n={len(vals)})" for group, vals in zip(groups, data)],
+                       rotation=30, ha="right", fontsize=9)
+    ax.set_ylabel("국면 일자 합성 잔고 (만원)")
+    stage_label = "OOS" if stage == "oos" else "사천왕"
+    ax.set_title(f"{stage_label} {REGIME_LABELS[regime_key]} 비교 — 1차/보충 + NPC 분포")
+    ax.grid(alpha=0.25, axis="y")
+    fig.tight_layout()
+    fig.savefig(path)
+    plt.close(fig)
+
+
 def _candidate_median(rows: list[dict], group: str, round_key: str) -> float:
     values = [
         row["balances"][round_key]
@@ -387,8 +563,8 @@ def _write_markdown(payload: dict, charts: dict[str, Path]) -> None:
         "",
         f"![overall]({chart_ref('overall')})",
         "",
-        "| group | n | overall median | oos median | holdout median |",
-        "|---|---:|---:|---:|---:|",
+        "| group | n | overall min | overall median | overall max | oos median | holdout median |",
+        "|---|---:|---:|---:|---:|---:|---:|",
     ]
     ranked = sorted(
         payload["summary"].items(),
@@ -398,7 +574,8 @@ def _write_markdown(payload: dict, charts: dict[str, Path]) -> None:
     for group, stats in ranked:
         lines.append(
             f"| {group} | {stats['overall']['n']} | "
-            f"{stats['overall']['median']:.0f} | {stats['oos']['median']:.0f} | "
+            f"{stats['overall']['min']:.0f} | {stats['overall']['median']:.0f} | "
+            f"{stats['overall']['max']:.0f} | {stats['oos']['median']:.0f} | "
             f"{stats['holdout']['median']:.0f} |"
         )
     lines.extend([
@@ -411,7 +588,16 @@ def _write_markdown(payload: dict, charts: dict[str, Path]) -> None:
         "",
         "## 국면별 비교 — OOS",
         "",
-        f"![oos by round]({chart_ref('by_round_oos')})",
+    ])
+    for regime_key in REGIME_ORDER:
+        lines.extend([
+            f"### {REGIME_LABELS[regime_key]}",
+            "",
+            f"![oos {regime_key}]({chart_ref(f'oos_{regime_key}')})",
+            "",
+        ])
+    lines.extend([
+        "### OOS 라운드별 참고표",
         "",
     ])
     _write_round_table(lines, payload, "oos")
@@ -419,7 +605,16 @@ def _write_markdown(payload: dict, charts: dict[str, Path]) -> None:
         "",
         "## 국면별 비교 — 사천왕",
         "",
-        f"![holdout by round]({chart_ref('by_round_holdout')})",
+    ])
+    for regime_key in REGIME_ORDER:
+        lines.extend([
+            f"### {REGIME_LABELS[regime_key]}",
+            "",
+            f"![holdout {regime_key}]({chart_ref(f'holdout_{regime_key}')})",
+            "",
+        ])
+    lines.extend([
+        "### 사천왕 라운드별 참고표",
         "",
     ])
     _write_round_table(lines, payload, "holdout")
@@ -432,10 +627,7 @@ def run() -> dict:
     top30_path = _latest_top30()
     top30 = json.loads(top30_path.read_text(encoding="utf-8"))
     candidates = _load_candidates(top30)
-    baselines = npc_graduates()
-    for baseline in baselines:
-        baseline["group"] = baseline["name"]
-        baseline["kind"] = "baseline"
+    baselines = _baseline_players()
 
     prices = get_prices(VR.TICKER, "1999-03-10", EF.DATA_END)
     rounds = _rounds(prices)
@@ -448,24 +640,33 @@ def run() -> dict:
         "stages": STAGES,
         "candidate_count": len(candidates),
         "baseline_count": len(baselines),
-        "rounds": [{k: v for k, v in r.items() if k != "loaded"} for r in rounds],
+        "rounds": [
+            {k: v for k, v in r.items() if k not in ("loaded", "regime_daily")}
+            for r in rounds
+        ],
         "rows": rows,
         "summary": _summary(rows),
+        "regime_summary": _regime_summary(rows),
+        "stage_regime_summary": _stage_regime_summary(rows),
     }
     JSON_OUT.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
     charts = {
-        "overall": GRAPH_DIR / "season3_league_overall_boxplot.svg",
-        "oos": GRAPH_DIR / "season3_league_oos_boxplot.svg",
-        "holdout": GRAPH_DIR / "season3_league_holdout_boxplot.svg",
-        "by_round_oos": GRAPH_DIR / "season3_league_oos_by_round_boxplot.svg",
-        "by_round_holdout": GRAPH_DIR / "season3_league_holdout_by_round_boxplot.svg",
+        "overall": GRAPH_DIR / "season3_league_overall_boxplot.png",
+        "oos": GRAPH_DIR / "season3_league_oos_boxplot.png",
+        "holdout": GRAPH_DIR / "season3_league_holdout_boxplot.png",
     }
+    for stage, _title, _src in STAGES:
+        for regime_key in REGIME_ORDER:
+            charts[f"{stage}_{regime_key}"] = (
+                GRAPH_DIR / f"season3_league_{stage}_{regime_key}_boxplot.png"
+            )
     _plot_box(payload, "overall", "종합 비교 — 전체 18라운드 median", charts["overall"])
     _plot_box(payload, "oos", "OOS 11년 비교 — 연도별 median", charts["oos"])
     _plot_box(payload, "holdout", "사천왕 hold-out 비교 — 라운드별 median", charts["holdout"])
-    _plot_stage_by_round(payload, "oos", charts["by_round_oos"])
-    _plot_stage_by_round(payload, "holdout", charts["by_round_holdout"])
+    for stage, _title, _src in STAGES:
+        for regime_key in REGIME_ORDER:
+            _plot_regime_category(payload, stage, regime_key, charts[f"{stage}_{regime_key}"])
     _write_markdown(payload, charts)
     return payload
 

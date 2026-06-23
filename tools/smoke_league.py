@@ -10,7 +10,7 @@
 순서:
   ① OOS    : 졸업생 1명을 victory_road 앞 2개 연도에 응시 → 종료잔고 > 0
   ② 사천왕 : 같은 졸업생을 elite_four 첫 라운드에 응시 → 종료잔고 > 0
-  ③ v3 계약: season3_league 65명 runner 확인
+  ③ v3 계약: season3_league 130명 runner 확인
 
 실행: 프로젝트 루트에서  python tools/smoke_league.py
 """
@@ -68,15 +68,15 @@ def _check_holdout(prices, weights) -> float:
 
 
 def _check_v3_contract() -> float:
-    print("\n=== ③ 리그 v3 65명 본경기 계약 ===")
+    print("\n=== ③ 리그 v3 130명 본경기 계약 ===")
     t0 = time.perf_counter()
     stages = [s[0] for s in v3.STAGES]
     if stages != ["oos", "holdout"]:
         raise RuntimeError(f"v3 STAGES 순서 어긋남: {stages}")
     payload = v3.run()
-    if payload.get("candidate_count") != 65:
+    if payload.get("candidate_count") != 130:
         raise RuntimeError(f"v3 출전 인원 어긋남: {payload.get('candidate_count')}")
-    if not {"overall", "oos", "holdout"} <= set(payload.get("summary", {}).get("GP", {})):
+    if not {"overall", "oos", "holdout"} <= set(payload.get("summary", {}).get("GP-보충", {})):
         raise RuntimeError("v3 GP summary 스키마 어긋남")
     print(f"  [PASS] STAGES {stages} · candidates {payload['candidate_count']}명")
     return time.perf_counter() - t0
@@ -84,7 +84,7 @@ def _check_v3_contract() -> float:
 
 def main() -> int:
     print("=== PocketQuant 리그(league) smoke ===")
-    print("관문: OOS(victory_road) → 사천왕(elite_four) · v3 65명 본경기\n")
+    print("관문: OOS(victory_road) → 사천왕(elite_four) · v3 130명 본경기\n")
     weights = [1.0] * len(SIGNAL_NAMES)   # 졸업생 대역 — 동일가중 1명
     rows = []
     try:
