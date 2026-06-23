@@ -45,8 +45,12 @@ matplotlib.rcParams["axes.unicode_minus"] = False
 
 ROOT = Path(__file__).resolve().parents[3]
 TRAIN_RESULTS = ROOT / "app" / "academy" / "training" / "results"
-REPORTS_DIR = ROOT / "reports" / "포켓퀀트리그"
-GRAPH_DIR = REPORTS_DIR / "graph" / "season3"
+# 시즌3 리그 산출물은 lab 분석 산출물로 분류한다 — 영구 기록(명예의 전당)은
+# `reports/포켓퀀트리그/hall_of_fame_v3.md`가 챔피언/표 단위로 따로 들고,
+# 본 코드가 매 실행마다 덮어쓰는 md/json/png는 lab/reports 패턴
+# (no_trade_band_nsga, season3_bear_accumulation)과 같은 flat 구조로 둔다.
+REPORTS_DIR = ROOT / "app" / "lab" / "reports" / "season3_league"
+GRAPH_DIR = REPORTS_DIR
 
 SEED_KRW = 1_000_000
 STAGES = (

@@ -236,7 +236,7 @@ NSGA-III는 `nsga3.run_study(...)`을 직접 호출합니다(인자 표는 `AGEN
 - **국면별 진단**: 연 단위 라벨은 상승 추세에 손실 구간이 묻힌다. 일 단위 상승/하락/횡보/변동 카테고리로 쪼개서 봐야 한다.
 - **하락장 평단가 분석**: NSGA-1차는 하락장 당장 잔고는 아파도 다음 상승장 대비 바겐세일 줍줍을 잘했다. 횡보장은 저축왕이 땡큐, 변동장은 바닥형/휩쏘형/조정형으로 더 쪼개야 한다.
 
-자세한 결과·국면별 PNG 박스플랏은 **[`season3_league.md`](reports/포켓퀀트리그/season3_league.md)**.
+자세한 결과·국면별 PNG 박스플랏은 **[`season3_league.md`](app/lab/reports/season3_league/season3_league.md)**.
 하락장 평단가 진단은 **[`season3_bear_accumulation.md`](app/lab/reports/season3_bear_accumulation/season3_bear_accumulation.md)**.
 
 > 시즌4 방향: **Regime Scanner 오버레이**. 상승장에는 공격 트레이더, 하락장은 NSGA/DCA식 적립 후보,
@@ -374,7 +374,7 @@ pocket_quant/
 ## 🔮 로드맵
 
 - ✅ **기반~시즌 v2 완료** — 단일목적 GA → 실데이터 백테스트 → NSGA-III·챔피언로드 → **아카데미 부트스트랩 리그(v2)**: 합성장 훈련 → 실QQQ 4아레나 검증, **공정 B&H 대비 수익 알파 입증**, 챔피언 = **NSGA-t5938**(크로스에셋 성장 틸트). 사천왕(hold-out)은 개봉돼 오염. 상세: [`hall_of_fame_v2.md`](reports/포켓퀀트리그/hall_of_fame_v2.md) · [OPTIMIZATION.md](OPTIMIZATION.md)
-- ✅ **시즌 3 완료** — 비용 모델 완성(슬리피지+No-trade band), 3교실 재학습, 1차/보충 비교, 어플삭제단 300명 분포, 일 단위 국면별 리그까지 마감. 결론: 상승장 알파는 확인, 하락장은 줍줍 후보, 횡보장·모르겠음은 저축왕. 상세: [`season3_league.md`](reports/포켓퀀트리그/season3_league.md)
+- ✅ **시즌 3 완료** — 비용 모델 완성(슬리피지+No-trade band), 3교실 재학습, 1차/보충 비교, 어플삭제단 300명 분포, 일 단위 국면별 리그까지 마감. 결론: 상승장 알파는 확인, 하락장은 줍줍 후보, 횡보장·모르겠음은 저축왕. 상세: [`season3_league.md`](app/lab/reports/season3_league/season3_league.md)
 - 🗓️ **시즌 4 (예정)** — ① **시장 판독기**(regime detector 70/30 오버레이, [OPTIMIZATION.md §5](OPTIMIZATION.md)) ② **배틀 프론티어 개편**(합성 평행세계가 외부신호를 꺼버리는 '장님' 문제)
 - 🥚 **에그랩 (봉인)** — 지수 조합으로 새 합성 시그널 부화. 대표 지시 전까지 봉인: [app/pocket/eggs/README.md](app/pocket/eggs/README.md)
 

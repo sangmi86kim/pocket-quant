@@ -7,7 +7,7 @@
 
 ## 종합 비교
 
-![overall](graph/season3/season3_league_overall_boxplot.png)
+![overall](season3_league_overall_boxplot.png)
 
 | group | n | overall min | overall median | overall max | oos median | holdout median |
 |---|---:|---:|---:|---:|---:|---:|
@@ -24,27 +24,27 @@
 
 ## 관문별 비교
 
-![oos](graph/season3/season3_league_oos_boxplot.png)
+![oos](season3_league_oos_boxplot.png)
 
-![holdout](graph/season3/season3_league_holdout_boxplot.png)
+![holdout](season3_league_holdout_boxplot.png)
 
 ## 국면별 비교 — OOS
 
 ### 상승장
 
-![oos bull](graph/season3/season3_league_oos_bull_boxplot.png)
+![oos bull](season3_league_oos_bull_boxplot.png)
 
 ### 하락장
 
-![oos bear](graph/season3/season3_league_oos_bear_boxplot.png)
+![oos bear](season3_league_oos_bear_boxplot.png)
 
 ### 횡보장
 
-![oos sideways](graph/season3/season3_league_oos_sideways_boxplot.png)
+![oos sideways](season3_league_oos_sideways_boxplot.png)
 
 ### 변동장
 
-![oos volatile](graph/season3/season3_league_oos_volatile_boxplot.png)
+![oos volatile](season3_league_oos_volatile_boxplot.png)
 
 ### OOS 라운드별 참고표
 
@@ -66,19 +66,19 @@
 
 ### 상승장
 
-![holdout bull](graph/season3/season3_league_holdout_bull_boxplot.png)
+![holdout bull](season3_league_holdout_bull_boxplot.png)
 
 ### 하락장
 
-![holdout bear](graph/season3/season3_league_holdout_bear_boxplot.png)
+![holdout bear](season3_league_holdout_bear_boxplot.png)
 
 ### 횡보장
 
-![holdout sideways](graph/season3/season3_league_holdout_sideways_boxplot.png)
+![holdout sideways](season3_league_holdout_sideways_boxplot.png)
 
 ### 변동장
 
-![holdout volatile](graph/season3/season3_league_holdout_volatile_boxplot.png)
+![holdout volatile](season3_league_holdout_volatile_boxplot.png)
 
 ### 사천왕 라운드별 참고표
 

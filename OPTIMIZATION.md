@@ -158,9 +158,9 @@ NSGA-1차 30명 + NSGA-보충 30명
 정식 산출물:
 
 ```text
-reports/포켓퀀트리그/season3_league.md
-reports/포켓퀀트리그/season3_league.json
-reports/포켓퀀트리그/graph/season3/*.png
+app/lab/reports/season3_league/season3_league.md
+app/lab/reports/season3_league/season3_league.json
+app/lab/reports/season3_league/*.png
 ```
 
 시즌3 중앙값 결과:
