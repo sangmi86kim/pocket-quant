@@ -2,7 +2,7 @@
 
 [왜] 시즌 3은 "최적화 더 돌리기"가 아니라 "v2 데이터를 분석해 더 좋은 신호를 잡는" 방향.
 어떤 포켓퀀트(신호) 비중이 상위 트레이더를 만들었나, 그리고 그 신호가 어느 시험 조건
-(졸업시험/평시 OOS/평행세계/사천왕)에서 실제로 돈을 벌었나를 본다.
+(졸업시험/빅토리 로드 (OOS)/평행세계/사천왕)에서 실제로 돈을 벌었나를 본다.
 
 [데이터]
   - 리그 결과: app/league/results/season_v2_top30_league.json (후보별 4아레나 종료잔고)
@@ -39,7 +39,7 @@ LEAGUE_JSON = "app/league/results/season_v2_top30_league.json"
 WEIGHTS_JSON = "app/academy/training/results/classroom_top30_20260615_v2.json"
 
 ARENAS = ["exam", "oos", "world", "holdout"]
-ARENA_KR = {"exam": "졸업시험", "oos": "평시OOS", "world": "평행세계", "holdout": "사천왕"}
+ARENA_KR = {"exam": "졸업시험", "oos": "빅토리 로드 (OOS)", "world": "평행세계", "holdout": "사천왕"}
 
 OUT_DIR = os.path.join(os.path.dirname(__file__), "..", "reports", "season")
 OUT_MD = os.path.join(OUT_DIR, "v2_signal_analysis.md")
@@ -157,7 +157,7 @@ def _draw_heatmap(corr: pd.DataFrame) -> None:
 
 def _write_md(n, prof, corr, grp, base) -> None:
     md = ["# v2 리그 시그널 분석 — 상·하위 비중 + 아레나별 성과 (시즌 3 준비)\n",
-          f"> 후보 **{n}명**(TPE/CMA-ES/GP/NSGA ×30) · 4아레나(졸업시험/평시OOS/평행세계/사천왕) · "
+          f"> 후보 **{n}명**(TPE/CMA-ES/GP/NSGA ×30) · 4아레나(졸업시험/빅토리 로드 (OOS)/평행세계/사천왕) · "
           "13신호 정규화 비중. 종합순위 = 4아레나 백분위 평균.\n",
           "> ⚠️ 생존자/상관 분석 = 인과 아님. fANOVA(학습목적)와 과녁이 다를 수 있음(train/test 미스매치).\n",
           f"\n![신호×아레나 상관]({PNG_NAME})\n",

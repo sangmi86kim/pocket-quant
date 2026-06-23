@@ -4,18 +4,18 @@
 - exam(실QQQ 6체육관 졸업시험)은 **학교 졸업 산출물**로 분리됐다
   (`app/academy/exam/graduate.py`, 진단 전용). 리그는 더 이상 exam을 채점하지 않는다.
 - 시즌3 리그는 실데이터 두 관문만 본다:
-    ① OOS 11년       (victory_road) — 평시 중심
+    ① 빅토리 로드 (OOS) 11년 (victory_road) — 평시 중심
     ② 사천왕 hold-out (elite_four)   — 최종 판정
-  battle_frontier(평행세계 200)는 시즌3 리그에서 일단 뺀다.
+  battle_frontier(평행세계 200)는 난천 이후 엔드게임이다.
 
 [출전 범위]
 각 교실의 `phase1.topk`와 최종 `topk`를 모두 출전시켜 1차/보충 수업 효과를 비교한다.
 CMA-ES 60명 + GP 10명 + NSGA-III 60명 = 130명.
 
 [레포트 구조]
-- 종합 비교: OOS 11년 + 사천왕 7라운드 전체 median.
-- 관문별 비교: OOS와 사천왕을 별도 median 박스플랏으로 비교.
-- 국면별 비교: 일 단위 국면 비율을 붙이고, OOS/사천왕을 분리해 라운드별 박스플랏을 그린다.
+- 종합 비교: 빅토리 로드 (OOS) 11년 + 사천왕 7라운드 전체 median.
+- 관문별 비교: 빅토리 로드 (OOS)와 사천왕을 별도 median 박스플랏으로 비교.
+- 국면별 비교: 일 단위 국면 비율을 붙이고, 빅토리 로드 (OOS)/사천왕을 분리해 라운드별 박스플랏을 그린다.
 
 실행: .venv/Scripts/python.exe -m app.league.v3.season3_league
 """
@@ -54,7 +54,7 @@ GRAPH_DIR = REPORTS_DIR / "graph"
 
 SEED_KRW = 1_000_000
 STAGES = (
-    ("oos", "OOS 11년", "victory_road"),
+    ("oos", "빅토리 로드 (OOS) 11년", "victory_road"),
     ("holdout", "사천왕 hold-out", "elite_four"),
 )
 
@@ -482,7 +482,7 @@ def _plot_stage_by_round(payload: dict, stage: str, path: Path) -> None:
     ax.set_xticks(base_x)
     ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=9)
     ax.set_ylabel("종료잔고 (만원)")
-    title = "OOS 국면별 비교" if stage == "oos" else "사천왕 국면별 비교"
+    title = "빅토리 로드 (OOS) 국면별 비교" if stage == "oos" else "사천왕 국면별 비교"
     ax.set_title(f"{title} — 교실별 boxplot + baseline line")
     ax.grid(alpha=0.25, axis="y")
     handles, labels = ax.get_legend_handles_labels()
@@ -513,7 +513,7 @@ def _plot_regime_category(payload: dict, stage: str, regime_key: str, path: Path
     ax.set_xticklabels([f"{group}\n(n={len(vals)})" for group, vals in zip(groups, data)],
                        rotation=30, ha="right", fontsize=9)
     ax.set_ylabel("국면 일자 합성 잔고 (만원)")
-    stage_label = "OOS" if stage == "oos" else "사천왕"
+    stage_label = "빅토리 로드 (OOS)" if stage == "oos" else "사천왕"
     ax.set_title(f"{stage_label} {REGIME_LABELS[regime_key]} 비교 — 1차/보충 + NPC 분포")
     ax.grid(alpha=0.25, axis="y")
     fig.tight_layout()
@@ -561,13 +561,13 @@ def _write_markdown(payload: dict, charts: dict[str, Path]) -> None:
         f"- top30: `{payload['top30_source']}`",
         f"- cost_model: `{payload['cost_model']['version']}`",
         f"- contestants: candidates {payload['candidate_count']}명 + baseline {payload['baseline_count']}명",
-        "- order: OOS 11년 → 사천왕 hold-out",
+        "- order: 빅토리 로드 (OOS) 11년 → 사천왕 hold-out",
         "",
         "## 종합 비교",
         "",
         f"![overall]({chart_ref('overall')})",
         "",
-        "| group | n | overall min | overall median | overall max | oos median | holdout median |",
+        "| group | n | overall min | overall median | overall max | victory road (OOS) median | holdout median |",
         "|---|---:|---:|---:|---:|---:|---:|",
     ]
     ranked = sorted(
@@ -590,7 +590,7 @@ def _write_markdown(payload: dict, charts: dict[str, Path]) -> None:
         "",
         f"![holdout]({chart_ref('holdout')})",
         "",
-        "## 국면별 비교 — OOS",
+        "## 국면별 비교 — 빅토리 로드 (OOS)",
         "",
     ])
     for regime_key in REGIME_ORDER:
@@ -601,7 +601,7 @@ def _write_markdown(payload: dict, charts: dict[str, Path]) -> None:
             "",
         ])
     lines.extend([
-        "### OOS 라운드별 참고표",
+        "### 빅토리 로드 (OOS) 라운드별 참고표",
         "",
     ])
     _write_round_table(lines, payload, "oos")
@@ -666,7 +666,7 @@ def run() -> dict:
                 GRAPH_DIR / f"season3_league_{stage}_{regime_key}_boxplot.png"
             )
     _plot_box(payload, "overall", "종합 비교 — 전체 18라운드 median", charts["overall"])
-    _plot_box(payload, "oos", "OOS 11년 비교 — 연도별 median", charts["oos"])
+    _plot_box(payload, "oos", "빅토리 로드 (OOS) 11년 비교 — 연도별 median", charts["oos"])
     _plot_box(payload, "holdout", "사천왕 hold-out 비교 — 라운드별 median", charts["holdout"])
     for stage, _title, _src in STAGES:
         for regime_key in REGIME_ORDER:

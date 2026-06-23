@@ -46,8 +46,8 @@
 | 파라미터 탐색공간 | 시그널 가중치 len(SIGNAL_NAMES) + 후보 코덱 파라미터 |
 | 더미 입력으로 루프 검증 → 실계측 교체 | 합성 아카데미 학습 → 실QQQ 졸업시험·리그 검증 |
 | Pareto front → 운영 세팅 라인업 | front/topk → 교실별 1차·보충 라인업 |
-| 검증 분리 | 학습 산출물 → OOS 11년 → 사천왕 hold-out → 일별 국면 비교 |
-| 운영 진단 | 전체 박스플랏 + OOS/hold-out 분리 + bull/bear/sideways/volatile 박스플랏 |
+| 검증 분리 | 학습 산출물 → 빅토리 로드 (OOS) 11년 → 사천왕 hold-out → 일별 국면 비교 |
+| 운영 진단 | 전체 박스플랏 + 빅토리 로드 (OOS)/hold-out 분리 + bull/bear/sideways/volatile 박스플랏 |
 | 콜백 훅 | Optuna callbacks (HV 조기종료) |
 
 구조는 같고 도메인만 다르다 — **"목적함수의 빈틈을 옵티마이저가 먼저 찾는다"**는
@@ -64,7 +64,7 @@
 NSGA 목적     : [중앙값 종료잔고, 최악 종료잔고] maximize
 turnover      : 목적함수 아님. cap/sweep으로 자르는 운용 스펙
 비용 모델     : 수수료 0.1% + 슬리피지 1bp + No-trade band 5%
-검증          : OOS 11년 + 사천왕 hold-out + 일별 국면 박스플랏
+검증          : 빅토리 로드 (OOS) 11년 + 사천왕 hold-out + 일별 국면 박스플랏
 시즌4         : Regime Scanner가 bull/bear/sideways/volatile별로 출전·저축·줍줍을 결정
 ```
 
@@ -149,7 +149,7 @@ NSGA-1차 30명 + NSGA-보충 30명
 ### 4-5. 리그 검증
 
 시즌3 리그는 `app/league/v3/season3_league.py`에서 실행한다.
-검증은 OOS 11년과 사천왕 hold-out을 분리하고, 일별 Regime Scanner 라벨로
+검증은 빅토리 로드 (OOS) 11년과 사천왕 hold-out을 분리하고, 일별 Regime Scanner 라벨로
 `bull`/`bear`/`sideways`/`volatile` 국면별 박스플랏을 따로 그린다.
 
 기준선은 성실이, 저축왕, 돼지저금통, 어플삭제단 300명이다.
@@ -165,7 +165,7 @@ app/lab/reports/season/season3_league/graph/*.png
 
 시즌3 중앙값 결과:
 
-| 그룹 | 전체 | OOS | hold-out |
+| 그룹 | 전체 | 빅토리 로드 (OOS) | hold-out |
 |---|---:|---:|---:|
 | NSGA-1차 | 117.3만 | 110.4만 | 121.4만 |
 | CMA-ES-1차 | 116.4만 | 110.1만 | 120.0만 |

@@ -12,7 +12,7 @@ sampler 한 줄만 정의한다. 공개 API(`run_study`/`champion_balances`/`pre
 [주의 — 단일목적 함정]
 worst-case가 안 보인다. "한 체육관에서 처참한데 합산 1위" 후보가 챔피언으로 부상할
 수 있다 (다목적이 막아주던 함정 2·3 부활). 채택 전 챔피언로드 ② 평행세계 토탈로
-OOS 검증 필요.
+빅토리 로드 (OOS) 검증 필요.
 """
 import optuna
 

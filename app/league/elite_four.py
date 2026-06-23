@@ -1,10 +1,10 @@
 # ruff: noqa: E402
 """
-elite_four.py - 챔피언로드 관문 ③: 사천왕 (봉인된 최종전 — 1회용)
+elite_four.py - 사천왕: 빅토리 로드 (OOS) 다음 본편 시험
 
 [봉인 해제 기록]
 post-COVID hold-out(2020-07-01 ~ )은 프로젝트 시작부터 봉인해 온 최종 시험지다.
-훈련(체육관)·검증(관문 ①·②) 어디에도 이 구간을 쓰지 않았고, cGAN 학습 계획에서도
+훈련(체육관)·빅토리 로드 (OOS) 어디에도 이 구간을 쓰지 않았고, cGAN 학습 계획에서도
 제외했다. 2026-06-11 사용자 승인으로 개봉 — **이 시험은 1회용이다.**
 이 결과를 보고 적합도/가중치/파라미터를 고치면 hold-out이 세 번째 훈련셋이
 되므로 반칙. 결과는 결과대로 기록한다.
@@ -16,7 +16,7 @@ season3_flat_1bp_band5). 균형형 14신호 가중치: FEAR_NQ·FEAR·MA·REV_RS
 (시즌2 NSGA-t5938이 US10Y 32% 집중형이었던 것과 대조 — 슬리피지 박힌
 시즌3에선 균형형이 살아남았다). 시그널 파라미터는 모두 기본값.
 
-[판정 기준 — 개봉 전에 못박음 (관문 ①과 동일)]
+[판정 기준 — 개봉 전에 못박음 (빅토리 로드와 동일)]
   ① 라이벌전: 연도별 score_vs_dca 평균 > 0  (성실이보다 강함)
   ② 방어    : 전 구간 이어붙임 MDD가 B&H보다 얕음
 출력: 콘솔 + reports/elite_four_report.html (자산곡선 포함)
@@ -167,7 +167,7 @@ def _equity_svg(curves: dict) -> str:
 def run_gate3() -> bool:
     prices = get_prices(TICKER, "1999-03-10", DATA_END)
 
-    print("=== 챔피언로드 관문 ③: 사천왕 (봉인 해제 — 1회용) ===")
+    print("=== 사천왕: 빅토리 로드 (OOS) 다음 본편 시험 (봉인 해제 — 1회용) ===")
     print(f"구간: {HOLDOUT_START} ~ {DATA_END} (훈련·검증 미사용 봉인 구간)")
     print("도전자: 시즌3 챔피언 NSGA-1차-t2426 (균형형 — FEAR_NQ·FEAR·MA·REV_RSI 4축 + VOL_SPIKE·QQQ_SPY·QQQ_DIA·VOL)\n")
     print("비용 모델: season3_flat_1bp_band5 — 수수료 0.1% + 슬리피지 1bp + No-trade band 5%, 성실이는 수수료만 면제\n")
@@ -346,7 +346,7 @@ def _write_html(rows, champ_perf, dca_perf, bh_perf, avg_score,
 지금부터 쌓이는 미래 데이터다.
 </div>
 
-<footer class="dim" style="margin:40px 0 16px">PocketQuant · 챔피언로드 관문 ③ ·
+<footer class="dim" style="margin:40px 0 16px">PocketQuant · 사천왕 ·
 python -m app.league.elite_four 로 재생성 (단, 판정의 의미는 첫 개봉 1회뿐)</footer>
 </body></html>"""
 

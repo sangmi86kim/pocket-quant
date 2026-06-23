@@ -2,7 +2,7 @@
 
 exam(실QQQ 6체육관 졸업시험)은 리그가 아니라 학교 졸업 산출물로 분리했다
 (`app/academy/exam/graduate.py`, 진단 전용). 리그 아레나는:
-  1) victory_road OOS 11년 합산  (핵심 잣대)
+  1) victory_road 빅토리 로드 (OOS) 11년 합산  (핵심 잣대)
   2) battle_frontier 전천후 200세계 평균잔고
   3) 사천왕 hold-out 합산  (오염됨 — 진단 참고)
 
@@ -37,7 +37,7 @@ JSON_OUT = RESULTS_DIR / "season_v2_top30_league.json"
 MD_OUT = RESULTS_DIR / "season_v2_top30_league.md"
 SEED_KRW = 1_000_000
 ARENAS = (
-    ("oos", "OOS 11년 합산"),
+    ("oos", "빅토리 로드 (OOS) 11년 합산"),
     ("world", "평행세계 200세계 평균"),
     ("holdout", "사천왕 hold-out 합산"),
 )

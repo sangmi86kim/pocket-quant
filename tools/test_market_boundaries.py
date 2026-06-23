@@ -4,7 +4,7 @@
 This is a leakage guard:
 - training classrooms must study synthetic academy gyms, not official exam gyms
 - exam owns the official QQQ gym list
-- league gates may look at OOS/frontier/hold-out markets, but training may not
+- league gates may look at victory road (OOS)/frontier/hold-out markets, but training may not
 """
 from pathlib import Path
 import sys

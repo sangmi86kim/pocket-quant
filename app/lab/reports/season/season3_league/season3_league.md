@@ -3,13 +3,13 @@
 - top30: `C:\HomeLab\my_project\quant\pocket_quant\app\academy\training\results\classroom_top30_20260622_195214_v2.json`
 - cost_model: `season3_flat_1bp_band5`
 - contestants: candidates 130명 + baseline 303명
-- order: OOS 11년 → 사천왕 hold-out
+- order: 빅토리 로드 (OOS) 11년 → 사천왕 hold-out
 
 ## 종합 비교
 
 ![overall](graph/season3_league_overall_boxplot.png)
 
-| group | n | overall min | overall median | overall max | oos median | holdout median |
+| group | n | overall min | overall median | overall max | victory road (OOS) median | holdout median |
 |---|---:|---:|---:|---:|---:|---:|
 | NSGA-1차 | 30 | 1164711 | 1173376 | 1176824 | 1104482 | 1214392 |
 | CMA-ES-1차 | 30 | 1150784 | 1163879 | 1174214 | 1101368 | 1199926 |
@@ -28,7 +28,7 @@
 
 ![holdout](graph/season3_league_holdout_boxplot.png)
 
-## 국면별 비교 — OOS
+## 국면별 비교 — 빅토리 로드 (OOS)
 
 ### 상승장
 
@@ -46,7 +46,7 @@
 
 ![oos volatile](graph/season3_league_oos_volatile_boxplot.png)
 
-### OOS 라운드별 참고표
+### 빅토리 로드 (OOS) 라운드별 참고표
 
 | round | daily regime mix | CMA-ES-1차 median | CMA-ES-보충 median | GP-1차 median | GP-보충 median | NSGA-1차 median | NSGA-보충 median | best baseline | balance |
 |---|---|---:|---:|---:|---:|---:|---:|---|---:|

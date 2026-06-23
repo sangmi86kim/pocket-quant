@@ -5,18 +5,18 @@
 전체**에서 fANOVA로 "각 시그널 가중치가 목적값 분산을 얼마나 설명하나"를 뽑으면,
 그게 곧 결정변수 임포턴스다. 이게 'NSGA 돌리면 나오는 피처 임포턴스'.
 
-주의: 이 임포턴스는 **학습 목적(합성 아카데미 3목적)** 기준이다 — OOS·사천왕 장기
+주의: 이 임포턴스는 **학습 목적(합성 아카데미 3목적)** 기준이다 — 빅토리 로드 (OOS)·사천왕 장기
 성적 기준이 아니라, "탐색이 뭘 보고 해를 갈랐나"를 말한다. 둘은 상보적이다.
 
 목적: mean_balance(평균 누적자산↑) · worst_balance(최악 누적자산↑) · turnover(매매량↓).
 
 실행: .venv/Scripts/python.exe -m app.league.operations.nsga_importance
 """
-import json
 from pathlib import Path
 
 import optuna
 from optuna.importance import FanovaImportanceEvaluator, get_param_importances
+from optuna.trial import FrozenTrial
 
 ROOT = Path(__file__).resolve().parents[3]
 DB = ROOT / "app" / "academy" / "training" / "results" / "classroom_nsga3_20260615_010219.db"
@@ -33,26 +33,28 @@ def analyze() -> dict:
     study = optuna.load_study(study_name=name, storage=storage)
 
     evaluator = FanovaImportanceEvaluator(seed=FANOVA_SEED)
-    per_obj = {}
+    per_obj: dict[str, dict[str, float]] = {}
     for idx, label in OBJECTIVES:
+        def objective_value(trial: FrozenTrial, objective_idx: int = idx) -> float:
+            assert trial.values is not None
+            return float(trial.values[objective_idx])
+
         imp = get_param_importances(
-            study, evaluator=evaluator, target=lambda t, i=idx: t.values[i])
+            study, evaluator=evaluator, target=objective_value)
         # w_SIG → SIG
         per_obj[label] = {k.removeprefix("w_"): float(v) for k, v in imp.items()}
 
-    signals = sorted(per_obj["mean_balance"], key=per_obj["mean_balance"].get,
-                     reverse=True)
-    rows = []
+    rows: list[dict[str, float | str]] = []
     for sig in per_obj["mean_balance"]:   # 모든 시그널
         scores = {label: per_obj[label].get(sig, 0.0) for _i, label in OBJECTIVES}
         scores["avg"] = sum(scores.values()) / len(OBJECTIVES)
         rows.append({"signal": sig, **scores})
-    rows.sort(key=lambda r: r["avg"], reverse=True)
+    rows.sort(key=lambda r: float(r["avg"]), reverse=True)
     return {"study": name, "n_trials": len(study.trials), "rows": rows}
 
 
 def _write_md(res: dict) -> None:
-    lines = [f"# Season v2 — NSGA fANOVA 피처 임포턴스", ""]
+    lines = ["# Season v2 — NSGA fANOVA 피처 임포턴스", ""]
     lines.append(f"- study `{res['study']}` · {res['n_trials']} trials · fANOVA(seed={FANOVA_SEED})")
     lines.append("- 학습 목적(합성 아카데미 3목적) 분산 설명력 기준. 값=상대 중요도(합≈1).")
     lines.append("")

@@ -66,7 +66,7 @@ def run_check() -> bool:
     print("상위 10:")
     for i, (s, f) in enumerate(scored[:10], start=1):
         print(f"  {i:2}위  {f:5.1f}점  {s.name}")
-    print(f"\n기준선:")
+    print("\n기준선:")
     for s in (cash, full):
         print(f"  {rank_of[s.name]:2}위  {fit_of[s.name]:5.1f}점  {s.name}")
 

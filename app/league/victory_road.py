@@ -1,35 +1,34 @@
 # ruff: noqa: E402
 """
-victory_road.py - 챔피언로드: 리그 졸업생의 검증 관문 (사천왕 직전 동굴)
+victory_road.py - 빅토리 로드 (OOS): 사천왕 도전권 시험
 
 [위치]
-체육관 6관(NSGA-III 리그) 졸업 → ★챔피언로드★ → 사천왕(hold-out, 봉인) → 챔피언(배포)
+체육관 6관 졸업 → 빅토리 로드 (OOS) → 사천왕 → 난천(시즌4 챔피언 결정전)
+배틀 프론티어는 난천 이후 엔드게임이다.
 
-[관문 ① 리그 본선 — OOS 연도 시험 (이 파일이 구현)]
+[빅토리 로드 (OOS) — 이 파일이 구현]
 리그 졸업생은 '고정된 트레이더'(가중치+파라미터 확정)다. 그러므로 검증은
 "훈련 체육관에 안 들어간 깨끗한 연도"에 내보내 라이벌 성실이(DCA)와
 1년 단위 라이벌전을 시키는 것:
 
   훈련 체육관이 먹은 해: 2000~02(닷컴) 2008~10(GFC+회복장) 2015~17(횡보+상승) 2020(코로나)
-  깨끗한 OOS 연도 11개 : 2003 2004 2005 2006 2007 2011 2012 2013 2014 2018 2019
+  빅토리 로드 (OOS) 연도 11개 : 2003 2004 2005 2006 2007 2011 2012 2013 2014 2018 2019
   봉인(사천왕)         : 2020-07 이후 — 여기서 절대 안 씀
 
-  ⚠️ OOS 11년은 평시 위주다(위기의 해는 훈련 체육관이 가져감) — 이 관문은
-     "평시에 보험료를 얼마나 적게 내는가" 성격의 시험. 위기 OOS는 부족하므로
-     관문 ②(배틀 프론티어, 부트스트랩 가짜 역사)가 보완한다.
+  ⚠️ 빅토리 로드 (OOS) 11년은 평시 위주다(위기의 해는 훈련 체육관이 가져감).
+     "평시에 보험료를 얼마나 적게 내는가" 성격의 시험이다.
   ※ 지표 워밍업(400일)이 훈련 연도와 겹치는 건 누수가 아니다 — 지표 초기화일
      뿐, 후보 선발에 그 구간 '성적'을 쓴 게 아니므로.
 
 [도전권 판정 — 트레이더 슬로건: "상폐가 아니면 뒤진 게 아니다"]
-  ① 라이벌전: OOS 연평균 score_vs_dca > 0  (성실이보다 강해야 함 — 핵심)
-  ② 방어    : OOS 이어붙임 MDD가 B&H보다 얕음
+  ① 라이벌전: 빅토리 로드 (OOS) 연평균 score_vs_dca > 0  (성실이보다 강해야 함 — 핵심)
+  ② 방어    : 빅토리 로드 (OOS) 이어붙임 MDD가 B&H보다 얕음
   둘 다 통과 = 사천왕 도전권 획득. 효율(샤프 vs B&H)은 참고 표기.
   ⚠️ 미통과 = 사망이 아니라 '벤치'다. 시장에 있는 한 복리는 일하고 있고,
   명단은 DB에 보존되며, 다음 리그/배틀 프론티어에서 재도전한다.
   여기서 하는 판단은 "누가 죽었나"가 아니라 "누구에게 도전권을 주나"뿐.
 
-[관문 ② 배틀 프론티어] 평행세계 운빨 검사 — app.league.battle_frontier
-[관문 ③ 사천왕] post-COVID hold-out — 봉인. 최후의 1회만.
+[다음 순서] 사천왕 → 난천(시즌4 예정) → 배틀 프론티어(엔드게임)
 
 실행: 단독 실행 불가 — 시즌 어댑터가 graduates를 준비해 본 코어를 호출한다.
 """
@@ -70,14 +69,14 @@ OOS_YEARS = [2003, 2004, 2005, 2006, 2007, 2011, 2012, 2013, 2014, 2018, 2019]
 def _loaded_window(prices: pd.Series, year: int) -> LoadedGym:
     """1년짜리 임시 체육관 (본 게임과 동일하게 워밍업 버퍼 포함)."""
     start, end = f"{year}-01-01", f"{year}-12-31"
-    gym = Gym(f"{year} OOS", difficulty=0, volatility=0,
+    gym = Gym(f"{year} 빅토리 로드 (OOS)", difficulty=0, volatility=0,
               ticker=TICKER, start=start, end=end)
     s = pd.Timestamp(start) - pd.Timedelta(days=WARMUP_DAYS)
     return LoadedGym(gym=gym, prices=prices.loc[s:pd.Timestamp(end)])
 
 
 def _daily_returns(loaded: LoadedGym, weights, params) -> pd.Series:
-    """OOS 구간 일별 수익 (이어붙임용) — battle._score_position과 동일 공식."""
+    """빅토리 로드 (OOS) 구간 일별 수익 (이어붙임용) — battle._score_position과 동일 공식."""
     target = combine_positions(positions_with_params(loaded.prices, params), weights)
     pos = battle.apply_no_trade_band(target).shift(1)
     cost = battle.TRADE_COST + battle.SLIPPAGE_COST
@@ -108,7 +107,7 @@ def run_gate1(graduates: list) -> bool:
     loadeds = {y: _loaded_window(prices, y) for y in OOS_YEARS}
     dca = {y: fight_dca(lg) for y, lg in loadeds.items()}
 
-    print(f"=== 챔피언로드 관문 ① 리그 본선: OOS {len(OOS_YEARS)}개 연도 "
+    print(f"=== 빅토리 로드 (OOS): {len(OOS_YEARS)}개 연도 "
           f"({OOS_YEARS[0]}~{OOS_YEARS[-1]}, 훈련 체육관 미사용 해) ===")
     print(f"도전자 {len(graduates)}명 (NPC 포함)\n")
 
@@ -168,7 +167,7 @@ def run_gate1(graduates: list) -> bool:
             worst_str = "    -  "
         else:
             if g["specialist"]:
-                mark = "📋 참고 (본판정=관문②)" if not ticket else "📋 참고 (관문①도 통과)"
+                mark = "📋 참고 (사천왕 도전권 없음)" if not ticket else "📋 참고 (빅토리 로드 통과)"
             else:
                 mark = "🎫 도전권" if ticket else "🪑 벤치"
             avg_str = f"{avg * 100:>+6.1f}"
@@ -178,8 +177,8 @@ def run_gate1(graduates: list) -> bool:
               f" {worst_str} {sc:>+7.1%} {sm:>7.1%} {ss:>5.2f} {academy_str:>7}  {mark}")
 
     print(f"\nB&H 기준선: CAGR {bc:+.1%}  MDD {bm:.1%}  샤프 {bs:.2f}")
-    print(f"도전권 조건: ①OOS 평균 score_vs_dca > 0  ②이어붙임 MDD가 B&H({bm:.1%})보다 얕음")
-    print("벤치 ≠ 사망 — 상폐가 아니면 뒤진 게 아니다. 명단 보존, 다음 리그/관문②에서 재도전.")
+    print(f"도전권 조건: ①빅토리 로드 (OOS) 평균 score_vs_dca > 0  ②이어붙임 MDD가 B&H({bm:.1%})보다 얕음")
+    print("벤치 ≠ 사망 — 상폐가 아니면 뒤진 게 아니다. 명단 보존, 다음 리그/엔드게임에서 재도전.")
 
     # ── 매년 100만원 시드 잔고 표 + 연도별 1등 + 국면 라벨 (사용자 안 06-13) ──
     # 옵티마이저는 점수(score_vs_dca 다목적)로 탐색, 사람용 표시·판정만 잔고차.
@@ -219,20 +218,21 @@ def run_gate1(graduates: list) -> bool:
     out = _update_regime_picks("gate1_oos", gate1)
     print(f"\nsaved: {out}")
 
-    # 과적합 갭: 인샘플 점수가 OOS를 예측하는가
+    # 과적합 갭: 인샘플 점수가 빅토리 로드 (OOS)를 예측하는가
     pairs = [(_academy_score(g), avg) for g, avg, *_ in rows
              if _academy_score(g) is not None]
     if len(pairs) >= 3:
         ins, oos = zip(*pairs)
         corr = float(np.corrcoef(ins, oos)[0, 1])
-        print(f"\n과적합 진단: 학교 점수 ↔ OOS 평균 상관 = {corr:+.2f} "
-              f"({'인샘플 순위가 OOS에서도 유지됨' if corr > 0.3 else '인샘플 성적은 OOS를 거의 예측 못함 — 과적합 신호'})")
+        print(f"\n과적합 진단: 학교 점수 ↔ 빅토리 로드 (OOS) 평균 상관 = {corr:+.2f} "
+              f"({'인샘플 순위가 빅토리 로드에서도 유지됨' if corr > 0.3 else '인샘플 성적은 빅토리 로드 (OOS)를 거의 예측 못함 — 과적합 신호'})")
 
-    print(f"\n=== 관문 ① 결과: 사천왕 도전권 {len(survivors)}/{len(graduates)}명 ===")
+    print(f"\n=== 빅토리 로드 (OOS) 결과: 사천왕 도전권 {len(survivors)}/{len(graduates)}명 ===")
     if survivors:
         print("  " + ", ".join(survivors))
-    print("\n관문 ② 배틀 프론티어(평행세계 운빨 검사): 시즌 어댑터로 진입")
-    print("관문 ③ 사천왕(post-COVID hold-out): 🔒 봉인 — 최후의 1회만")
+    print("\n다음: 사천왕(post-COVID hold-out)")
+    print("시즌4 예정: 난천 챔피언 결정전")
+    print("배틀 프론티어: 난천 이후 엔드게임")
     return len(survivors) > 0
 
 

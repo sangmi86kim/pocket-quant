@@ -60,7 +60,7 @@ def _league_windows(prices: pd.Series) -> list[dict]:
         loaded = VR._loaded_window(prices, year)
         out.append({
             "label": str(year),
-            "stage": "OOS",
+            "stage": "빅토리 로드 (OOS)",
             "prices": loaded.prices,
             "start": loaded.gym.start,
             "end": loaded.gym.end,
