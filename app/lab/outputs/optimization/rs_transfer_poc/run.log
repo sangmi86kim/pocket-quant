@@ -1,0 +1,56 @@
+1차 공통 교과서(RS) 12권 + 진단 시험장 준비 ...
+① 1차 교육(RS) ...
+C:\HomeLab\my_project\quant\pocket_quant\app\lab\rs_transfer_poc.py:82: ExperimentalWarning: GPSampler is experimental (supported from v3.6.0). The interface can change in the future.
+  sampler = optuna.samplers.GPSampler(seed=seed, deterministic_objective=True)
+   seed 0 1차 완료 (trials 93)
+C:\HomeLab\my_project\quant\pocket_quant\app\lab\rs_transfer_poc.py:82: ExperimentalWarning: GPSampler is experimental (supported from v3.6.0). The interface can change in the future.
+  sampler = optuna.samplers.GPSampler(seed=seed, deterministic_objective=True)
+   seed 1 1차 완료 (trials 101)
+C:\HomeLab\my_project\quant\pocket_quant\app\lab\rs_transfer_poc.py:82: ExperimentalWarning: GPSampler is experimental (supported from v3.6.0). The interface can change in the future.
+  sampler = optuna.samplers.GPSampler(seed=seed, deterministic_objective=True)
+   seed 2 1차 완료 (trials 102)
+C:\HomeLab\my_project\quant\pocket_quant\app\lab\rs_transfer_poc.py:82: ExperimentalWarning: GPSampler is experimental (supported from v3.6.0). The interface can change in the future.
+  sampler = optuna.samplers.GPSampler(seed=seed, deterministic_objective=True)
+   seed 3 1차 완료 (trials 108)
+C:\HomeLab\my_project\quant\pocket_quant\app\lab\rs_transfer_poc.py:82: ExperimentalWarning: GPSampler is experimental (supported from v3.6.0). The interface can change in the future.
+  sampler = optuna.samplers.GPSampler(seed=seed, deterministic_objective=True)
+   seed 4 1차 완료 (trials 113)
+② 약점 진단 - 국면별 집단 평균 score_vs_dca:
+   상승장: +0.276
+   하락장: +0.802
+   횡보장: -0.120  ← 약점(보충 대상)
+   변동장: -0.039
+③ 맞춤 보충 교과서(횡보장 ×3.0) + 2차 보충 ...
+C:\HomeLab\my_project\quant\pocket_quant\app\lab\rs_transfer_poc.py:82: ExperimentalWarning: GPSampler is experimental (supported from v3.6.0). The interface can change in the future.
+  sampler = optuna.samplers.GPSampler(seed=seed, deterministic_objective=True)
+   seed 0 2차 완료 (trials 93)
+C:\HomeLab\my_project\quant\pocket_quant\app\lab\rs_transfer_poc.py:82: ExperimentalWarning: GPSampler is experimental (supported from v3.6.0). The interface can change in the future.
+  sampler = optuna.samplers.GPSampler(seed=seed, deterministic_objective=True)
+   seed 1 2차 완료 (trials 116)
+C:\HomeLab\my_project\quant\pocket_quant\app\lab\rs_transfer_poc.py:82: ExperimentalWarning: GPSampler is experimental (supported from v3.6.0). The interface can change in the future.
+  sampler = optuna.samplers.GPSampler(seed=seed, deterministic_objective=True)
+   seed 2 2차 완료 (trials 119)
+C:\HomeLab\my_project\quant\pocket_quant\app\lab\rs_transfer_poc.py:82: ExperimentalWarning: GPSampler is experimental (supported from v3.6.0). The interface can change in the future.
+  sampler = optuna.samplers.GPSampler(seed=seed, deterministic_objective=True)
+   seed 3 2차 완료 (trials 200)
+C:\HomeLab\my_project\quant\pocket_quant\app\lab\rs_transfer_poc.py:82: ExperimentalWarning: GPSampler is experimental (supported from v3.6.0). The interface can change in the future.
+  sampler = optuna.samplers.GPSampler(seed=seed, deterministic_objective=True)
+   seed 4 2차 완료 (trials 154)
+
+OOS score_vs_dca (성실이 대비, 양수=이김)
+   seed 0: RS=+0.603  RS→보충=+0.388
+   seed 1: RS=+0.572  RS→보충=+0.392
+   seed 2: RS=+0.603  RS→보충=+0.444
+   seed 3: RS=+0.596  RS→보충=+0.401
+   seed 4: RS=+0.602  RS→보충=-0.428
+  RS만   중앙 +0.602  최악 +0.572
+  RS→보충 중앙 +0.392  최악 -0.428
+  판정: 불합격(효과 없음/악화)
+
+국면별 OOS 초과수익 (성실이 대비, 연율%):
+  국면        일수   RS만    RS→보충
+  상승장     1019    +20.7     +9.4
+  하락장      266     +7.9     +5.1
+  횡보장      202    -37.6    -17.8
+  변동장       12    -71.6    -55.3
+[저장] C:\HomeLab\my_project\quant\pocket_quant\app\lab\outputs\rs_transfer_poc
