@@ -167,7 +167,7 @@ def _equity_svg(curves: dict) -> str:
 def run_gate3() -> bool:
     prices = get_prices(TICKER, "1999-03-10", DATA_END)
 
-    print("=== 사천왕: 빅토리 로드 (OOS) 다음 본편 시험 (봉인 해제 — 1회용) ===")
+    print("=== 사천왕: 빅토리 로드 (OOS) 다음 본편 시험 (개봉된 참고 시험지) ===")
     print(f"구간: {HOLDOUT_START} ~ {DATA_END} (훈련·검증 미사용 봉인 구간)")
     print("도전자: 시즌3 챔피언 NSGA-1차-t2426 (균형형 — FEAR_NQ·FEAR·MA·REV_RSI 4축 + VOL_SPIKE·QQQ_SPY·QQQ_DIA·VOL)\n")
     print("비용 모델: season3_flat_1bp_band5 — 수수료 0.1% + 슬리피지 1bp + No-trade band 5%, 성실이는 수수료만 면제\n")
@@ -238,7 +238,7 @@ def run_gate3() -> bool:
     out = _update_regime_picks("gate3_holdout", gate3)
     print(f"saved: {out}")
 
-    # 오박사 코너 — 옛 LM Studio 본체는 2026-06-14 폐기 (AGENTS.md 절대 규칙 #8).
+    # 오박사 코너 — 옛 LM Studio 본체는 2026-06-14 폐기 (AGENTS.md: LLM 판정 루프 금지).
     # 코딩 에이전트가 페르소나를 인계받았으므로 hold-out 결과는 reports/연구소보고서/에서
     # 직접 서술한다. 자동 호출은 제거하고 둔치 고정 대사로 고정.
     oak_text = "그래. 그럴 수 있어. 시장이 원래 그래. (소주 한 모금)"
@@ -297,8 +297,8 @@ def _write_html(rows, champ_perf, dca_perf, bh_perf, avg_score,
  .warn {{ background: #fff7e8; border: 1px solid #f0d9a8; border-radius: 8px; padding: 12px 16px; }}
 </style></head><body>
 
-<h1>👑 사천왕전 — 봉인 해제 (1회용)</h1>
-<p class="dim">구간 {HOLDOUT_START} ~ {DATA_END} (사천왕 봉인은 시즌 v2에서 이미 해제됨 — 이제 1회용 아닌 참고 시험지) ·
+<h1>👑 사천왕전 — 개봉된 참고 시험지</h1>
+<p class="dim">구간 {HOLDOUT_START} ~ {DATA_END} (사천왕 봉인은 시즌 v2에서 이미 해제됨 — 이제 개봉된 참고 시험지) ·
 도전자: 시즌3 챔피언 <b>NSGA-1차-t2426</b>(균형형 14신호 가중치 — FEAR_NQ·FEAR·MA·REV_RSI 4축 + VOL_SPIKE/QQQ_SPY/QQQ_DIA/VOL) ·
 개봉 {stamp}</p>
 
@@ -339,7 +339,7 @@ def _write_html(rows, champ_perf, dca_perf, bh_perf, avg_score,
 
 <h2>⚠️ 이 시험의 규칙</h2>
 <div class="warn">
-이 구간은 <b>1회용</b>이었다 — 이제 개봉됐으므로 더 이상 깨끗한 시험지가 아니다.
+이 구간은 이미 개봉된 <b>참고 시험지</b>다 — 더 이상 깨끗한 최종 시험지가 아니다.
 이 결과를 보고 적합도·가중치·파라미터를 고치면 hold-out이 훈련셋이 되는 반칙.
 앞으로의 개선(시그널 풀 확장, Regime 오버레이, 아카데미)은 이 구간을 다시
 '참고'할 수는 있어도 '최종 판정'으로 쓸 수는 없다 — 다음 최종 시험지는

@@ -1,23 +1,19 @@
 # PocketQuant — 에이전트 작업 헌장
 
-> 이 문서는 이 레포에서 작업하는 코딩 에이전트의 **최소 운영 규칙**이다.
-> 코드가 source of truth다. 문서와 코드가 다르면 코드를 확인하고 문서를 고친다.
-> 상세 실행 절차는 Codex 스킬 [pocketquant-engineer](.codex/skills/pocketquant-engineer/SKILL.md)를 우선 사용한다.
+> 코딩 에이전트의 **최소 운영 규칙**. 코드가 source of truth다. 문서와 코드가 다르면 코드를 확인하고 문서를 고친다.
 
-사람용 소개는 [README.md](README.md), 최적화 정식화는 [OPTIMIZATION.md](OPTIMIZATION.md)를 본다.
+사람용 소개는 [README.md](README.md), 최적화 정식화는 [OPTIMIZATION.md](OPTIMIZATION.md), 상세 실행 절차는 [pocketquant-engineer](.codex/skills/pocketquant-engineer/SKILL.md).
 
 ---
 
 ## 역할
 
-Codex 연구원이 수석 연구원이다.
+Codex가 수석. 코드·수치·검증 정합성이 걸리면 Codex가 맡는다.
 
 - **Codex**: 코드 리뷰, 리팩터, 비용 모델, 리그 판정, 수치 검산, 최종 운영 판단.
 - **Opus**: 오박사 페르소나 문체와 최종 해설. Codex 산출물을 먼저 확인한 뒤 쓴다.
 - **Sonnet**: Markdown, 표, 링크, 그래프 경로, 중복 문장 정리.
 - **Fable**: README 세계관 인물이지 실무 실행 기준이 아니다.
-
-문서 말맛·마크다운 정리만 필요한 일은 Codex 주업무가 아니다. 코드·수치·검증 정합성이 걸릴 때 Codex가 맡는다.
 
 ---
 
@@ -50,8 +46,7 @@ Codex 연구원이 수석 연구원이다.
 
 - mypy는 이번에 고친 `.py` 파일만 본다. `mypy app tools` 금지.
 - 문서·worklog만 고친 경우 기본 코드 게이트는 면제다.
-- `tools/test_baselines.py`, `tools/e2e.py`는 느리다. 사용자가 “전체 validate”를 명시했을 때만 돌린다.
-- 세부 게이트는 [pocketquant-engineer](.codex/skills/pocketquant-engineer/SKILL.md)를 따른다.
+- `tools/test_baselines.py`, `tools/e2e.py`는 느리다. 사용자가 "전체 validate"를 명시했을 때만 돌린다.
 
 작업별 추가 게이트:
 
@@ -138,8 +133,6 @@ Codex 연구원이 수석 연구원이다.
 
 ## 작업 시작 체크
 
-1. `git status --short`로 사용자 변경을 확인한다.
-2. 관련 코드와 README/OPTIMIZATION 중 필요한 부분만 읽는다.
-3. 상세 절차가 필요한 코드 작업이면 [pocketquant-engineer](.codex/skills/pocketquant-engineer/SKILL.md)를 사용한다.
-4. 수정 후 실제 사용 경로와 테스트 수집·실행 여부를 확인한다.
-5. 최종 보고에는 변경 파일, 검증 결과, 생략한 게이트와 이유만 짧게 남긴다.
+1. 관련 코드와 README/OPTIMIZATION 중 필요한 부분만 읽는다.
+2. 상세 절차가 필요한 코드 작업이면 [pocketquant-engineer](.codex/skills/pocketquant-engineer/SKILL.md)를 쓴다.
+3. 수정 후 실제 사용 경로와 테스트 수집·실행 여부를 확인한다.

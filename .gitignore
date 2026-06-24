@@ -13,7 +13,7 @@ env/
 data_cache/
 docs/
 
-# worklog: 로컬 전용 (깃허브 비공개 — 2026-06-19 대표님 결정, 개인 맥락 유입으로 전면 제외)
+# worklog: 로컬 전용, 공개 레포 커밋 제외
 worklog/
 
 .claude/
